@@ -287,7 +287,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                         spec["shapes"] = [dict(sh, x=round(sh["x"] - p["x"], 1), y=round(sh["y"] - p["y"], 1))
                                           for sh in L["shapes"]]
                     pill = typ == "stamp"
-                    if th.get("glass") and not bleed and not pill:
+                    glass_cfg = th.get("glass") or ({"sigma": 18} if cards.is_lite(ov, th) else None)
+                    if glass_cfg and not bleed and not pill:
                         # 毛玻璃：把卡片底下的画面模糊后按卡片形状贴回，再盖半透明底板
                         mask, mm = draw.make_plate({"w": p["w"], "h": p["h"], "radius": p["radius"],
                                                     "fill": "#FFFFFF", "alpha": 1.0, "border": {"w": 0},
@@ -299,7 +300,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                             inputs.append(["-loop", "1", "-t", "%.3f" % (t1 + 0.5), "-i",
                                            os.path.relpath(mask, work)])
                             rec["glass"] = {"idx": idx, "x": gx, "y": gy, "w": gw,
-                                            "h": gh, "sigma": float(th["glass"].get("sigma", 16)),
+                                            "h": gh, "sigma": float(glass_cfg.get("sigma", 16)),
                                             "t0": t0, "t1": t1, "di": p["di"], "do": p["do"]}
                             idx += 1
                     png, margin = draw.make_plate(spec, os.path.join(work, "plates"))

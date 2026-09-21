@@ -11,7 +11,7 @@ from .timeline import Timeline
 
 DEFAULTS = {
     "output": {"width": 1080, "height": 1920, "fps": 30, "path": "out/final.mp4"},
-    "captions": {"enabled": True, "max_width": 15},   # style 不写时跟随卡片风格，没有就 clean
+    "captions": {"enabled": True},   # style 不写时跟随卡片风格，没有就 clean
     "music": None,
     "loudness": -14.0,
     "overlays": [],
@@ -141,7 +141,8 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
         ass_name = "captions_%s.ass" % tag
         captions.write_ass(ev, os.path.join(work, ass_name), w, h,
                            sb["captions"].get("font") or env.find_font(), sb["captions"]["style"],
-                           sb["captions"].get("highlight") or ())
+                           sb["captions"].get("highlight") or (), sb["captions"].get("margin_v"),
+                           sb["captions"].get("size_scale"))
     zooms = sb.get("zooms") or []
     zoom_str = overlays.zoom_filter(zooms, w, h, fps) if zooms else None
     # 人像遮罩按「不带 format 的剪辑图」生成，成片改画质不会让遮罩缓存失效
@@ -298,7 +299,8 @@ def preview_subs(sb_path: str, t_from: Optional[float] = None, t_to: Optional[fl
         pcs, _t = captions.load_pieces(sb, segs, captions.fit(sb))
         ass = "captions_subs.ass"
         captions.write_ass(captions.to_events(pcs, tl), os.path.join(work, ass), w, h,
-                           cap.get("font") or env.find_font(), cap["style"], cap.get("highlight") or ())
+                           cap.get("font") or env.find_font(), cap["style"], cap.get("highlight") or (),
+                           cap.get("margin_v"), cap.get("size_scale"))
     info = env.probe(sb["source"])
     g = _video_base(cuts, w, h, fps, False, None, sb.get("framing"), bool(info.get("hdr")))
     g += ";[base]%sformat=yuv420p[v]" % (("subtitles=filename=%s," % ass) if ass else "")

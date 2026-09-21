@@ -28,12 +28,13 @@ STYLES: Dict[str, dict] = {
     "box": dict(size=0.040, bold=1, primary="&H00FFFFFF", outline="&HB0000000", outline_w=0.012,
                 shadow=0, margin_v=0.11, back="&HB0000000", border_style=3),
     # 双语＋高亮风格（配合同名卡片风格；关键词颜色与卡片高亮一致）
-    "mrone": dict(size=0.043, bold=1, primary="&H00FFFFFF", outline="&H00000000", outline_w=0.0024,
-                  shadow=2, margin_v=0.12, back="&H80000000", hl="#FFC933", en_ratio=0.62,
-                  en_font="Avenir Next Bold"),
-    "otg": dict(size=0.042, bold=1, primary="&H00FFFFFF", outline="&H00000000", outline_w=0.0030,
-                shadow=0, margin_v=0.12, back="&H00000000", hl="#FF2A3A", en_ratio=0.62,
-                en_font="Avenir Next Bold"),
+    # 口播字幕：字小一点、放在画面约 65% 处（不压桌面／不被 Reels 底部按钮盖住），每段更长、停得更久
+    "mrone": dict(size=0.029, bold=1, primary="&H00FFFFFF", outline="&H00000000", outline_w=0.0022,
+                  shadow=2, margin_v=0.30, back="&H80000000", hl="#FFC933", en_ratio=0.74,
+                  en_font="Avenir Next Bold", max_w=17, hold=0.40),
+    "otg": dict(size=0.030, bold=1, primary="&H00FFFFFF", outline="&H00000000", outline_w=0.0030,
+                shadow=0, margin_v=0.30, back="&H00000000", hl="#FF2A3A", en_ratio=0.74,
+                en_font="Avenir Next Bold", max_w=17, hold=0.40),
 }
 # 英文行用具体字形名：libass 给「Avenir Next」加粗时会挑中 Bold Italic，写死字形名才稳定是正体
 DEF_HL, DEF_EN_RATIO, DEF_EN_FONT = "#FFD23F", 0.62, "Avenir Next Bold"
@@ -129,7 +130,8 @@ def fit(sb: dict) -> float:
 
 
 def max_width(cap: dict, w: int, h: int) -> float:
-    return min(float(cap.get("max_width", 15)), fit_units(cap.get("style") or "clean", w, h))
+    st = STYLES.get(cap.get("style") or "clean") or STYLES["clean"]
+    return min(float(cap.get("max_width", st.get("max_w", 15))), fit_units(cap.get("style") or "clean", w, h))
 
 
 def too_long(pcs: List[dict], cap: dict, w: int, h: int) -> List[str]:
@@ -290,8 +292,15 @@ def _line(t: str, extra: Optional[dict], st: dict, h: int, words: Sequence[str],
 
 
 def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean",
-              highlight: Sequence[str] = ()) -> None:
-    st = STYLES[style]
+              highlight: Sequence[str] = (), margin_v: Optional[float] = None,
+              size_scale: Optional[float] = None) -> None:
+    """margin_v：字幕底边离画面底部的比例（storyboard 的 captions.margin_v 可覆盖；0.30≈画面 70% 处）；
+    size_scale：字号倍率（captions.size_scale）。"""
+    st = dict(STYLES[style])
+    if margin_v is not None:
+        st["margin_v"] = float(margin_v)
+    if size_scale:
+        st["size"] = st["size"] * float(size_scale)
     size = int(round(h * st["size"]))
     head = (
         "[Script Info]\nScriptType: v4.00+\nPlayResX: %d\nPlayResY: %d\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n"

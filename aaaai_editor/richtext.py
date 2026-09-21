@@ -150,7 +150,11 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
             "\\b%d" % (1 if cfg["bold"] else 0), "\\i%d" % (1 if cfg["italic"] else 0)]
     if cfg["tracking"]:
         base.append("\\fsp%.1f" % (cfg["tracking"] * em))
-    if it.get("stroke"):
+    if it.get("soft"):   # 无底板的排版卡片：柔和投影代替描边，字放在任何画面上都清楚
+        # 细描边（同字色）把字加粗一点 + 向下偏移的半透明投影托住字：任何画面上都清楚，字边不发虚
+        base += ["\\bord%.1f" % max(0.8, em * 0.014), "\\3c%s" % _c(it["color"]), "\\3a&H00&",
+                 "\\shad%.1f" % max(2.0, em * 0.05), "\\4c&H000000&", "\\4a&H40&"]
+    elif it.get("stroke"):
         base += ["\\bord%.1f" % max(2.0, em * 0.055), "\\3c&H000000&", "\\3a&H4C&", "\\shad0"]
     else:
         base += ["\\bord0", "\\shad0"]

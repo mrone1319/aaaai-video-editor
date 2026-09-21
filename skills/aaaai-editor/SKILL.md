@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # aaaai-editor 影片总监
@@ -111,6 +111,8 @@ P=$("$A" new <主题英文短名>)
 - **修错字**（专有名词、人名、币名）；听不出来：`"$A" listen <素材> <起> <迄>` 剪出那段问用户，不照听写定案。
 - **双语**：填 `en`，自然口语、短，英文名词首字母大写。
 - **高亮**：`hl` 或 `**关键词**`，每 2–3 句最多一处；同一句并列的名词高亮要一致。
+- 字幕位置与大小：`mrone`／`otg` 字幕默认在画面约 65% 处、字较小；想调就在 storyboard 写
+  `"captions": {"margin_v": 0.30, "size_scale": 1.0}`（`margin_v` 是字幕底边离画面底部的比例，越大越高）。
 - **中文每句单行**：太长就在标点后拆成两句（复制一条拆开 text，`s` 各取一半）。`s` 是原片时间，其余别改。
 - 英文字幕按单词断行（不会切在词中间）；英文片要中文翻译就把中文填进 `en` 那一行的位置（第二行）。
 
@@ -142,11 +144,17 @@ P=$("$A" new <主题英文短名>)
 
 **B-roll 素材从哪来**：见下方「B-roll 流程」。
 
+- **不要为了显得丰富硬加卡片**：片头标题、自我介绍条这类，只有用户要求、或内容确实需要（新观众第一次看到这个人）才加，
+  并且预览后问用户「要不要保留」；用户没提过的不要擅自加。
 - 密度：每 8–15 秒最多一个主卡（hook／stat_hit／steps／quote_pull／compare／takeover）；30 秒以下短片 hook + 一个主卡 + outro。
 - 人物居中的口播，标题卡可加 `"behind_subject": true` 做文字穿插。黑色 logo 用 `image` 卡加 `"disc": true`。
 - 全部参数：`$APP/docs/CARDS.md`、`$APP/docs/STYLE.md`；微调用 `"$A" expand` 看展开结果。
 
 ### 5. 预览并看画面
+
+**成品放哪里要讲清楚**：每次 `preview`／`render`／`cover` 做完，都把**完整绝对路径**告诉用户，并在 Finder 里点出来
+（`open -R "<文件路径>"`），能发给用户的用 SendUserFile 直接发。预览版是 `out/final_preview.mp4`（半分辨率、只给看版面），
+**正式成品是 `out/final.mp4`，要跑 `render` 才有**——不要把预览当成品，也不要没渲染就说成品在 `out/final.mp4`。
 
 ```bash
 "$A" preview "$P/storyboard.json"

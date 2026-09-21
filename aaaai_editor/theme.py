@@ -121,7 +121,7 @@ BUILTIN: Dict[str, dict] = {
         "border": {"w": 1, "color": "#2A2A30"},
         "shadow": {"soft": 28, "alpha": 0.50, "dy": 10, "color": "#000000"},
         "row": "#1B1B1F", "line": "#2C2C31",
-        "text_engine": "ass", "body_font": "PingFang SC", "captions": "mrone",
+        "text_engine": "ass", "body_font": "PingFang SC", "captions": "mrone", "lite": 1,
         "restricted": {"owner": "MR ONE", "note": "MR ONE 的个人频道风格，仅限 MR ONE 社群成员或获 MR ONE 授权者使用"},
         "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1},
                  "kicker": {"bold": 1, "upper": 1, "tracking": 0.22},

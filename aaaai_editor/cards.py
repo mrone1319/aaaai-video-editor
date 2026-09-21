@@ -143,7 +143,25 @@ def _icon_blk(ov, th, W, scale=0.085) -> Optional[dict]:
             "gap": 0, "align": ov.get("align", "center"), "delay": 0.0}
 
 
+LITE_TYPES = ("title", "quote", "lower_third")
+
+
+def is_lite(ov, th) -> bool:
+    """口播画面上的标题／金句／人名条：不盖黑底，只用排版（强调色短横线＋粗体字＋柔和投影）。
+    风格里 "lite": 1 开启；单张卡片可写 "lite": false 回到底板版。"""
+    return bool(th.get("lite")) and ov.get("type") in LITE_TYPES and ov.get("lite", True) and not ov.get("bleed")
+
+
 def blocks_title(ov, th, W) -> Tuple[List[dict], str]:
+    if is_lite(ov, th):
+        b = []
+        if ov.get("kicker"):
+            b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="left", role="kicker"))
+        b.append(_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.084), th["text"], align="left",
+                      gap=round(W * 0.018) if b else 0, role="title"))
+        if ov.get("sub"):
+            b.append(_blk(ov["sub"], round(W * 0.034), th["muted"], align="left", gap=round(W * 0.016), role="sub"))
+        return b, "fit"
     b = []
     ib = _icon_blk(ov, th, W)
     if ib:
@@ -227,6 +245,12 @@ def blocks_bullets(ov, th, W) -> Tuple[List[dict], str]:
 
 
 def blocks_quote(ov, th, W) -> Tuple[List[dict], str]:
+    if is_lite(ov, th):
+        b = [_blk("「%s」" % ov.get("text", ""), round(W * 0.066), th["text"], align="left", role="quote")]
+        if ov.get("by"):
+            b.append(_blk("— " + ov["by"], round(W * 0.030), th["muted"], align="left",
+                          gap=round(W * 0.020), role="by"))
+        return b, "fit"
     b = []
     ib = _icon_blk(dict(ov, align="left"), th, W, 0.07)
     if ib:
@@ -240,9 +264,11 @@ def blocks_quote(ov, th, W) -> Tuple[List[dict], str]:
 
 
 def blocks_lower_third(ov, th, W) -> Tuple[List[dict], str]:
-    b = [_blk(ov.get("name", ""), round(W * 0.042), th["text"], align="left", role="name")]
+    lite = is_lite(ov, th)
+    b = [_blk(ov.get("name", ""), round(W * (0.048 if lite else 0.042)), th["text"], align="left", role="name")]
     if ov.get("role"):
-        b.append(_blk(ov["role"], round(W * 0.027), th["muted"], align="left", gap=round(W * 0.008),
+        b.append(_blk(ov["role"], round(W * (0.031 if lite else 0.027)), "#E4E4E7" if lite else th["muted"],
+                      align="left", gap=round(W * (0.010 if lite else 0.008)),
                       role="position"))
     return b, "fit"
 
@@ -311,6 +337,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     if ov.get("colors"):  # 单张卡片改色，可写 "@value" 引用语义色
         th = resolve_colors(dict(th, **ov["colors"]))
     typ = ov["type"]
+    lite = is_lite(ov, th)
+    if lite:
+        th = dict(th, muted="#E4E4E7")   # 灰字放在视频上看不清：提亮
     # 字号与内距的基准：竖屏＝画面宽；横屏／方形按高度折算，卡片不会比画面还高
     U = min(W, int(H * 0.75))
     blocks, mode = BUILDERS[typ](ov, th, U)
@@ -319,6 +348,11 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     mx, pad = round(W * MARGIN_X), round(U * PAD)
     if mode == "pill":
         pad = round(U * 0.026)
+    bar_h = 0
+    if lite:   # 强调色短横线在文字上方：给第一块文字多留出它的位置
+        pad = round(U * 0.034)
+        bar_h = max(4, round(U * 0.0085))
+        blocks[0]["gap"] = blocks[0].get("gap", 0) + bar_h + round(U * 0.034)
     fixed_w = min(W - 2 * mx, W * float(ov["width"])) if ov.get("width") and mode != "bleed" else None
     maxw_full = (fixed_w or (W - 2 * mx)) - 2 * pad
 
@@ -422,7 +456,8 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         cur = (H - body_h) / 2.0
     else:
         plate_h = body_h + 2 * pad
-        ax, ay = ANCHORS.get(ov.get("pos") or DEFAULT_POS.get(typ, "center"), (0.5, 0.5))
+        dpos = {"title": "top_left", "quote": "top_left"} if lite else DEFAULT_POS
+        ax, ay = ANCHORS.get(ov.get("pos") or dpos.get(typ, DEFAULT_POS.get(typ, "center")), (0.5, 0.5))
         top_m, bot_m = round(H * TOP_M), round(H * BOT_M)
         px = mx + ax * (W - 2 * mx - plate_w)
         py = top_m + ay * (H - top_m - bot_m - plate_h)
@@ -434,6 +469,11 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         plate = {"w": W, "h": H, "radius": 0, "fill": th["plate"],
                  "alpha": float(ov.get("opacity", 0.97)), "border": {"w": 0}, "shadow": {},
                  "x": 0, "y": 0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
+    elif lite:   # 紧凑的半透明磨砂深色底板（叠在任何画面上字都清楚），顶部一条强调色短线
+        plate = {"w": int(round(plate_w)), "h": int(round(plate_h)), "radius": 16, "fill": ["#111114", "#0A0A0C"],
+                 "alpha": 0.62, "border": {"w": 0}, "shadow": {"soft": 22, "alpha": 0.28, "dy": 7, "color": "#000000"},
+                 "x": int(round(px)), "y": int(round(py)),
+                 "dx": dx0, "dy": dy0, "t0": t0, "t1": t1, "di": di, "do": DO}
     elif mode != "none":
         if mode == "pill":
             plate = {"w": int(round(plate_w)), "h": int(round(plate_h)),
@@ -450,6 +490,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     items: List[dict] = []
     icons: List[dict] = []
     shapes: List[dict] = []
+    if lite:
+        bw = max(round(U * 0.10), 40)
+        shapes.append({"x": cbox_x, "y": py + pad, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
     ccx = cbox_x + cbox_w / 2.0
     common = {"t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0}
 
@@ -518,7 +561,8 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             y = cur
             it = {"size": b["size"], "color": b["color"], "mono": b["mono"],
                   "t0": t0 + b["delay"], "t1": t1, "di": di, "do": DO,
-                  "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none",
+                  "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none" and not lite,
+                  "soft": False,
                   "role": b.get("role", "text"), "runs": b["_runs"][li]}
             if b["align"] == "center":
                 it["cx"] = int(round(ccx))

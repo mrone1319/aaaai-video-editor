@@ -120,3 +120,11 @@ B-roll 画在底片之上、卡片与字幕之下（B-roll 上面照样能叠卡
 B-roll 时段内不要用 `behind_subject`（人物会被重贴到 B-roll 上面）。
 
 不想自己找素材：`aaaai-editor broll plan／estimate／gen／sheet／place` 从 Pexels 免费素材或 AI 生成，自动写进 overlays（流程见 SKILL 的「B-roll 流程」）。
+
+## 口播画面上的标题／金句／人名条（`lite`）
+
+`mrone` 风格的 `title`、`quote`、`lower_third` 默认用紧凑的半透明磨砂深色底板：左对齐粗体字，顶部一条强调色短线，
+叠在白墙或深色背景上都看得清。标题和金句默认放左上，人名条放左下，都避开脸和字幕。
+- 想要旧的整块大底板：卡片里写 `"lite": false`。
+- 自定义风格想用这种样式：在风格 json 里加 `"lite": 1`。
+- 字幕默认位置见 `docs/STYLE.md`（`captions.margin_v`、`captions.size_scale`）。

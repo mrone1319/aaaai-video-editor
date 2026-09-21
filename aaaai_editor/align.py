@@ -46,6 +46,8 @@ def align(sb: dict, pieces: List[dict], lang: str = "zh") -> Tuple[List[dict], d
     env_ = audio.envelope(sb["source"])
     onsets = env_.onsets()
     first_v, last_v = env_.first_last_voice()
+    from . import captions as captions_mod
+    hold = float(captions_mod.STYLES.get(captions_mod.resolve_style(sb), {}).get("hold", 0.2))
     toks = token_stream(sb["source"], work, lang)
     if len(toks) < 5:
         raise env.ToolError("whisper 只给出 %d 个词的时间戳，无法对齐" % len(toks))
@@ -115,9 +117,11 @@ def align(sb: dict, pieces: List[dict], lang: str = "zh") -> Tuple[List[dict], d
         nxt = new_s[i + 1] if i + 1 < len(new_s) else last_v + 0.3
         e = nxt - 0.03
         lc = last_char[i]
-        if lc is not None:  # 句尾：贴尾音收完 +0.2s，不拖进长停顿
-            e = min(e, env_.decay_end(lc, limit=1.0) + 0.2)
+        if lc is not None:  # 句尾：贴尾音收完再多留一会儿（风格的 hold，默认 0.2s），不拖进长停顿
+            e = min(e, env_.decay_end(lc, limit=1.0) + hold)
         e = max(e, s + 0.45)
+        if hold > 0.2:      # 口播风格：至少留够读完的时间（按字数），但不越过下一句的开头
+            e = max(e, min(nxt - 0.03, s + 0.35 + 0.09 * captions_mod.width(pc["text"].replace("**", ""))))
         old = float(pc["s"][0])
         moved.append(s - old)
         q = dict(pc)
