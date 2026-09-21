@@ -1,4 +1,4 @@
-"""风格总览：每套风格用真实管线渲染一帧（标题＋数据＋图标宫格），拼成一张对照表。"""
+"""风格总览：每套风格用真实管线渲染一帧（标题＋人名条＋标签），拼成一张对照表。"""
 from __future__ import annotations
 
 import json
@@ -39,16 +39,11 @@ def run(out: Optional[str] = None, names: Optional[List[str]] = None, base_dir: 
         sb = {"version": 1, "source": bg, "cuts": [[0, 2.5]], "style": n,
               "output": {"width": W, "height": H, "fps": 30, "path": "out/%s.mp4" % n},
               "captions": {"enabled": False}, "segment": {"enabled": False},
-              "overlays": [
-                  {"type": "title", "t": [0, 2.5], "pos": "top", "icon": "rocket", "icon_badge": True,
-                   "kicker": n.upper(), "text": "%s **风格**" % n, "sub": theme.theme(n, base_dir)["desc"],
+              "overlays": [   # 按真实口播用法：上方标题、下方人名条、右上角标签
+                  {"type": "title", "t": [0, 2.5], "kicker": n.upper(), "text": "%s **风格**" % n,
+                   "sub": theme.theme(n, base_dir)["desc"], "anim": "fade"},
+                  {"type": "lower_third", "t": [0, 2.5], "name": "你的名字", "role": "人名条 · 自我介绍",
                    "anim": "fade"},
-                  {"type": "stat", "t": [0, 2.5], "value": 24800, "suffix": "+", "label": "月活钱包",
-                   "icon": "chart_up", "count": False, "anim": "fade", "colors": {"accent": "@value"},
-                   "scale": 0.78},
-                  {"type": "icons", "t": [0, 2.5], "pos": "bottom", "stagger": 0, "anim": "fade",
-                   "items": [{"icon": "wallet", "label": "钱包"}, {"icon": "token", "label": "代币"},
-                             {"icon": "nft", "label": "NFT"}, {"icon": "gas", "label": "Gas"}]},
                   {"type": "stamp", "t": [0, 2.5], "text": "LIVE", "icon": "fire", "pos": "top_right",
                    "anim": "fade"},
               ]}

@@ -126,26 +126,12 @@ def _outro(r, beats):
     return ov, [], {"fade": fade}
 
 
-@recipe("compare", "对比：左右两张卡（左叉右勾），中间 VS；右边用价值绿",
-        ("left", "right"), ("vs", "marks"))
+@recipe("compare", "对比：上下两组，前一组淡色＋叉（以为／以前），后一组价值色＋勾（其实／现在），第二组晚一拍出现",
+        ("left", "right"), ("kicker", "reveal", "pos"))
 def _compare(r, beats):
     a, b = _t(r)
-    marks = r.get("marks", True)
-
-    def side(d, pos, icon, colors):
-        items = [{"text": x, "icon": icon} if marks else x for x in d.get("items", [])]
-        o = {"type": "bullets", "t": [a, b], "width": 0.43, "pos": pos, "title": d.get("title"),
-             "items": items, "stagger": "auto", "anim": "left" if pos == "left" else "right"}
-        if colors:
-            o["colors"] = colors
-        return o
-
-    ov = [side(r["left"], "left", "cross", {"accent": "@muted"}),
-          side(r["right"], "right", "check", {"accent": "@value"})]
-    if r.get("vs", "VS"):
-        ov.append({"type": "stamp", "t": [a + 0.3, b], "text": r.get("vs", "VS"), "pos": "center",
-                   "anim": "pop"})
-    return ov, [], None
+    return [{"type": "compare", "t": [a, b], "left": r["left"], "right": r["right"], "kicker": r.get("kicker"),
+             "reveal": float(r.get("reveal", 0.6)), "pos": r.get("pos")}], [], None
 
 
 @recipe("callout", "标注：带图标的小药丸，可排在人物后面",

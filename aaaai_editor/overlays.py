@@ -46,6 +46,8 @@ def _textfile(work: str, text: str) -> str:
 
 def _drawtext(it: dict, work: str, fps: float) -> List[str]:
     txt = it.get("text") or ""
+    if it.get("counter"):   # 跳数的文字在 counter 里：前后缀（例如「天」「万」）有中文也要算
+        txt = "%s%s" % (it["counter"].get("prefix", ""), it["counter"].get("suffix", ""))
     # 等宽数字字体没有中文字形：文字里有中文就退回中文字体，否则会显示成方块
     font = theme.num_font() if it.get("mono") and not any(cards.is_cjk(c) for c in txt) \
         else theme.cjk_font()
@@ -67,7 +69,8 @@ def _drawtext(it: dict, work: str, fps: float) -> List[str]:
     out = []
     if it.get("counter"):
         for a, b, s_txt in cards.counter_steps(it["counter"], t0, t1, fps):
-            out.append("drawtext=textfile=%s:%s:enable='between(t\\,%.3f\\,%.3f)'"
+            # 左闭右开：相邻两个数值在交界那一帧不会同时画出来（否则数字会叠成乱码）
+            out.append("drawtext=textfile=%s:%s:enable='gte(t\\,%.4f)*lt(t\\,%.4f)'"
                        % (q(_textfile(work, s_txt)), common, a, b))
     else:
         out.append("drawtext=textfile=%s:%s:enable='between(t\\,%.3f\\,%.3f)'"

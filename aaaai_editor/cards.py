@@ -143,7 +143,7 @@ def _icon_blk(ov, th, W, scale=0.085) -> Optional[dict]:
             "gap": 0, "align": ov.get("align", "center"), "delay": 0.0}
 
 
-LITE_TYPES = ("title", "quote", "lower_third")
+LITE_TYPES = ("title", "quote", "lower_third", "stat", "bullets", "rows", "compare")
 
 
 def _lighten(c: str, k: float = 0.5) -> str:
@@ -189,25 +189,28 @@ def blocks_title(ov, th, W) -> Tuple[List[dict], str]:
 
 
 def blocks_stat(ov, th, W) -> Tuple[List[dict], str]:
+    lite = is_lite(ov, th)
     b = []
     ib = _icon_blk(ov, th, W, 0.075)
     if ib:
         b.append(ib)
+    al = "left" if lite else "center"
     if ov.get("kicker"):
-        b.append(_blk(ov["kicker"], round(W * 0.028), th["muted"], mono=True,
-                      gap=round(W * 0.020) if b else 0, role="kicker"))
+        b.append(_blk(ov["kicker"], round(W * (0.033 if lite else 0.028)), th["accent"] if lite else th["muted"],
+                      mono=True, align=al, gap=round(W * 0.020) if b else 0, role="kicker"))
     c = {"to": float(ov.get("value", 0)), "from": float(ov.get("from", 0)),
          "prefix": ov.get("prefix", ""), "suffix": ov.get("suffix", ""),
          "digits": int(ov.get("digits", 0)), "style": ov.get("format", "comma"),
          "count": bool(ov.get("count", True)), "dur": float(ov.get("count_dur", 1.0))}
     # 用终值字串量尺寸，计数过程中的中间值不会比它宽
     widest = c["prefix"] + fmt_num(max(abs(c["to"]), abs(c["from"])), c["style"], c["digits"]) + c["suffix"]
-    num = _blk(widest, round(W * float(ov.get("scale", 1.0)) * 0.150), th["accent"], mono=True,
-               gap=round(W * 0.012) if b else 0, role="number")
+    num = _blk(widest, round(W * float(ov.get("scale", 1.0)) * (0.170 if lite else 0.150)), th["accent"], mono=True,
+               align=al, gap=round(W * 0.012) if b else 0, role="number")
     num["counter"] = c
     b.append(num)
     if ov.get("label"):
-        b.append(_blk(ov["label"], round(W * 0.034), th["muted"], gap=round(W * 0.010), role="label"))
+        b.append(_blk(ov["label"], round(W * (0.040 if lite else 0.034)), th["text"] if lite else th["muted"],
+                      align=al, gap=round(W * 0.010), role="label"))
     return b, "fit"
 
 
@@ -231,11 +234,13 @@ def _at(items, ov, delays: List[float]) -> List[float]:
 
 
 def blocks_bullets(ov, th, W) -> Tuple[List[dict], str]:
+    lite = is_lite(ov, th)
     b = []
     if ov.get("kicker"):
-        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="left", role="kicker"))
+        b.append(_blk(ov["kicker"], round(W * (0.033 if lite else 0.028)), th["accent"], mono=True, align="left",
+                      role="kicker"))
     if ov.get("title"):
-        b.append(_blk(ov["title"], round(W * 0.050), th["text"], align="left",
+        b.append(_blk(ov["title"], round(W * (0.062 if lite else 0.050)), th["text"], align="left",
                       gap=round(W * 0.012) if b else 0, role="heading"))
     raw = ov.get("items", [])
     texts = [it["text"] if isinstance(it, dict) else str(it) for it in raw]
@@ -243,7 +248,7 @@ def blocks_bullets(ov, th, W) -> Tuple[List[dict], str]:
     head = len(b)
     for i, it in enumerate(raw):
         icon = it.get("icon") if isinstance(it, dict) else ov.get("marker_icon")
-        blk = _blk(texts[i], round(W * 0.042), th["text"], align="left",
+        blk = _blk(texts[i], round(W * (0.046 if lite else 0.042)), th["text"], align="left",
                    gap=(round(W * 0.030) if (i == 0 and head) else (round(W * 0.026) if i else 0)),
                    delay=delays[i], role="item")
         if icon:
@@ -318,11 +323,13 @@ def blocks_text(ov, th, W) -> Tuple[List[dict], str]:
 
 def blocks_rows(ov, th, W) -> Tuple[List[dict], str]:
     """编号行卡：每条一张小卡，左边强调色方块编号，右边标题／标签／说明。"""
+    lite = is_lite(ov, th)
     b = []
     if ov.get("kicker"):
-        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="left", role="kicker"))
+        b.append(_blk(ov["kicker"], round(W * (0.033 if lite else 0.028)), th["accent"], mono=True, align="left",
+                      role="kicker"))
     if ov.get("title"):
-        b.append(_blk(ov["title"], round(W * 0.054), th["text"], align="left",
+        b.append(_blk(ov["title"], round(W * (0.066 if lite else 0.054)), th["text"], align="left",
                       gap=round(W * 0.012) if b else 0, role="heading"))
     if ov.get("sub"):
         b.append(_blk(ov["sub"], round(W * 0.030), th["muted"], align="left", gap=round(W * 0.014), role="sub"))
@@ -333,7 +340,30 @@ def blocks_rows(ov, th, W) -> Tuple[List[dict], str]:
     return b, "full"
 
 
-BUILDERS = {"title": blocks_title, "stat": blocks_stat, "bullets": blocks_bullets,
+def blocks_compare(ov, th, W) -> Tuple[List[dict], str]:
+    """对比：上下两组（竖屏比左右并排好读）。前一组淡色＋叉，后一组价值色＋勾。"""
+    lite = is_lite(ov, th)
+    b = []
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * (0.033 if lite else 0.028)), th["accent"], mono=True, align="left",
+                      role="kicker"))
+    groups = [(ov.get("left") or {}, "cross", th["muted"], th["muted"]),
+              (ov.get("right") or {}, "check", th.get("value") or th["accent"], th["text"])]
+    t0 = 0.0
+    for gi, (g, icon, mark, col) in enumerate(groups):
+        if g.get("title"):
+            b.append(_blk(g["title"], round(W * 0.036), mark, align="left", delay=t0,
+                          gap=round(W * (0.040 if gi else 0.018)) if b else 0, role="heading"))
+        for k, x in enumerate(g.get("items") or []):
+            blk = _blk(str(x), round(W * (0.060 if gi else 0.052)), col, align="left", delay=t0,
+                       gap=round(W * 0.012), role="item")
+            blk["lead_icon"], blk["lead_color"] = icon, mark
+            b.append(blk)
+        t0 = float(ov.get("reveal", 0.6))   # 第二组晚一点出现：先说「以为」再说「其实」
+    return b, "full"
+
+
+BUILDERS = {"compare": blocks_compare, "title": blocks_title, "stat": blocks_stat, "bullets": blocks_bullets,
             "quote": blocks_quote, "lower_third": blocks_lower_third, "stamp": blocks_stamp,
             "text": blocks_text, "icons": blocks_icons, "rows": blocks_rows}
 
@@ -341,7 +371,9 @@ ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
            "top_left": (0.0, 0.0), "top_right": (1.0, 0.0),
            "bottom_left": (0.0, 1.0), "bottom_right": (1.0, 1.0),
            "left": (0.0, 0.5), "right": (1.0, 0.5)}
-DEFAULT_POS = {"lower_third": "bottom_left", "stamp": "top_left", "stat": "center"}
+# 口播画面：卡片默认放上方，避开脸（人通常在画面中间）
+DEFAULT_POS = {"lower_third": "bottom_left", "stamp": "top_left", "title": "top", "quote": "top", "stat": "top", "bullets": "top",
+               "rows": "top", "compare": "top"}
 
 
 def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
@@ -439,8 +471,12 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     for b in blocks:  # 编号行卡：底板宽已知，逐行量高
         if b["kind"] != "rows":
             continue
-        rp, bs, gx = U * 0.030, U * 0.058, U * 0.026
-        ts, tgs, ds = round(U * 0.040), round(U * 0.026), round(U * 0.029)
+        if lite:   # 遮罩上的行卡更紧凑：少挡一点画面
+            rp, bs, gx = U * 0.018, U * 0.050, U * 0.024
+            ts, tgs, ds = round(U * 0.042), round(U * 0.026), round(U * 0.029)
+        else:
+            rp, bs, gx = U * 0.030, U * 0.058, U * 0.026
+            ts, tgs, ds = round(U * 0.040), round(U * 0.026), round(U * 0.029)
         tw = cbox_w - rp * 2 - bs - gx
         rows = []
         for it in b["items"]:
@@ -453,7 +489,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                                   line_runs(ls, plain, mask) if any(mask) else [None] * len(ls)))
             th_ = sum(g + len(ls) * sz * LH for _k, sz, g, ls, _r in parts)
             rows.append((parts, rp * 2 + max(bs, th_)))
-        b.update(_rp=rp, _bs=bs, _gx=gx, _rowsm=rows, _rgap=U * 0.020)
+        b.update(_rp=rp, _bs=bs, _gx=gx, _rowsm=rows, _rgap=U * (0.012 if lite else 0.020))
 
     def blk_h(b, ls):
         if b["kind"] == "rows":
@@ -481,7 +517,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         cur = (H - body_h) / 2.0
     else:
         plate_h = body_h + 2 * pad
-        dpos = {"title": "top_left", "quote": "top_left"} if lite else DEFAULT_POS
+        dpos = ({t: "top_left" for t in LITE_TYPES if t != "lower_third"} if lite else DEFAULT_POS)
         ax, ay = ANCHORS.get(ov.get("pos") or dpos.get(typ, DEFAULT_POS.get(typ, "center")), (0.5, 0.5))
         top_m, bot_m = round(H * TOP_M), round(H * BOT_M)
         px = mx + ax * (W - 2 * mx - plate_w)
@@ -497,11 +533,18 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     elif lite:   # 渐变遮罩（不是方块）：标题／金句在画面上沿，人名条在下沿；颜色取风格底板色，字直接排在上面
         pl = th["plate"]
         sc_col = th.get("scrim_color") or (pl[-1] if isinstance(pl, (list, tuple)) else pl)
-        band = int(round(H * (0.40 if typ == "lower_third" else 0.38)))
+        if typ == "lower_third":
+            band = int(round(H * 0.40))
+        else:   # 遮罩深的部分盖住内容，再往下渐渐透明（清单长，遮罩就长）
+            content_end = py + plate_h
+            band = int(round(min(H * 0.80, max(H * 0.38, content_end + H * 0.17))))
         by0 = H - band if typ == "lower_third" else 0
         plate = {"w": W, "h": band, "radius": 0, "fill": None, "alpha": 1.0, "border": {"w": 0}, "shadow": {},
-                 "scrim": {"color": sc_col, "alpha": float(th.get("scrim_alpha", 0.78)), "power": 1.3,
-                           "hold": 0.72 if typ == "lower_third" else 0.50,
+                 "scrim": {"color": sc_col, "power": 1.3,
+                           # 长清单会盖到脸：干脆把遮罩压深，变成一个明确的「清单时刻」，不要半透明地糊在脸上
+                           "alpha": float(th.get("scrim_alpha", 0.78)) if (typ == "lower_third" or py + plate_h < H * 0.40)
+                           else 0.90,
+                           "hold": 0.72 if typ == "lower_third" else min(0.72, max(0.45, (py + plate_h) / band)),
                            "dir": "up" if typ == "lower_third" else "down"},
                  "x": 0, "y": by0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
     elif mode != "none":
@@ -550,8 +593,12 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             line = th.get("line") or (th.get("border") or {}).get("color") or row_fill
             for i, (parts, rh) in enumerate(b["_rowsm"]):
                 d = b["delays"][i]
-                shapes.append({"x": cbox_x, "y": ry, "w": cbox_w, "h": rh,
-                               "r": min(float(th["radius"]) * 0.6, 18.0), "fill": row_fill, "line": line})
+                if lite:   # 遮罩上只留一层很淡的白色行底，分出每一条
+                    shapes.append({"x": cbox_x, "y": ry, "w": cbox_w, "h": rh, "r": 16.0,
+                                   "fill": "#FFFFFF", "alpha": 0.09})
+                else:
+                    shapes.append({"x": cbox_x, "y": ry, "w": cbox_w, "h": rh,
+                                   "r": min(float(th["radius"]) * 0.6, 18.0), "fill": row_fill, "line": line})
                 bx, by = cbox_x + rp, ry + rp
                 shapes.append({"x": bx, "y": by, "w": bs, "h": bs, "r": bs * 0.26, "fill": th["accent"]})
                 nsz = int(round(bs * 0.52))
