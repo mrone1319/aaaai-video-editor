@@ -293,7 +293,7 @@ def _line(t: str, extra: Optional[dict], st: dict, h: int, words: Sequence[str],
 
 def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean",
               highlight: Sequence[str] = (), margin_v: Optional[float] = None,
-              size_scale: Optional[float] = None) -> None:
+              size_scale: Optional[float] = None, hl_color: Optional[str] = None) -> None:
     """margin_v：字幕底边离画面底部的比例（storyboard 的 captions.margin_v 可覆盖；0.30≈画面 70% 处）；
     size_scale：字号倍率（captions.size_scale）。"""
     st = dict(STYLES[style])
@@ -301,6 +301,8 @@ def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean"
         st["margin_v"] = float(margin_v)
     if size_scale:
         st["size"] = st["size"] * float(size_scale)
+    if hl_color and not st.get("hl"):   # 通用字幕样式：关键词颜色跟着卡片风格的强调色
+        st["hl"] = hl_color
     size = int(round(h * st["size"]))
     head = (
         "[Script Info]\nScriptType: v4.00+\nPlayResX: %d\nPlayResY: %d\nWrapStyle: 2\nScaledBorderAndShadow: yes\n\n"

@@ -69,14 +69,14 @@ def _stat_hit(r, beats):
     return ov, zooms, None
 
 
-@recipe("chapter", "章节断章：画面整体压暗 + 大号章节数字 + 标题（人仍看得见）；强调用陈述色",
+@recipe("chapter", "章节断章：画面整体压暗 + 大号章节数字（风格强调色）+ 标题（人仍看得见）",
         ("title",), ("index", "kicker", "sub", "opacity"))
 def _chapter(r, beats):
     a, b = _t(r)
     kick = r.get("kicker") or ("CHAPTER %02d" % int(r["index"]) if r.get("index") is not None else None)
     return [{"type": "title", "t": [a, b], "bleed": True, "kicker": kick, "text": r["title"],
              "sub": r.get("sub"), "anim": "rise", "opacity": r.get("opacity", 1.0),
-             "chapter": r.get("index", True), "colors": {"accent": "@state"},
+             "chapter": r.get("index", True),
              "under_captions": True}], [], None   # 章节页压暗整个画面，字幕要留在它上面
 
 

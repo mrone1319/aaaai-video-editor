@@ -51,6 +51,17 @@ def load_storyboard(path: str) -> dict:
         raise env.ToolError(str(e))
 
 
+def _hl_color(sb: dict) -> Optional[str]:
+    """字幕关键词颜色：storyboard 写了 captions.hl 就用它，否则用卡片风格的强调色。"""
+    if sb["captions"].get("hl"):
+        return sb["captions"]["hl"]
+    try:
+        th = theme.theme(sb.get("style"), sb["_base"], sb.get("brand"))
+        return th.get("hl") if str(th.get("hl", "")).startswith("#") else th.get("accent")
+    except (RuntimeError, KeyError):
+        return None
+
+
 def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
                 framing: Optional[dict] = None, hdr: bool = False) -> str:
     """裁切拼接 + 统一画幅，产出 [base]。deep=True 时走 yuv444，卡片边缘不被色度下采样。
@@ -142,7 +153,7 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
         captions.write_ass(ev, os.path.join(work, ass_name), w, h,
                            sb["captions"].get("font") or env.find_font(), sb["captions"]["style"],
                            sb["captions"].get("highlight") or (), sb["captions"].get("margin_v"),
-                           sb["captions"].get("size_scale"))
+                           sb["captions"].get("size_scale"), _hl_color(sb))
     zooms = sb.get("zooms") or []
     zoom_str = overlays.zoom_filter(zooms, w, h, fps) if zooms else None
     # 人像遮罩按「不带 format 的剪辑图」生成，成片改画质不会让遮罩缓存失效
@@ -305,7 +316,7 @@ def preview_subs(sb_path: str, t_from: Optional[float] = None, t_to: Optional[fl
         ass = "captions_subs.ass"
         captions.write_ass(captions.to_events(pcs, tl), os.path.join(work, ass), w, h,
                            cap.get("font") or env.find_font(), cap["style"], cap.get("highlight") or (),
-                           cap.get("margin_v"), cap.get("size_scale"))
+                           cap.get("margin_v"), cap.get("size_scale"), _hl_color(sb))
     info = env.probe(sb["source"])
     g = _video_base(cuts, w, h, fps, False, None, sb.get("framing"), bool(info.get("hdr")))
     g += ";[base]%sformat=yuv420p[v]" % (("subtitles=filename=%s," % ass) if ass else "")
