@@ -275,6 +275,11 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
     # ---- 封装 ----
     env.run([ff, "-y", "-v", "error", "-i", video, "-i", audio, "-map", "0:v", "-map", "1:a", "-c", "copy",
              "-movflags", "+faststart", "-shortest", out["path"]])
+    if not proxy:   # 正式成片：再放一份到「成品」文件夹，不用进项目里找
+        from . import config
+        dst = config.export(out["path"], sb["_base"])
+        if dst:
+            print("📦 成品：%s" % dst)
     return out["path"]
 
 

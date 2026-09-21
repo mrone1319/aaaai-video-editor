@@ -45,7 +45,8 @@
   每次花钱前都会报价问你；每个项目默认上限 $2，超出会提醒。
 - **封面账号名**：`~/.aaaai-editor/bin/aaaai-editor config --set handle=@你的账号`。
 - **Codex、Claude Desktop、Cursor**：可以把 B-roll 做成 MCP 工具，命令是 `~/.aaaai-editor/bin/aaaai-editor mcp`（见快速安装第四节）。
-- 项目默认存在 `~/aaaai-editor-projects/`。
+- **成片在哪里**：Finder 侧栏点「影片」→ `aaaai-editor` → `成品`。每次正式渲染完，成片和封面会以项目名放一份在这里（例：`20260921-我的主题.mp4`）。
+  项目本身（中间档、字幕轨）在 `影片/aaaai-editor/<日期-主题>/`。想换位置：`~/.aaaai-editor/bin/aaaai-editor config --set projects_dir=<路径> exports_dir=<路径>`。
 
 ## 资料放在哪里
 
@@ -53,7 +54,7 @@
 |---|---|---|
 | `~/.aaaai-editor/app/` | 程序本体 | 会被新版替换 |
 | `~/.aaaai-editor/`（config.json、themes/、profiles/、glossary.json、authorized.json、fonts/、models/） | 你的设置与自定义 | **不动** |
-| `~/aaaai-editor-projects/` | 你的项目与成片 | **不动** |
+| `~/Movies/aaaai-editor/`（Finder 的「影片」） | 你的项目；`成品/` 里是每支片的成片与封面 | **不动** |
 
 ## 命令总览（Claude 会替你执行，一般不用手打；没加进 PATH 时 `aaaai-editor` 写成 `~/.aaaai-editor/bin/aaaai-editor`）
 

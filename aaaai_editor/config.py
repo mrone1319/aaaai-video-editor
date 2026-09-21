@@ -18,7 +18,8 @@ HOME = os.path.expanduser(os.environ.get("AAAAI_EDITOR_HOME") or "~/.aaaai-edito
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 DEFAULTS = {
-    "projects_dir": "~/aaaai-editor-projects",
+    "projects_dir": "~/Movies/aaaai-editor",          # Finder 侧栏的「影片」里
+    "exports_dir": "~/Movies/aaaai-editor/成品",       # 成片／封面自动复制一份到这里（按项目名命名）；设空字串就不复制
     "profile": "",
     "handle": "",          # 封面上印的账号名，例：@yourname
     "brand_dir": "~/Documents/brand-profiles",
@@ -62,6 +63,23 @@ def authorize(names: List[str]) -> List[str]:
     json.dump({"themes": cur, "note": "使用者自行确认：是该品牌的社群成员或已获得授权。"},
               open(path("authorized.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     return cur
+
+
+def export(src: str, project_dir: str, suffix: str = "") -> str:
+    """把成品复制到「成品」文件夹，文件名＝项目名（＋后缀）。APFS 上用 cp -c 秒复制、不多占空间。返回目的路径（没设就返回空）。"""
+    import shutil
+    import subprocess
+    d = get("exports_dir")
+    if not d or not os.path.isfile(src):
+        return ""
+    os.makedirs(d, exist_ok=True)
+    ext = os.path.splitext(src)[1]
+    dst = os.path.join(d, os.path.basename(os.path.normpath(project_dir)) + suffix + ext)
+    if os.path.exists(dst):
+        os.remove(dst)
+    if subprocess.run(["cp", "-c", src, dst], capture_output=True).returncode != 0:
+        shutil.copyfile(src, dst)
+    return dst
 
 
 def profile_dirs() -> List[str]:

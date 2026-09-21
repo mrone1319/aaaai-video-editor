@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.6"
+  version: "1.0.7"
 ---
 
 # aaaai-editor 影片总监
@@ -161,6 +161,8 @@ P=$("$A" new <主题英文短名>)
 **成品放哪里要讲清楚**：每次 `preview`／`render`／`cover` 做完，都把**完整绝对路径**告诉用户，并在 Finder 里点出来
 （`open -R "<文件路径>"`），能发给用户的用 SendUserFile 直接发。预览版是 `out/final_preview.mp4`（半分辨率、只给看版面），
 **正式成品是 `out/final.mp4`，要跑 `render` 才有**——不要把预览当成品，也不要没渲染就说成品在 `out/final.mp4`。
+render／cover 会把成片与封面复制一份到「成品」文件夹（命令输出里 📦 那一行，默认 `~/Movies/aaaai-editor/成品/<项目名>.mp4`）：
+**交付时告诉用户这个路径**，并说明在 Finder 侧栏「影片 → aaaai-editor → 成品」就找得到。
 
 ```bash
 "$A" preview "$P/storyboard.json"

@@ -146,7 +146,7 @@ if grep -qs "$HOME_DIR/bin" "$HOME/.zprofile"; then ok "命令：aaaai-editor（
 elif ask "把 aaaai-editor 命令加进 PATH（之后在终端直接打 aaaai-editor）？"; then
   echo "export PATH=\"$HOME_DIR/bin:\$PATH\"" >> "$HOME/.zprofile" && ok "已加进 ~/.zprofile（新开的终端生效）"
 else ok "命令：$HOME_DIR/bin/aaaai-editor"; fi
-[ -f "$HOME_DIR/config.json" ] || echo '{"projects_dir": "~/aaaai-editor-projects", "profile": ""}' > "$HOME_DIR/config.json"
+[ -f "$HOME_DIR/config.json" ] || echo '{"projects_dir": "~/Movies/aaaai-editor", "exports_dir": "~/Movies/aaaai-editor/成品", "profile": ""}' > "$HOME_DIR/config.json"
 ok "设置档 $HOME_DIR/config.json（已存在的不会覆盖）"
 
 # ---------- 3. 开源字体（下载到 ~/.aaaai-editor/fonts，不装进系统） ----------

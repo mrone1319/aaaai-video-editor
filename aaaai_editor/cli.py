@@ -167,11 +167,13 @@ def cmd_tools(a) -> int:
               % T.framing_sheet(a.storyboard, a.at, [float(x) for x in a.levels.split(",")], a.cy))
     elif k == "cover":
         files, warn = T.cover(a.storyboard, a.at, a.text, a.sub or "", a.handle, a.y)
+        from . import config
+        ex = config.get("exports_dir")
         for f in files:
-            print("🖼 %s" % f)
+            print(("📦 成品：%s" if ex and f.startswith(ex) else "🖼 %s") % f)
         if warn:
             print("⚠️ " + warn)
-        elif len(files) == 2:   # 横版
+        elif not any("1080x1350" in f for f in files):   # 横版
             print("用 Read 看 cover_check.png（横版缩图）；挑没有字幕／卡片的一帧效果最好。")
         else:
             print("文字块没有压到脸。用 Read 看 cover_check.png（左：Reels 全画面，右：主页 4:5 裁切）。")

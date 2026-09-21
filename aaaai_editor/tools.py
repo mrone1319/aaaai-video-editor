@@ -212,7 +212,9 @@ def cover(sb_path: str, at: float, text: str, sub: str = "", handle: Optional[st
     if landscape:
         check = os.path.join(work, "cover_check.png")
         env.run([env.ffmpeg(), "-y", "-v", "error", "-i", full, "-vf", "scale=960:540", check])
-        return [full, check], ""
+        from . import config
+        dst = config.export(full, sb["_base"], "-封面")
+        return [full, check] + ([dst] if dst else []), ""
     crop = os.path.join(d, "cover_1080x1350.png")
     env.run([env.ffmpeg(), "-y", "-v", "error", "-i", full, "-vf", "crop=1080:1350:0:285", crop])
     check = os.path.join(work, "cover_check.png")   # Reels 全画面 vs 主页裁切：两版并排给人看
@@ -232,4 +234,6 @@ def cover(sb_path: str, at: float, text: str, sub: str = "", handle: Optional[st
                     block[0], block[1], f0, f1, min(0.78, (f1 + 40) / H))
     except Exception:
         pass
-    return [full, crop, check], warn
+    from . import config
+    ex = [x for x in (config.export(full, sb["_base"], "-封面"), config.export(crop, sb["_base"], "-封面-4x5")) if x]
+    return [full, crop, check] + ex, warn
