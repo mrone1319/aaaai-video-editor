@@ -152,6 +152,46 @@ def _merge(rs: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
     return out
 
 
+TOP_MIN = 0.05   # 避脸往上挪，最多挪到离顶 5%（再上去会被平台的状态栏／标题挡住）
+CAP_TOP = 0.62   # 卡片改放下巴下面时，字不能低于这里（字幕约在 64%～70%）
+
+
+def face_lift(ov: dict, th: dict, W: int, H: int, fps: float, faces) -> dict:
+    """上方的卡片（标题、数据、清单、金句…）若在它出现期间压到眼睛，整张往上挪；挪到顶还压到就提醒。
+    头顶、帽子被遮罩盖到一点没关系，眼睛不行：护住「头顶～下巴」的 30% 以下。"""
+    if not faces or ov.get("behind_subject") or ov.get("bleed") or ov.get("chapter") is not None \
+            or ov.get("avoid_face") is False or ov.get("type") in cards.LOWER_TYPES or not cards.is_lite(ov, th):
+        return ov
+    pos = ov.get("pos")
+    if pos and cards.ANCHORS.get(pos, (0.5, 0.5))[1] > 0.0:
+        return ov
+    t0, t1 = float(ov["t"][0]), float(ov["t"][1])
+    hits = [f for t, f in faces if t0 - 0.25 <= t <= t1 + 0.25 and f]
+    if not hits:
+        return ov
+    eye = min(f[0] + 0.30 * (f[1] - f[0]) for f in hits) * H
+    L = cards.layout(ov, th, W, H, fps)
+    its = L.get("items") or []
+    if not its:
+        return ov
+    bottom = max(i["y"] + i["size"] * 1.25 for i in its)
+    need = bottom - (eye - H * 0.01)
+    if need <= 0:
+        return ov
+    top = cards.TOP_M - need / float(H)
+    if top >= TOP_MIN:
+        return dict(ov, _top_m=round(top, 4))
+    # 挪到顶还压到眼睛：人坐得很高，改放到下巴下面（胸口那一段），字幕上方
+    chin = max(f[1] for f in hits)
+    low = chin + 0.04
+    if bottom + (low - cards.TOP_M) * H <= H * CAP_TOP:
+        print("🙂 %.1f–%.1fs 的%s卡片：人坐得高，上方放不下，改放在下巴下面" % (t0, t1, ov.get("type")))
+        return dict(ov, _top_m=round(low, 4), _mid=True)
+    print("⚠️ %.1f–%.1fs 的%s卡片会压到脸（人坐得高、卡片又太长）：已挪到最上面——文字写短一点，或拆成两张"
+          % (t0, t1, ov.get("type")))
+    return dict(ov, _top_m=TOP_MIN)
+
+
 def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
           source: Optional[str] = None, base_graph: Optional[str] = None):
     """返回 (输入参数, 组装函数)。组装函数接 base 标签、字幕滤镜、推近滤镜，产出滤镜尾段。"""
@@ -308,6 +348,10 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             th = theme.theme(ov.get("style") or sb.get("style"), sb.get("_base"), sb.get("brand"))
             if th.get("display_font"):
                 fonts.display(th)          # 先把展示字体固化好，libass 才找得到
+            if sb.get("avoid_face", True):
+                off = float(sb.get("_faces_off", 0.0))
+                fc = [(t - off, f) for t, f in sb.get("_faces") or []]
+                ov = face_lift(ov, th, W, H, fps, fc)
             L = cards.layout(ov, th, W, H, fps)
             fl = L.get("float") if sb.get("float", True) else None
             fe = float_expr(fl)

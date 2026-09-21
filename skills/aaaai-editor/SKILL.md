@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # aaaai-editor 影片总监
@@ -97,6 +97,7 @@ P=$("$A" new <主题英文短名>)
   把清单念给用户，拿不准的用 `listen` 剪出来听；用户点头才 `tidy … --apply all`（或 `--apply 1,3`）。删完字幕轨里若还留着重讲的字，改 `work/captions.json` 再 align。
 - **降噪默认开标准档**（干净的录音几乎不受影响）。底噪明显（transcribe 报人声比底噪低于约 30 dB：风扇、空调、户外）时，
   做降噪 A/B（第 6 步 `denoise-ab`）给用户听，觉得不够写 `"denoise": "strong"`；用户要原声写 `"denoise": false`。
+  活动现场、有观众回应的片子用标准档就好：加强档会连观众的回应一起压掉。
 - 机位太远：`"$A" framing "$P/storyboard.json" --at <秒>` 出推近对比图给用户选，选定写
   `"framing": {"zoom": 1.2, "cx": 0.5, "cy": 0.4}`（约 1.15–1.25× 安全，再大脸会变特写）。
 
@@ -109,7 +110,7 @@ P=$("$A" new <主题英文短名>)
 ### 3. 修字幕、对时、给用户确认
 
 ```bash
-"$A" captions "$P/storyboard.json"     # 导出 work/captions.json（半角转全角、词表自动修正会列出来）
+"$A" captions "$P/storyboard.json"     # 导出 work/captions.json 并自动对齐一次（半角转全角、词表修正会列出来；「(音乐)」这类标签不进字幕）
 ```
 逐句编辑 `work/captions.json`：
 - **修错字**（专有名词、人名、币名）；听不出来：`"$A" listen <素材> <起> <迄>` 剪出那段问用户，不照听写定案。
@@ -117,6 +118,7 @@ P=$("$A" new <主题英文短名>)
 - **高亮**：`hl` 或 `**关键词**`，每 2–3 句最多一处；同一句并列的名词高亮要一致。
 - 字幕位置与大小：`mrone`／`otg` 字幕默认在画面约 65% 处、字较小；想调就在 storyboard 写
   `"captions": {"margin_v": 0.30, "size_scale": 1.0}`（`margin_v` 是字幕底边离画面底部的比例，越大越高）。
+- 导出时已经对齐过一次，时间是准的：可以先拿它排卡片、挑 hook；**改完字之后还要再跑一次 align**。
 - **字幕避脸**默认开：人坐得低、脸落到字幕位置时，那几句自动移到下巴下面（需要人像分割；没有就照常）。
   不要这个行为：`"captions": {"avoid_face": false}`。
 - **中文每句单行**：太长就在标点后拆成两句（复制一条拆开 text，`s` 各取一半）。`s` 是原片时间，其余别改。
@@ -137,7 +139,7 @@ P=$("$A" new <主题英文短名>)
 | 内容里出现 | 用 |
 |---|---|
 | 开头 0–3 秒抛出主题 | `hook` |
-| 片中有一句特别有力的话 | **开头预告**：`"$A" hook "$P/storyboard.json" --text "<那句话的几个字>"`，把那句剪一份放到最前面（`--mode move` 是搬过去、不重复）；卡片时间自动顺延 |
+| 片中有一句特别有力的话 | 先 `"$A" hook "$P/storyboard.json" --suggest` 列出候选（按数字、反差、强烈字眼、句子完整打分），挑一句给用户确认；**开头预告**：`"$A" hook "$P/storyboard.json" --text "<那句话的几个字>"`，把那句剪一份放到最前面（`--mode move` 是搬过去、不重复）；卡片时间自动顺延 |
 | 自我介绍（有头像照片） | `avatar`：`{"use":"avatar","t":[a,b],"file":"assets/<照片>","name":"…","role":"…"}`，圆形头像＋强调色外圈；没照片就用 `speaker` |
 | 说出一个关键数字 | `stat_hit` |
 | 列举第一、第二… | `steps`（加 `"layout": "rows"` 出编号行卡）；每条写 `"at": <秒>` 对准说到它的时刻 |
@@ -179,6 +181,9 @@ render／cover 会把成片与封面复制一份到「成品」文件夹（命�
 "$A" proof "$P/storyboard.json"                  # 按卡片时间自动抽检查帧 → 逐张 Read
 ```
 检查：字有没有撑出卡片、压脸、压字幕，高亮对不对，人物穿插挡对位置没有。
+**卡片也会避脸**：人坐得高、上方卡片压到眼睛时，卡片自动往上挪；挪到顶还压到，就改放到下巴下面（输出会印 🙂）。
+印出 ⚠️「会压到脸」就把那张卡的文字写短或拆成两张。不要这个行为：storyboard 顶层 `"avoid_face": false`。
+preview／render 结束会自动跑**快速对时检查**（只看能量，几秒）：印出 ⚠️ 就先修——字幕问题重跑 align，剪点问题改 cuts。
 
 ### 6. 对时体检与配乐 A/B
 

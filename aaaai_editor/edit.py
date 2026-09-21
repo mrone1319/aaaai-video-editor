@@ -202,6 +202,70 @@ def _norm_words(t: str) -> str:
     return re.sub(r"[^a-z0-9 ]+", " ", t.lower())
 
 
+_HOOK_WORDS_ZH = ("最", "千万", "别", "不要", "其实", "为什么", "秘密", "真相", "错", "贵", "省", "免费", "没人", "所有人",
+                  "一定", "竟然", "原来", "关键", "唯一", "第一", "后悔", "难")
+_HOOK_WORDS_EN = ("most", "never", "don't", "stop", "actually", "why", "secret", "truth", "mistake", "wrong",
+                  "free", "nobody", "everyone", "only", "first", "regret", "biggest", "worst", "best")
+_CONTRAST = (("不是", "而是"), ("不是", "是"), ("以为", "其实"), ("not", "but"), ("think", "actually"))
+
+
+def hook_score(text: str) -> float:
+    """一句话当开头 hook 的分数：有数字、有反差、有强烈字眼、是问句、长度刚好。"""
+    t = text.replace("**", "")
+    low = t.lower()
+    s = 0.0
+    if re.search(r"[0-9]|[一二两三四五六七八九十百千万亿]+(个|倍|年|天|次|块|元|%|成)|%", t):
+        s += 2.0
+    if any(a in low and b in low[low.find(a) + len(a):] for a, b in _CONTRAST):
+        s += 3.0
+    s += 1.2 * sum(1 for w in _HOOK_WORDS_ZH if w in t) + 1.2 * sum(1 for w in _HOOK_WORDS_EN if re.search(r"\b%s\b" % re.escape(w), low))
+    if "?" in t or "？" in t or t.rstrip().endswith(("吗", "呢")):
+        s += 1.5
+    n = len(_norm(t))
+    s += 1.0 if 10 <= n <= 28 else (-1.5 if n < 6 or n > 40 else 0.0)
+    return round(s, 2)
+
+
+def suggest_hooks(sb_path: str, n: int = 3) -> List[dict]:
+    """从成片里挑最适合放到开头当预告的几句（1～3 段相连的字幕，中间没有长停顿，2～8 秒）。"""
+    sb = _load(sb_path)
+    cuts = [tuple(c) for c in sb["cuts"]]
+    ps = [p for p in _pieces(sb_path) if _kept(p["s"][0], p["s"][1], cuts) > 0.3]
+    tl = Timeline(cuts, sb.get("output", {}).get("fps", 30))
+    env_ = audio.envelope(_source(sb, sb_path))
+    cands = []
+    for i in range(len(ps)):
+        txt = ""
+        for j in range(i, min(len(ps), i + 3)):
+            if j > i and ps[j]["s"][0] - ps[j - 1]["s"][1] > 0.6:
+                break
+            txt += ("，" if txt else "") + ps[j]["text"].replace("**", "")
+            a, b = ps[i]["s"][0], ps[j]["s"][1]
+            if not (2.0 <= b - a <= 8.0):
+                continue
+            # 成片里的位置（已经做过 hook 的话，第一段是预告，取后面正片那一次）
+            hit = [off + (a - ca) for (ca, cb), off in zip(tl.cuts, tl.offsets) if ca - 0.3 <= a <= cb]
+            at = hit[-1] if hit else None
+            if at is not None and at < 3.0:    # 本来就在开头
+                continue
+            sc = hook_score(txt)
+            # 半句话不适合当开头：结束后人声还紧接着（句子没讲完）、或开始前人声还在（从句子中间切入）
+            if env_.voiced(b + 0.05, b + 0.30):
+                sc -= 3.0
+            if env_.voiced(a - 0.30, a - 0.05):
+                sc -= 1.5
+            cands.append({"text": txt, "s": [a, b], "at": at, "score": round(sc, 2)})
+    cands.sort(key=lambda c: -c["score"])
+    out: List[dict] = []
+    for c in cands:
+        if c["score"] <= 0 or any(not (c["s"][1] <= o["s"][0] or c["s"][0] >= o["s"][1]) for o in out):
+            continue
+        out.append(c)
+        if len(out) >= n:
+            break
+    return out
+
+
 # ---------------------------------------------------------------- 口头禅与 NG
 def _tokens(src: str, work: str, lang: str) -> List[Tuple[str, float, float]]:
     """带口头禅提示词的逐词时间（缓存）。"""

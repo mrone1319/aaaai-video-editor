@@ -182,7 +182,7 @@ def load_pieces(sb: dict, segments: List[dict], maxw: float) -> Tuple[List[dict]
     p = track_path(sb)
     if os.path.isfile(p):
         return list(json.load(open(p, encoding="utf-8"))["pieces"]), p
-    return pieces(segments, maxw), None
+    return [x for x in pieces(segments, maxw) if not _BRACKETED.match(x["text"].strip())], None
 
 
 _FW = {",": "，", "?": "？", "!": "！", ":": "：", ";": "；"}
@@ -214,6 +214,9 @@ def glossary(sb: dict) -> Dict[str, str]:
     return g
 
 
+_BRACKETED = re.compile(r"^[\(（\[【♪*].*[\)）\]】♪*]$")
+
+
 def export_track(sb: dict, segments: List[dict], maxw: float, force: bool = False) -> Tuple[str, int, bool]:
     p = track_path(sb)
     if os.path.isfile(p) and not force:
@@ -222,6 +225,8 @@ def export_track(sb: dict, segments: List[dict], maxw: float, force: bool = Fals
     fixed = []
     pcs = []
     for x in pieces(segments, maxw):
+        if _BRACKETED.match(x["text"].strip()):   # 「(音乐)」「[掌声]」「(计算中)」：whisper 在没人讲话时写的标签，不是字幕
+            continue
         t = zh_punct(x["text"])
         for wrong, right in gl.items():
             if wrong in t:

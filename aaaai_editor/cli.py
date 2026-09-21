@@ -191,6 +191,12 @@ def cmd_render(a) -> int:
         return 0
     path = render.render(a.storyboard, getattr(a, "only", None), proxy=getattr(a, "proxy", False))
     print("✅ 输出：%s" % path)
+    if getattr(a, "only", None) is None:
+        from . import checks
+        try:
+            checks.quick(a.storyboard)
+        except (env.ToolError, OSError, ValueError, KeyError) as e:
+            print("ℹ️ 快速对时检查没跑成：%s" % e)
     return 0
 
 
@@ -235,6 +241,13 @@ def cmd_captions(a) -> int:
     segs = json.load(open(tr, encoding="utf-8"))["segments"]
     p, n, wrote = cp.export_track(sb, segs, cp.fit(sb), a.force)
     print(("✅ 导出 %d 句 → %s" if wrote else "ℹ️ 已有字幕轨（%d 句）：%s  加 --force 重新导出会覆盖手改") % (n, p))
+    if wrote and not a.no_align:
+        # 刚导出的时间是按段落估的（一句能差好几秒）；马上对齐一次，后面排卡片、做 hook 拿到的才是准的时间
+        print("⏱  先把每句贴到真实人声（改完字后再跑一次 align）…")
+        try:
+            cmd_align(argparse.Namespace(storyboard=a.storyboard, dry_run=False))
+        except env.ToolError as e:
+            print("⚠️ 自动对齐没成功（%s），字幕时间仍是估的；改完字后手动跑 align" % e)
     print("   改 text 修错字、填 en 出双语、hl 列关键词（或写 **关键词**）；删掉文件即回到自动字幕")
     return 0
 
@@ -333,6 +346,16 @@ def cmd_showcase(a) -> int:
 
 def cmd_hook(a) -> int:
     from . import edit
+    if a.suggest:
+        cs = edit.suggest_hooks(a.storyboard, a.suggest)
+        if not cs:
+            print("没找到特别适合当开头的句子（没有数字、反差或强烈字眼）。可以直接用 --text 指定。")
+            return 0
+        print("适合放到开头当预告的句子（分数高的在前；选一句用 --text 放上去）：")
+        for i, c in enumerate(cs, 1):
+            print(" %d. [分数 %.1f｜成片 %s｜原片 %.2f–%.2f 秒] %s" % (i, c["score"], "%.1f 秒" % c["at"] if c["at"] is not None else "—",
+                                                       c["s"][0], c["s"][1], c["text"]))
+        return 0
     r = edit.hook(a.storyboard, a.text, a.t_from, a.t_to, a.mode)
     print("✅ 开头 hook：原片 %.2f–%.2f 秒（%.2f 秒），方式 %s；成片现在 %.1f 秒"
           % (r["range"][0], r["range"][1], r["len"], "预告（原位置保留）" if r["mode"] == "teaser" else "挪到开头", r["duration"]))
@@ -533,6 +556,7 @@ def main(argv=None) -> int:
     cp_ = sub.add_parser("captions", help="导出可手改的字幕轨 work/captions.json（修错字／双语／高亮）")
     cp_.add_argument("storyboard")
     cp_.add_argument("--force", action="store_true")
+    cp_.add_argument("--no-align", action="store_true", help="导出后不自动对齐")
     cp_.set_defaults(fn=cmd_captions)
     al_ = sub.add_parser("align", help="字幕逐句对齐到真实人声（改完字幕轨后跑）")
     al_.add_argument("storyboard")
@@ -558,6 +582,7 @@ def main(argv=None) -> int:
     hk.add_argument("storyboard"); hk.add_argument("--text", help="那句话的原文（一部分也行）")
     hk.add_argument("--from", dest="t_from", type=float, help="原片起点秒数"); hk.add_argument("--to", dest="t_to", type=float)
     hk.add_argument("--mode", choices=["teaser", "move"], default="teaser")
+    hk.add_argument("--suggest", nargs="?", type=int, const=3, default=0, help="只列出最适合当开头的几句（默认 3 句），不改 storyboard")
     hk.set_defaults(fn=cmd_hook)
     td = sub.add_parser("tidy", help="找口头禅（嗯、呃…）与 NG（讲错重讲），列出来；--apply 套用")
     td.add_argument("storyboard"); td.add_argument("--lang", default="auto")

@@ -70,7 +70,7 @@ aaaai-editor showcase --out showcase.png             # 渲染所有风格的对�
 aaaai-editor icons --sheet icons.png                 # 图标总表
 aaaai-editor recipes                                 # 列出配方
 aaaai-editor expand storyboard.json                  # 打印配方展开结果
-aaaai-editor captions storyboard.json                # 导出可手改的字幕轨（修错字／双语／高亮）
+aaaai-editor captions storyboard.json                # 导出可手改的字幕轨并自动对齐（--no-align 不对齐）
 aaaai-editor cues storyboard.json                    # 按成片时间列出每句字幕（排卡片时间用）
 aaaai-editor proof storyboard.json [--final]         # 按卡片时间自动抽检查帧
 aaaai-editor align storyboard.json                   # 字幕逐句贴到真实人声
@@ -79,6 +79,7 @@ aaaai-editor bgm                                     # 常备配乐（7 首原�
 aaaai-editor music-ab storyboard.json --at 10        # 三种配乐音量的 A/B 样片
 aaaai-editor denoise-ab storyboard.json --at 10      # 降噪 A/B（默认已开标准档；"denoise": "strong"／false）
 aaaai-editor tidy storyboard.json [--apply all|1,3]  # 找口头禅（嗯／呃）与讲到一半重讲；确认后才删
+aaaai-editor hook storyboard.json --suggest           # 列出最适合当开头的几句
 aaaai-editor hook storyboard.json --text "…"         # 把片中一句剪到开头当预告（--mode move 为搬移）
 aaaai-editor framing storyboard.json --at 3          # 推近倍率对比图（选定写 framing）
 aaaai-editor cover storyboard.json --at 5 --text "别怕 AI"   # 封面：竖版 1080×1920＋1080×1350；横版 1920×1080

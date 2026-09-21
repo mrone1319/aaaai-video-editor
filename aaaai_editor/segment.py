@@ -97,4 +97,5 @@ def window(sb: dict, s: float, e: float) -> dict:
     seg = dict(sb)
     seg["overlays"] = shift(sb.get("overlays"))
     seg["zooms"] = shift(sb.get("zooms"))
+    seg["_faces_off"] = s     # 脸的位置是整片时间：卡片避脸时要换回段内时间
     return seg

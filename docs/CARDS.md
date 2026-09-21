@@ -141,4 +141,7 @@ B-roll 时段内不要用 `behind_subject`（人物会被重贴到 B-roll 上面
 - 想要旧的整块底板：卡片里写 `"lite": false`；风格 json 里写 `"lite": 0` 则整套风格都不用（`otg` 保持自己的红色底板）。
 - 字幕默认位置见 `docs/STYLE.md`（`captions.margin_v`、`captions.size_scale`）。
 - 字幕避脸（默认开）：人坐得低、脸落到字幕位置时，那几句移到下巴下面；关掉写 `"captions": {"avoid_face": false}`。
+- 卡片避脸（默认开）：上方的标题、数据、清单、金句等，在它出现期间若压到眼睛，整张往上挪（最多挪到离顶 5%）；
+  还是压到就改放在下巴下面（遮罩改成上下渐淡，只包住字）。单张关掉写 `"avoid_face": false`，整支片关掉在 storyboard 顶层写。
+  文字穿插（`behind_subject`）的卡片不动。
 - 印章（`stamp`）与标注（`callout`）一律画在其他卡片上面，不会被标题的遮罩盖住。

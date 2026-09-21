@@ -563,7 +563,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         if lite and ov.get("chapter") is not None:
             dpos = {"title": "left"}   # 章节：画面中段偏左，像一页书的章节页
         ax, ay = ANCHORS.get(ov.get("pos") or dpos.get(typ, DEFAULT_POS.get(typ, "center")), (0.5, 0.5))
-        top_m, bot_m = round(H * TOP_M), round(H * BOT_M)
+        top_m, bot_m = round(H * float(ov.get("_top_m", TOP_M))), round(H * BOT_M)   # _top_m：避脸时往上挪
         px = mx + ax * (W - 2 * mx - plate_w)
         py = top_m + ay * (H - top_m - bot_m - plate_h)
         cbox_x = px + pad
@@ -580,22 +580,28 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         pl = th["plate"]
         sc_col = th.get("scrim_color") or (pl[-1] if isinstance(pl, (list, tuple)) else pl)
         chap = ov.get("chapter") is not None
+        mid = bool(ov.get("_mid"))   # 避脸：人坐得高，卡片改放在下巴下面，遮罩只包住字、上下渐淡，不压脸
         if chap:
             band = H
+        elif mid:
+            band = int(round(plate_h + H * 0.32))
         elif typ in LOWER_TYPES:
             band = int(round(H * 0.40))
         else:   # 遮罩深的部分盖住内容，再往下渐渐透明（清单长，遮罩就长）
             content_end = py + plate_h
             band = int(round(min(H * 0.80, max(H * 0.38, content_end + H * 0.17))))
         by0 = H - band if (typ in LOWER_TYPES and not chap) else 0
+        if mid:
+            by0 = int(round(py - H * 0.16))
         plate = {"w": W, "h": band, "radius": 0, "fill": None, "alpha": 1.0, "border": {"w": 0}, "shadow": {},
                  "scrim": {"color": sc_col, "power": 1.3,
                            # 长清单会盖到脸：干脆把遮罩压深，变成一个明确的「清单时刻」，不要半透明地糊在脸上
                            "alpha": 0.80 if chap else (float(th.get("scrim_alpha", 0.78))
                                                       if (typ in LOWER_TYPES or py + plate_h < H * 0.40) else 0.90),
-                           "hold": 1.0 if chap else (0.72 if typ in LOWER_TYPES
-                                                     else min(0.72, max(0.45, (py + plate_h) / band))),
-                           "dir": "up" if typ in LOWER_TYPES else "down"},
+                           "hold": 1.0 if chap else (min(0.7, plate_h / float(band)) if mid else
+                                                     (0.72 if typ in LOWER_TYPES
+                                                      else min(0.72, max(0.45, (py + plate_h) / band)))),
+                           "dir": "mid" if mid else ("up" if typ in LOWER_TYPES else "down")},
                  "x": 0, "y": by0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
     elif mode != "none":
         if mode == "pill":

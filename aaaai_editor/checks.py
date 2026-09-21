@@ -21,6 +21,55 @@ def _norm(s: str) -> str:
     return re.sub(r"[^\w一-鿿]+", "", s or "")
 
 
+def _starts_here(e, ts: float) -> bool:
+    """ts 这一刻是不是一个字的起音：前 0.2 秒内有个低谷，之后 0.25 秒内升高 8dB 以上。"""
+    dip = min(e.db[e.idx(ts - 0.20):e.idx(ts + 0.05) + 1] or [0.0])
+    peak = max(e.db[e.idx(ts):e.idx(ts + 0.25) + 1] or [-99.0])
+    return peak > e.voice_thr and peak - dip >= 8.0
+
+
+def energy(sb: dict, tl: Timeline, events) -> Tuple[List[str], List[str]]:
+    """逐句能量检查＋剪点审计（只看原片能量包络，几秒就完）。回传 (问题, 提示)。"""
+    e = audio.envelope(sb["source"])
+    probs, notes = [], []
+    for a_, b_, txt, _ex in events:
+        ts = tl.to_source(a_)
+        if not e.voiced(ts, ts + 0.6):
+            probs.append("  %6.2fs 出字时没有人声（%.1fdB）「%s」" % (a_, e.level(ts, ts + 0.6), txt[:18]))
+            continue
+        o = e.onset_after(ts, limit=1.2)
+        if o is not None and o - ts > 0.35 and not e.voiced(ts, ts + 0.1):
+            probs.append("  %6.2fs 字幕比开口早 %.2fs「%s」" % (a_, o - ts, txt[:18]))
+    for j in audio.junctions(e, tl.cuts):
+        if j["tail_bad"]:
+            probs.append("  剪点 %.2fs 切在尾音上（最后 50ms 还有 %.1fdB）——这段最后一个字会被截" % (j["b"], j["tail"]))
+        if j["head_bad"]:
+            probs.append("  剪点 %.2fs 咬到字头（前 30ms 已有 %.1fdB）" % (j["a"], j["head"]))
+        if j["cont"] and not j["tail_bad"]:
+            notes.append("  剪点 %.2fs 之后原片紧接着还有人声（%.1fdB）——字可能没讲完；若是故意砍掉后面的话可忽略"
+                         % (j["b"], j["after"]))
+    return probs, notes
+
+
+def quick(sb_path: str) -> None:
+    """渲染完自动跑的快速体检：只做能量检查（不重转录），有问题才多说。"""
+    sb = render.load_storyboard(sb_path)
+    cap = sb["captions"]
+    tr_path = os.path.join(sb["_base"], cap.get("transcript", "work/transcript.json"))
+    if not cap.get("enabled") or not os.path.isfile(tr_path):
+        return
+    doc = json.load(open(tr_path, encoding="utf-8"))
+    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+    pcs, _track = captions.load_pieces(sb, doc["segments"], captions.fit(sb))
+    probs, notes = energy(sb, tl, captions.to_events(pcs, tl))
+    if probs:
+        print("⚠️ 快速对时检查：%d 个问题（字幕问题跑 align，剪点问题改 cuts；完整体检用 check-sync）" % len(probs))
+        for x in probs[:8]:
+            print(x)
+    else:
+        print("🔎 快速对时检查：每句出字时都有人声，剪点都在静音里%s" % ("（另有 %d 个剪点提示，check-sync 看）" % len(notes) if notes else ""))
+
+
 def sync(sb_path: str, tolerance: float = 0.4, keep: bool = True) -> int:
     sb = render.load_storyboard(sb_path)
     cap = sb["captions"]
@@ -42,23 +91,7 @@ def sync(sb_path: str, tolerance: float = 0.4, keep: bool = True) -> int:
     # ── 第一关：逐句能量检查（旧项目 check-sync v2 的三项检查＋剪点审计，每句都查得到）──
     print("① 逐句能量检查（原片人声，不受配乐影响）…")
     e = audio.envelope(sb["source"])
-    probs, notes = [], []
-    for a_, b_, txt, _ex in events:
-        ts = tl.to_source(a_)
-        if not e.voiced(ts, ts + 0.6):
-            probs.append("  %6.2fs 出字时没有人声（%.1fdB）「%s」" % (a_, e.level(ts, ts + 0.6), txt[:18]))
-            continue
-        o = e.onset_after(ts, limit=1.2)
-        if o is not None and o - ts > 0.35 and not e.voiced(ts, ts + 0.1):
-            probs.append("  %6.2fs 字幕比开口早 %.2fs「%s」" % (a_, o - ts, txt[:18]))
-    for j in audio.junctions(e, tl.cuts):
-        if j["tail_bad"]:
-            probs.append("  剪点 %.2fs 切在尾音上（最后 50ms 还有 %.1fdB）——这段最后一个字会被截" % (j["b"], j["tail"]))
-        if j["head_bad"]:
-            probs.append("  剪点 %.2fs 咬到字头（前 30ms 已有 %.1fdB）" % (j["a"], j["head"]))
-        if j["cont"] and not j["tail_bad"]:
-            notes.append("  剪点 %.2fs 之后原片紧接着还有人声（%.1fdB）——字可能没讲完；若是故意砍掉后面的话可忽略"
-                         % (j["b"], j["after"]))
+    probs, notes = energy(sb, tl, events)
     print("   底噪 %.1fdB・人声 %.1fdB・门槛 %.1fdB｜字幕 %d 句｜剪点 %d 个"
           % (e.floor, e.loud, e.voice_thr, len(events), len(tl.cuts)))
     if probs:
@@ -126,6 +159,21 @@ def sync(sb_path: str, tolerance: float = 0.4, keep: bool = True) -> int:
     med = statistics.median(deltas)
     worst = sorted(rows, key=lambda r: -abs(r[2]))[:5]
     bad = [r for r in rows if abs(r[2]) > tolerance]
+    # whisper 重转录的段首时间本身也会飘（尤其有配乐、停顿时）：字幕起点正好落在一个字的起音上，就算字幕是对的
+    confirmed = []
+    if bad:
+        from . import align
+        try:
+            toks = align.token_stream(sb["source"], work, doc.get("language") or "zh")
+        except env.ToolError:
+            toks = []
+        for r in bad:
+            ts = tl.to_source(r[1])
+            first = _norm(r[3].replace("**", ""))[:1].lower()
+            said = any(abs(a - ts) <= 0.25 and _norm(t).lower().startswith(first) for t, a, _b in toks) if first else False
+            if said and _starts_here(e, ts):    # 那一刻真的在讲这句的第一个字
+                confirmed.append(r)
+    bad_real = [r for r in bad if r not in confirmed]
 
     print("\n" + "=" * 58)
     print("匹配 %d 句（%d 句没对上），字幕事件共 %d 条" % (len(rows), unmatched, len(events)))
@@ -141,6 +189,9 @@ def sync(sb_path: str, tolerance: float = 0.4, keep: bool = True) -> int:
         b = statistics.median([r[2] for r in rows[half:]])
         print("\n前半段中位偏移 %+.2fs，后半段 %+.2fs → %s"
               % (a, b, "有累积漂移，检查剪辑点映射" if abs(b - a) > 0.25 else "没有累积漂移"))
+    if confirmed:
+        print("ℹ️ 其中 %d 句按原片能量看，字幕正好在开口的那一刻出现——是 whisper 重转录的时间不准，不算问题：%s"
+              % (len(confirmed), "、".join("「%s」" % r[3][:10] for r in confirmed)))
     print("=" * 58)
     total = len(rows) + unmatched
     cover = len(rows) / float(max(1, total))
@@ -154,9 +205,13 @@ def sync(sb_path: str, tolerance: float = 0.4, keep: bool = True) -> int:
         print("✅ 逐句能量检查通过。重转录只对上 %d 个参照点（whisper 把话并成了很少几段），这一关不作判断。"
               % len(rows))
         return 0
-    ok = med <= tolerance and len(bad) <= max(1, len(rows) // 20) and not probs
+    ok = med <= tolerance and not bad_real and not probs
+    if bad_real:
+        print("⚠️ %d 句偏差超过 %.1fs，而且原片那一刻不是这句的开头（用 listen 听一下，字幕问题重跑 align）：" % (len(bad_real), tolerance))
+        for st, ev, d, txt in bad_real:
+            print("    成片 %6.2fs 该出字，字幕在 %6.2fs（差 %+.2fs）「%s」" % (st, ev, d, txt[:18]))
     print("✅ 字幕对时没问题（能量检查＋重转录都通过）。" if ok else
-          ("⚠️ 能量检查有问题，见上。" if probs else "⚠️ 字幕对时偏差偏大，建议检查字幕轨或剪辑点。"))
+          ("⚠️ 能量检查有问题，见上。" if probs else "⚠️ 字幕对时有偏差，见上。"))
     if not keep:
         for f in ("final_transcript.json", "audio16k.wav", "whisper.json"):
             try:

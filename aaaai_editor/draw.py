@@ -140,9 +140,13 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
         a0 = float(sc.get("alpha", 0.8))
         pw = float(sc.get("power", 1.5))
         up = sc.get("dir", "down") == "up"
+        mid = sc.get("dir") == "mid"
         for y in range(H):
             t = min(1.0, max(0.0, (y - margin) / float(max(1, h - 1))))
-            t = 1.0 - t if up else t                     # up：最深在下沿
+            if mid:                                      # mid：中间最深，往上下两头渐渐透明
+                t = abs(t - 0.5) * 2.0
+            elif up:                                     # up：最深在下沿
+                t = 1.0 - t
             hold = float(sc.get("hold", 0.0))             # 最深的一头先保持这么大比例，再渐渐透明
             t = 0.0 if t <= hold else (t - hold) / max(1e-6, 1.0 - hold)
             a8 = int(round(255 * a0 * (1.0 - t) ** pw))

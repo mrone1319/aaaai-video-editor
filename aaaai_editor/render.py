@@ -176,7 +176,8 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
         captions.write_ass(ev, os.path.join(work, ass_name), w, h,
                            sb["captions"].get("font") or env.find_font(), sb["captions"]["style"],
                            sb["captions"].get("highlight") or (), sb["captions"].get("margin_v"),
-                           sb["captions"].get("size_scale"), _hl_color(sb), sb.get("_faces"), t0)
+                           sb["captions"].get("size_scale"), _hl_color(sb),
+                           sb.get("_faces") if sb["captions"].get("avoid_face", True) else None, t0)
     zooms = sb.get("zooms") or []
     zoom_str = overlays.zoom_filter(zooms, w, h, fps) if zooms else None
     # 人像遮罩按「不带 format 的剪辑图」生成，成片改画质不会让遮罩缓存失效
@@ -237,7 +238,8 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
     cap_events = None
     cap = sb["captions"]
     sb["_faces"] = None
-    if cap.get("enabled") and cap.get("avoid_face", True):   # 字幕避脸（需要人像分割；没有就跳过）
+    cards_face = bool(sb.get("overlays")) and sb.get("avoid_face", True) is not False
+    if (cap.get("enabled") and cap.get("avoid_face", True)) or cards_face:   # 字幕／卡片避脸（需要人像分割；没有就跳过）
         try:
             from . import faces
             sb["_faces"] = faces.track(sb, tl, int(out["width"]), int(out["height"]))
