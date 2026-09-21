@@ -548,8 +548,10 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
 
     plate = None
     if mode == "bleed":  # 整屏断章：底板只淡入淡出不位移，内容照常动画
+        # 片尾（lite 风格）：半透明压暗，画面还看得到；想要全黑写 "dim": 1.0
+        a_ = float(ov.get("dim", 0.82)) if bleed_lite else float(ov.get("opacity", 0.97))
         plate = {"w": W, "h": H, "radius": 0, "fill": th["plate"],
-                 "alpha": float(ov.get("opacity", 0.97)), "border": {"w": 0}, "shadow": {},
+                 "alpha": a_, "border": {"w": 0}, "shadow": {},
                  "x": 0, "y": 0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
     elif lite:   # 渐变遮罩（不是方块）：标题／金句在画面上沿，人名条在下沿；颜色取风格底板色，字直接排在上面
         pl = th["plate"]

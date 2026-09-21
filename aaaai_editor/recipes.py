@@ -113,14 +113,14 @@ def _speaker(r, beats):
              "anim": "left"}], [], None
 
 
-@recipe("outro", "尾板：整屏品牌标独立、保持，片尾音画同步淡出",
-        ("text",), ("sub", "logo", "fade"))
+@recipe("outro", "尾板：画面半透明压暗 + 居中标题与按钮式标签，保持到片尾，音画同步淡出（dim 调深浅，1＝全黑）",
+        ("text",), ("sub", "logo", "fade", "dim"))
 def _outro(r, beats):
     a, b = _t(r)
     # t 往后多延 1 秒：尾板一直保持到片尾，不会在全局淡出之前自己先淡掉。
     # 排在字幕下层：最后一句话（常是「下期见」）的字幕仍然看得到。
     ov = [{"type": "title", "t": [a, b + 1.0], "bleed": True, "opacity": 1.0, "text": r["text"],
-           "sub": r.get("sub"), "anim": "fade", "scale": 1.3, "under_captions": True}]
+           "sub": r.get("sub"), "anim": "fade", "scale": 1.3, "under_captions": True, "dim": r.get("dim")}]
     if r.get("logo"):
         ov.append({"type": "image", "t": [a, b + 1.0], "file": r["logo"], "width": 0.30, "pos": "top"})
     fade = float(r.get("fade", min(1.2, max(0.3, (b - a) * 0.4))))
