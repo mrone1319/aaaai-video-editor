@@ -69,14 +69,15 @@ def _stat_hit(r, beats):
     return ov, zooms, None
 
 
-@recipe("chapter", "章节断章：整屏暗底 + 章节号 + 标题（黑场放内容，不放空黑）；强调用陈述青",
+@recipe("chapter", "章节断章：画面整体压暗 + 大号章节数字 + 标题（人仍看得见）；强调用陈述色",
         ("title",), ("index", "kicker", "sub", "opacity"))
 def _chapter(r, beats):
     a, b = _t(r)
     kick = r.get("kicker") or ("CHAPTER %02d" % int(r["index"]) if r.get("index") is not None else None)
     return [{"type": "title", "t": [a, b], "bleed": True, "kicker": kick, "text": r["title"],
              "sub": r.get("sub"), "anim": "rise", "opacity": r.get("opacity", 1.0),
-             "colors": {"accent": "@state"}}], [], None
+             "chapter": r.get("index", True), "colors": {"accent": "@state"},
+             "under_captions": True}], [], None   # 章节页压暗整个画面，字幕要留在它上面
 
 
 @recipe("steps", "步骤清单：可带标题与图标；每条可写 at 对准说到它的那一秒，否则按字数错峰；layout: rows 出编号行卡",
@@ -139,7 +140,7 @@ def _compare(r, beats):
 def _callout(r, beats):
     a, b = _t(r)
     return [{"type": "stamp", "t": [a, b], "text": r["text"], "icon": r.get("icon"),
-             "pos": r.get("pos", "top_right"), "anim": "pop",
+             "pos": r.get("pos", "top_right"), "anim": "pop", "scale": float(r.get("scale", 1.35)),
              "behind_subject": bool(r.get("behind"))}], [], None
 
 

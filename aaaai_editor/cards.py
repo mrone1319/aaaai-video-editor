@@ -143,7 +143,7 @@ def _icon_blk(ov, th, W, scale=0.085) -> Optional[dict]:
             "gap": 0, "align": ov.get("align", "center"), "delay": 0.0}
 
 
-LITE_TYPES = ("title", "quote", "lower_third", "stat", "bullets", "rows", "compare")
+LITE_TYPES = ("title", "quote", "lower_third", "stat", "bullets", "rows", "compare", "icons")
 
 
 def _lighten(c: str, k: float = 0.5) -> str:
@@ -161,10 +161,24 @@ def _lighten(c: str, k: float = 0.5) -> str:
 def is_lite(ov, th) -> bool:
     """口播画面上的标题／金句／人名条：不用方块，用「画面边缘渐变遮罩＋左对齐粗体字＋强调色线条」。
     所有风格默认开启（风格里写 "lite": 0 关闭）；单张卡片可写 "lite": false 回到底板版。"""
-    return bool(th.get("lite", 1)) and ov.get("type") in LITE_TYPES and ov.get("lite", True) and not ov.get("bleed")
+    return bool(th.get("lite", 1)) and ov.get("type") in LITE_TYPES and ov.get("lite", True) \
+        and (not ov.get("bleed") or ov.get("chapter") is not None)   # 章节断章在 lite 里改成「压暗画面」，不整屏盖黑
 
 
 def blocks_title(ov, th, W) -> Tuple[List[dict], str]:
+    if is_lite(ov, th) and ov.get("chapter") is not None:
+        b = []
+        idx = ov.get("chapter")
+        if idx is not True and str(idx) != "":
+            b.append(_blk("%02d" % int(idx) if str(idx).isdigit() else str(idx), round(W * 0.24), th["accent"],
+                          mono=True, align="left", role="number"))
+        elif ov.get("kicker"):
+            b.append(_blk(ov["kicker"], round(W * 0.033), th["accent"], mono=True, align="left", role="kicker"))
+        b.append(_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.098), th["text"], align="left",
+                      gap=round(W * 0.004) if b else 0, role="title"))
+        if ov.get("sub"):
+            b.append(_blk(ov["sub"], round(W * 0.040), th["muted"], align="left", gap=round(W * 0.020), role="sub"))
+        return b, "fit"
     if is_lite(ov, th):
         b = []
         if ov.get("kicker"):
@@ -291,7 +305,8 @@ def blocks_lower_third(ov, th, W) -> Tuple[List[dict], str]:
 
 
 def blocks_stamp(ov, th, W) -> Tuple[List[dict], str]:
-    blk = _blk(ov.get("text", ""), round(W * 0.029), th["on_accent"], mono=True, role="stamp")
+    blk = _blk(ov.get("text", ""), round(W * 0.029 * float(ov.get("scale", 1.0))), th["on_accent"], mono=True,
+               role="stamp")
     if ov.get("icon"):  # 图标在字前：改左对齐，底板宽按「图标＋字」算
         blk.update(lead_icon=ov["icon"], lead_color=th["on_accent"], align="left")
     return [blk], "pill"
@@ -299,12 +314,15 @@ def blocks_stamp(ov, th, W) -> Tuple[List[dict], str]:
 
 def blocks_icons(ov, th, W) -> Tuple[List[dict], str]:
     """图标宫格：每格一个图标＋一行标签，一行最多 cols 格。"""
+    lite = is_lite(ov, th)
+    al = "left" if lite else "center"
     b = []
     if ov.get("kicker"):
-        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, role="kicker"))
+        b.append(_blk(ov["kicker"], round(W * (0.033 if lite else 0.028)), th["accent"], mono=True, align=al,
+                      role="kicker"))
     if ov.get("title"):
-        b.append(_blk(ov["title"], round(W * 0.048), th["text"], gap=round(W * 0.012) if b else 0,
-                      role="heading"))
+        b.append(_blk(ov["title"], round(W * (0.062 if lite else 0.048)), th["text"], align=al,
+                      gap=round(W * 0.012) if b else 0, role="heading"))
     items = [it if isinstance(it, dict) else {"icon": str(it)} for it in ov.get("items", [])]
     labels = [it.get("label", "") for it in items]
     b.append({"kind": "grid", "items": items, "delays": _stagger(labels, ov.get("stagger", 0.12)),
@@ -373,7 +391,7 @@ ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
            "left": (0.0, 0.5), "right": (1.0, 0.5)}
 # 口播画面：卡片默认放上方，避开脸（人通常在画面中间）
 DEFAULT_POS = {"lower_third": "bottom_left", "stamp": "top_left", "title": "top", "quote": "top", "stat": "top", "bullets": "top",
-               "rows": "top", "compare": "top"}
+               "rows": "top", "compare": "top", "icons": "top"}
 
 
 def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
@@ -393,13 +411,14 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     # 字号与内距的基准：竖屏＝画面宽；横屏／方形按高度折算，卡片不会比画面还高
     U = min(W, int(H * 0.75))
     blocks, mode = BUILDERS[typ](ov, th, U)
-    if ov.get("bleed"):
+    if ov.get("bleed") and not (lite and ov.get("chapter") is not None):
         mode = "bleed"
     mx, pad = round(W * MARGIN_X), round(U * PAD)
     if mode == "pill":
         pad = round(U * 0.026)
     bar_h = 0
-    bleed_lite = bool(ov.get("bleed")) and typ == "title" and bool(th.get("lite", 1)) and ov.get("lite", True)
+    bleed_lite = (bool(ov.get("bleed")) and typ == "title" and bool(th.get("lite", 1)) and ov.get("lite", True)
+                  and ov.get("chapter") is None)
     if bleed_lite:   # 尾板：居中标题上方一条强调色短线
         bar_h = max(4, round(U * 0.0085))
         blocks[0]["gap"] = blocks[0].get("gap", 0) + bar_h + round(U * 0.036)
@@ -518,6 +537,8 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     else:
         plate_h = body_h + 2 * pad
         dpos = ({t: "top_left" for t in LITE_TYPES if t != "lower_third"} if lite else DEFAULT_POS)
+        if lite and ov.get("chapter") is not None:
+            dpos = {"title": "left"}   # 章节：画面中段偏左，像一页书的章节页
         ax, ay = ANCHORS.get(ov.get("pos") or dpos.get(typ, DEFAULT_POS.get(typ, "center")), (0.5, 0.5))
         top_m, bot_m = round(H * TOP_M), round(H * BOT_M)
         px = mx + ax * (W - 2 * mx - plate_w)
@@ -533,18 +554,22 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     elif lite:   # 渐变遮罩（不是方块）：标题／金句在画面上沿，人名条在下沿；颜色取风格底板色，字直接排在上面
         pl = th["plate"]
         sc_col = th.get("scrim_color") or (pl[-1] if isinstance(pl, (list, tuple)) else pl)
-        if typ == "lower_third":
+        chap = ov.get("chapter") is not None
+        if chap:
+            band = H
+        elif typ == "lower_third":
             band = int(round(H * 0.40))
         else:   # 遮罩深的部分盖住内容，再往下渐渐透明（清单长，遮罩就长）
             content_end = py + plate_h
             band = int(round(min(H * 0.80, max(H * 0.38, content_end + H * 0.17))))
-        by0 = H - band if typ == "lower_third" else 0
+        by0 = H - band if (typ == "lower_third" and not chap) else 0
         plate = {"w": W, "h": band, "radius": 0, "fill": None, "alpha": 1.0, "border": {"w": 0}, "shadow": {},
                  "scrim": {"color": sc_col, "power": 1.3,
                            # 长清单会盖到脸：干脆把遮罩压深，变成一个明确的「清单时刻」，不要半透明地糊在脸上
-                           "alpha": float(th.get("scrim_alpha", 0.78)) if (typ == "lower_third" or py + plate_h < H * 0.40)
-                           else 0.90,
-                           "hold": 0.72 if typ == "lower_third" else min(0.72, max(0.45, (py + plate_h) / band)),
+                           "alpha": 0.80 if chap else (float(th.get("scrim_alpha", 0.78))
+                                                      if (typ == "lower_third" or py + plate_h < H * 0.40) else 0.90),
+                           "hold": 1.0 if chap else (0.72 if typ == "lower_third"
+                                                     else min(0.72, max(0.45, (py + plate_h) / band))),
                            "dir": "up" if typ == "lower_third" else "down"},
                  "x": 0, "y": by0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
     elif mode != "none":

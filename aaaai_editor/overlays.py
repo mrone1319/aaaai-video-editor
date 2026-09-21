@@ -212,7 +212,17 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             if ov.get("text") or ov.get("kicker"):
                 tov = {"type": "title", "t": [t0, t1], "text": ov.get("text", ""), "kicker": ov.get("kicker"),
                        "sub": ov.get("sub"), "pos": "top", "anim": ov.get("anim", "rise")}
-                rec["items"] = cards.layout(tov, th, W, H, fps)["items"]   # 只要文字，不要底板
+                TL = cards.layout(tov, th, W, H, fps)
+                rec["items"] = TL["items"]   # 只要文字，不要底板
+                if TL.get("shapes"):         # 标题上方的强调色短线：透明图层，画在框之上
+                    sp, sm = draw.make_plate({"w": W, "h": H, "radius": 0, "fill": None, "alpha": 0.0,
+                                              "border": {"w": 0}, "shadow": {}, "shapes": TL["shapes"]},
+                                             os.path.join(work, "plates"))
+                    inputs.append(["-loop", "1", "-t", "%.3f" % dur, "-i", os.path.relpath(sp, work)])
+                    rec["post_layers"] = [{"idx": idx, "x": "-%d" % sm, "y": "-%d" % sm, "t0": t0, "t1": t1,
+                                           "scale": None, "di": DEF_DI, "do": DEF_DO, "fade": True}]
+                    idx += 1
+            fr["blur_bg"] = bool(th.get("lite", 1)) and th.get("bleed_bg") != "starfield"
             prepared.append(rec)
             continue
         if typ == "cutout":
@@ -399,8 +409,17 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             f = rec["frame"]
             n[0] += 1
             k = n[0]
+            src = f["branch"]
+            if f.get("blur_bg"):   # 背景：同一段画面放大、模糊、压暗，比纯色底有层次，也和画面连在一起
+                parts.append("[%s]split=2[fsA%d][fsB%d]" % (src, k, k))
+                parts.append("[fsB%d]scale=%d:%d,gblur=sigma=28,lutrgb=r=val*0.34:g=val*0.34:b=val*0.36,"
+                             "format=yuva444p,%s[fbg%d]"
+                             % (k, W // 4 * 2, H // 4 * 2, fadeA(rec["t0"], rec["t1"], DEF_DI, DEF_DO), k))
+                parts.append("[fbg%d]scale=%d:%d[fbs%d]" % (k, W, H, k))
+                put("fbs%d" % k, "0", "0", rec["t0"], rec["t1"])
+                src = "fsA%d" % k
             parts.append("[%s]scale=%d:%d,crop=%d:%d:%d:%d,format=yuva444p[fv%d]"
-                         % (f["branch"], f["vw"], f["vh"], f["bw"], f["bh"], f["cx"], f["cy"], k))
+                         % (src, f["vw"], f["vh"], f["bw"], f["bh"], f["cx"], f["cy"], k))
             parts.append("[%d:v]alphaextract,crop=%d:%d:%d:%d[fm%d]"
                          % (f["mask"], f["bw"], f["bh"], f["mm"], f["mm"], k))
             parts.append("[fv%d][fm%d]alphamerge,%s[ff%d]"
@@ -463,6 +482,14 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 put(lab, lay["x"], lay["y"], lay["t0"], lay["t1"])
             if rec.get("frame"):
                 emit_frame(rec)
+            for lay in rec.get("post_layers") or []:
+                n[0] += 1
+                lab = "pl%d" % n[0]
+                d = max(0.1, lay["t1"] - lay["t0"])
+                parts.append("[%d:v]format=rgba,fade=t=in:st=0:d=%.3f:alpha=1,fade=t=out:st=%.3f:d=%.3f:alpha=1,"
+                             "setpts=PTS+%.3f/TB[%s]" % (lay["idx"], lay["di"], max(0.0, d - lay["do"]), lay["do"],
+                                                         lay["t0"], lab))
+                put(lab, lay["x"], lay["y"], lay["t0"], lay["t1"])
             txt = []
             for it in rec["items"]:
                 if rec.get("engine") == "ass" or it.get("runs"):
