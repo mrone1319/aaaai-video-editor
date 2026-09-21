@@ -401,13 +401,16 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         th = resolve_colors(dict(th, **ov["colors"]))
     typ = ov["type"]
     lite = is_lite(ov, th)
-    if lite:
+    outro = (bool(ov.get("bleed")) and typ == "title" and bool(th.get("lite", 1)) and ov.get("lite", True)
+             and ov.get("chapter") is None)
+    if lite or outro:
         pl_ = th["plate"][-1] if isinstance(th["plate"], (list, tuple)) else th["plate"]
         dark = sum(int(pl_.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)) < 3 * 128
         if dark:   # 深色遮罩上的灰字看不清：提亮
             th = dict(th, muted="#E4E4E7")
         else:      # 浅色风格：遮罩改用风格的深色（白色字幕也看得清），字换成底板的浅色
             th = dict(th, scrim_color=th["text"], text=pl_, muted="#E4E4E7", accent=_lighten(th["accent"]),
+                      value=_lighten(th.get("value") or th["accent"]),
                       hl=_lighten(th["accent"]) if th.get("hl") in (None, "@accent", th["accent"]) else th["hl"])
     # 字号与内距的基准：竖屏＝画面宽；横屏／方形按高度折算，卡片不会比画面还高
     U = min(W, int(H * 0.75))
@@ -418,8 +421,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     if mode == "pill":
         pad = round(U * 0.026)
     bar_h = 0
-    bleed_lite = (bool(ov.get("bleed")) and typ == "title" and bool(th.get("lite", 1)) and ov.get("lite", True)
-                  and ov.get("chapter") is None)
+    bleed_lite = outro
     if bleed_lite:   # 尾板：居中标题上方一条强调色短线
         bar_h = max(4, round(U * 0.0085))
         blocks[0]["gap"] = blocks[0].get("gap", 0) + bar_h + round(U * 0.036)
@@ -551,7 +553,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     if mode == "bleed":  # 整屏断章：底板只淡入淡出不位移，内容照常动画
         # 片尾（lite 风格）：半透明压暗，画面还看得到；想要全黑写 "dim": 1.0
         a_ = float(ov.get("dim", 0.82)) if bleed_lite else float(ov.get("opacity", 0.97))
-        plate = {"w": W, "h": H, "radius": 0, "fill": th["plate"],
+        plate = {"w": W, "h": H, "radius": 0, "fill": th.get("scrim_color") or th["plate"],
                  "alpha": a_, "border": {"w": 0}, "shadow": {},
                  "x": 0, "y": 0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
     elif lite:   # 渐变遮罩（不是方块）：标题／金句在画面上沿，人名条在下沿；颜色取风格底板色，字直接排在上面
