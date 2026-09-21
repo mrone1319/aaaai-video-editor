@@ -119,7 +119,7 @@ def _outro(r, beats):
     # t 往后多延 1 秒：尾板一直保持到片尾，不会在全局淡出之前自己先淡掉。
     # 排在字幕下层：最后一句话（常是「下期见」）的字幕仍然看得到。
     ov = [{"type": "title", "t": [a, b + 1.0], "bleed": True, "opacity": 1.0, "text": r["text"],
-           "sub": r.get("sub"), "anim": "fade", "scale": 1.15, "under_captions": True}]
+           "sub": r.get("sub"), "anim": "fade", "scale": 1.3, "under_captions": True}]
     if r.get("logo"):
         ov.append({"type": "image", "t": [a, b + 1.0], "file": r["logo"], "width": 0.30, "pos": "top"})
     fade = float(r.get("fade", min(1.2, max(0.3, (b - a) * 0.4))))

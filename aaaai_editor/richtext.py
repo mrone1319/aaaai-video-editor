@@ -159,7 +159,7 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
     else:
         base += ["\\bord0", "\\shad0"]
     if runs and any(h for _, h in runs):
-        hl, bc = _c(th.get("hl") or th["accent"]), _c(it["color"])
+        hl, bc = _c(it.get("hl") or th.get("hl") or th["accent"]), _c(it["color"])
         body = "".join(("{\\c%s}%s{\\c%s}" % (hl, _esc(t), bc)) if h else _esc(t) for t, h in runs)
     else:
         body = _esc(raw)

@@ -279,6 +279,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     baked = [ic for ic in loose if abs(ic["t0"] - t0) < 1e-6]
                     loose = [ic for ic in loose if abs(ic["t0"] - t0) >= 1e-6]
                     spec = {k: p[k] for k in ("w", "h", "radius", "fill", "alpha", "border", "shadow")}
+                    if p.get("scrim"):
+                        spec["scrim"] = p["scrim"]
                     if baked:
                         spec["icons"] = [{"name": ic["name"], "x": round(ic["x"] - p["x"], 1),
                                           "y": round(ic["y"] - p["y"], 1), "size": ic["size"],
@@ -287,7 +289,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                         spec["shapes"] = [dict(sh, x=round(sh["x"] - p["x"], 1), y=round(sh["y"] - p["y"], 1))
                                           for sh in L["shapes"]]
                     pill = typ == "stamp"
-                    glass_cfg = th.get("glass") or ({"sigma": 18} if cards.is_lite(ov, th) else None)
+                    glass_cfg = th.get("glass") if not p.get("scrim") else None
                     if glass_cfg and not bleed and not pill:
                         # 毛玻璃：把卡片底下的画面模糊后按卡片形状贴回，再盖半透明底板
                         mask, mm = draw.make_plate({"w": p["w"], "h": p["h"], "radius": p["radius"],

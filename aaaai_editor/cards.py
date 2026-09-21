@@ -146,21 +146,33 @@ def _icon_blk(ov, th, W, scale=0.085) -> Optional[dict]:
 LITE_TYPES = ("title", "quote", "lower_third")
 
 
+def _lighten(c: str, k: float = 0.5) -> str:
+    """深色强调色放到深遮罩上：保持色相与饱和度，把明度提到 0.64（浅色风格的赭红、深粉等才看得清）。"""
+    import colorsys
+    c = c.lstrip("#")
+    r, g, b_ = (int(c[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    h, l, sat = colorsys.rgb_to_hls(r, g, b_)
+    if l >= 0.55:
+        return "#" + c.upper()
+    r2, g2, b2 = colorsys.hls_to_rgb(h, 0.64, min(1.0, sat * 1.05))
+    return "#%02X%02X%02X" % (round(r2 * 255), round(g2 * 255), round(b2 * 255))
+
+
 def is_lite(ov, th) -> bool:
-    """口播画面上的标题／金句／人名条：不盖黑底，只用排版（强调色短横线＋粗体字＋柔和投影）。
-    风格里 "lite": 1 开启；单张卡片可写 "lite": false 回到底板版。"""
-    return bool(th.get("lite")) and ov.get("type") in LITE_TYPES and ov.get("lite", True) and not ov.get("bleed")
+    """口播画面上的标题／金句／人名条：不用方块，用「画面边缘渐变遮罩＋左对齐粗体字＋强调色线条」。
+    所有风格默认开启（风格里写 "lite": 0 关闭）；单张卡片可写 "lite": false 回到底板版。"""
+    return bool(th.get("lite", 1)) and ov.get("type") in LITE_TYPES and ov.get("lite", True) and not ov.get("bleed")
 
 
 def blocks_title(ov, th, W) -> Tuple[List[dict], str]:
     if is_lite(ov, th):
         b = []
         if ov.get("kicker"):
-            b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="left", role="kicker"))
-        b.append(_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.084), th["text"], align="left",
+            b.append(_blk(ov["kicker"], round(W * 0.033), th["accent"], mono=True, align="left", role="kicker"))
+        b.append(_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.092), th["text"], align="left",
                       gap=round(W * 0.018) if b else 0, role="title"))
         if ov.get("sub"):
-            b.append(_blk(ov["sub"], round(W * 0.034), th["muted"], align="left", gap=round(W * 0.016), role="sub"))
+            b.append(_blk(ov["sub"], round(W * 0.040), th["muted"], align="left", gap=round(W * 0.018), role="sub"))
         return b, "fit"
     b = []
     ib = _icon_blk(ov, th, W)
@@ -267,7 +279,7 @@ def blocks_lower_third(ov, th, W) -> Tuple[List[dict], str]:
     lite = is_lite(ov, th)
     b = [_blk(ov.get("name", ""), round(W * (0.048 if lite else 0.042)), th["text"], align="left", role="name")]
     if ov.get("role"):
-        b.append(_blk(ov["role"], round(W * (0.031 if lite else 0.027)), "#E4E4E7" if lite else th["muted"],
+        b.append(_blk(ov["role"], round(W * (0.031 if lite else 0.027)), th["accent"] if lite else th["muted"],
                       align="left", gap=round(W * (0.010 if lite else 0.008)),
                       role="position"))
     return b, "fit"
@@ -339,7 +351,13 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     typ = ov["type"]
     lite = is_lite(ov, th)
     if lite:
-        th = dict(th, muted="#E4E4E7")   # 灰字放在视频上看不清：提亮
+        pl_ = th["plate"][-1] if isinstance(th["plate"], (list, tuple)) else th["plate"]
+        dark = sum(int(pl_.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)) < 3 * 128
+        if dark:   # 深色遮罩上的灰字看不清：提亮
+            th = dict(th, muted="#E4E4E7")
+        else:      # 浅色风格：遮罩改用风格的深色（白色字幕也看得清），字换成底板的浅色
+            th = dict(th, scrim_color=th["text"], text=pl_, muted="#E4E4E7", accent=_lighten(th["accent"]),
+                      hl=_lighten(th["accent"]) if th.get("hl") in (None, "@accent", th["accent"]) else th["hl"])
     # 字号与内距的基准：竖屏＝画面宽；横屏／方形按高度折算，卡片不会比画面还高
     U = min(W, int(H * 0.75))
     blocks, mode = BUILDERS[typ](ov, th, U)
@@ -349,10 +367,17 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     if mode == "pill":
         pad = round(U * 0.026)
     bar_h = 0
-    if lite:   # 强调色短横线在文字上方：给第一块文字多留出它的位置
-        pad = round(U * 0.034)
+    bleed_lite = bool(ov.get("bleed")) and typ == "title" and bool(th.get("lite", 1)) and ov.get("lite", True)
+    if bleed_lite:   # 尾板：居中标题上方一条强调色短线
         bar_h = max(4, round(U * 0.0085))
-        blocks[0]["gap"] = blocks[0].get("gap", 0) + bar_h + round(U * 0.034)
+        blocks[0]["gap"] = blocks[0].get("gap", 0) + bar_h + round(U * 0.036)
+    if lite:
+        if typ == "lower_third":   # 人名条：左边一条竖线，字在线右侧
+            pad = round(U * 0.030)
+        else:                      # 标题／金句：字左贴安全边，上方一条强调色短横线
+            pad = 0
+            bar_h = max(4, round(U * 0.0085))
+            blocks[0]["gap"] = blocks[0].get("gap", 0) + bar_h + round(U * 0.030)
     fixed_w = min(W - 2 * mx, W * float(ov["width"])) if ov.get("width") and mode != "bleed" else None
     maxw_full = (fixed_w or (W - 2 * mx)) - 2 * pad
 
@@ -469,11 +494,16 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         plate = {"w": W, "h": H, "radius": 0, "fill": th["plate"],
                  "alpha": float(ov.get("opacity", 0.97)), "border": {"w": 0}, "shadow": {},
                  "x": 0, "y": 0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
-    elif lite:   # 紧凑的半透明磨砂深色底板（叠在任何画面上字都清楚），顶部一条强调色短线
-        plate = {"w": int(round(plate_w)), "h": int(round(plate_h)), "radius": 16, "fill": ["#111114", "#0A0A0C"],
-                 "alpha": 0.62, "border": {"w": 0}, "shadow": {"soft": 22, "alpha": 0.28, "dy": 7, "color": "#000000"},
-                 "x": int(round(px)), "y": int(round(py)),
-                 "dx": dx0, "dy": dy0, "t0": t0, "t1": t1, "di": di, "do": DO}
+    elif lite:   # 渐变遮罩（不是方块）：标题／金句在画面上沿，人名条在下沿；颜色取风格底板色，字直接排在上面
+        pl = th["plate"]
+        sc_col = th.get("scrim_color") or (pl[-1] if isinstance(pl, (list, tuple)) else pl)
+        band = int(round(H * (0.40 if typ == "lower_third" else 0.38)))
+        by0 = H - band if typ == "lower_third" else 0
+        plate = {"w": W, "h": band, "radius": 0, "fill": None, "alpha": 1.0, "border": {"w": 0}, "shadow": {},
+                 "scrim": {"color": sc_col, "alpha": float(th.get("scrim_alpha", 0.78)), "power": 1.3,
+                           "hold": 0.72 if typ == "lower_third" else 0.50,
+                           "dir": "up" if typ == "lower_third" else "down"},
+                 "x": 0, "y": by0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
     elif mode != "none":
         if mode == "pill":
             plate = {"w": int(round(plate_w)), "h": int(round(plate_h)),
@@ -490,9 +520,15 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     items: List[dict] = []
     icons: List[dict] = []
     shapes: List[dict] = []
-    if lite:
+    if bleed_lite:
         bw = max(round(U * 0.10), 40)
-        shapes.append({"x": cbox_x, "y": py + pad, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
+        shapes.append({"x": W / 2.0 - bw / 2.0, "y": cur, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
+    if lite and typ == "lower_third":
+        bw = max(4, round(U * 0.008))
+        shapes.append({"x": px, "y": py + pad, "w": bw, "h": body_h, "r": bw / 2.0, "fill": th["accent"]})
+    elif lite:
+        bw = max(round(U * 0.10), 40)
+        shapes.append({"x": cbox_x, "y": py, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
     ccx = cbox_x + cbox_w / 2.0
     common = {"t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0}
 
@@ -562,7 +598,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             it = {"size": b["size"], "color": b["color"], "mono": b["mono"],
                   "t0": t0 + b["delay"], "t1": t1, "di": di, "do": DO,
                   "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none" and not lite,
-                  "soft": False,
+                  "soft": False, "hl": th.get("hl") if lite else None,
                   "role": b.get("role", "text"), "runs": b["_runs"][li]}
             if b["align"] == "center":
                 it["cx"] = int(round(ccx))
@@ -574,6 +610,13 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             else:
                 it["text"] = ln
             items.append(it)
+            if bleed_lite and b.get("role") == "sub":   # 尾板的副标题：强调色胶囊里放深色字，像一个按钮
+                fw = est_w(ln, b["size"], b["mono"], b.get("_wf"))
+                ph, pw_ = b["size"] * 1.75, fw + b["size"] * 1.6
+                shapes.append({"x": ccx - pw_ / 2.0, "y": y - b["size"] * 0.36, "w": pw_, "h": ph, "r": ph / 2.0,
+                               "fill": th["accent"]})
+                it["color"] = th["on_accent"]
+                it["stroke"] = False
             if li == 0 and b.get("lead_icon"):
                 isz = b["size"] * 0.95
                 add_icon(b["lead_icon"], cbox_x, y + b["size"] * 0.60 - isz / 2.0, isz,

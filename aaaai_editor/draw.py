@@ -122,7 +122,22 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
         paint(buf, W, H, cx + sh.get("dx", 0), cy + sh.get("dy", 0), hw, hh, r,
               lambda _y: sc, float(sh["alpha"]), max(1.0, float(sh.get("soft", 18))))
 
-    fill = spec.get("fill")
+    sc = spec.get("scrim")
+    if sc:   # 画面边缘渐变遮罩：一头最深、渐渐透明，无边框无圆角（字直接排在上面，不用方块）
+        col = hex_rgb(sc.get("color", "#000000"))
+        a0 = float(sc.get("alpha", 0.8))
+        pw = float(sc.get("power", 1.5))
+        up = sc.get("dir", "down") == "up"
+        for y in range(H):
+            t = min(1.0, max(0.0, (y - margin) / float(max(1, h - 1))))
+            t = 1.0 - t if up else t                     # up：最深在下沿
+            hold = float(sc.get("hold", 0.0))             # 最深的一头先保持这么大比例，再渐渐透明
+            t = 0.0 if t <= hold else (t - hold) / max(1e-6, 1.0 - hold)
+            a8 = int(round(255 * a0 * (1.0 - t) ** pw))
+            row = y * W * 4
+            buf[row:row + W * 4] = bytes((col[0], col[1], col[2], a8)) * W
+
+    fill = spec.get("fill") if not sc else None
     alpha = float(spec.get("alpha", 1.0))
     if fill:
         if isinstance(fill, str):

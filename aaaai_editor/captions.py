@@ -21,12 +21,12 @@ STRIP = "。！？!?；;，、,：:… —–"   # 句尾悬空的标点／破�
 
 # 三套字幕样式（颜色为 ASS 的 &HAABBGGRR）
 STYLES: Dict[str, dict] = {
-    "clean": dict(size=0.042, bold=1, primary="&H00FFFFFF", outline="&H00000000", outline_w=0.0035,
-                  shadow=0, margin_v=0.11, back="&H00000000"),
-    "punch": dict(size=0.050, bold=1, primary="&H0000E0FF", outline="&H00000000", outline_w=0.005,
-                  shadow=0, margin_v=0.14, back="&H00000000"),
-    "box": dict(size=0.040, bold=1, primary="&H00FFFFFF", outline="&HB0000000", outline_w=0.012,
-                shadow=0, margin_v=0.11, back="&HB0000000", border_style=3),
+    "clean": dict(size=0.031, bold=1, primary="&H00FFFFFF", outline="&H00000000", outline_w=0.0028,
+                  shadow=1, margin_v=0.30, back="&H80000000", max_w=17, hold=0.40),
+    "punch": dict(size=0.036, bold=1, primary="&H0000E0FF", outline="&H00000000", outline_w=0.0040,
+                  shadow=1, margin_v=0.30, back="&H80000000", max_w=16, hold=0.40),
+    "box": dict(size=0.030, bold=1, primary="&H00FFFFFF", outline="&HB0000000", outline_w=0.010,
+                shadow=0, margin_v=0.30, back="&HB0000000", border_style=3, max_w=17, hold=0.40),
     # 双语＋高亮风格（配合同名卡片风格；关键词颜色与卡片高亮一致）
     # 口播字幕：字小一点、放在画面约 65% 处（不压桌面／不被 Reels 底部按钮盖住），每段更长、停得更久
     "mrone": dict(size=0.029, bold=1, primary="&H00FFFFFF", outline="&H00000000", outline_w=0.0022,

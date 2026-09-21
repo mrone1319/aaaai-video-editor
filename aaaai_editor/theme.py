@@ -95,7 +95,7 @@ BUILTIN: Dict[str, dict] = {
         "desc": "OTG 火箭风：深空黑、OTG 红、火焰点缀、红色光晕、毛玻璃、星空断章、激光扫光",
         "plate": ["#121216", "#0A0A0A"], "plate_alpha": 0.78, "radius": 18,
         "text": "#FFFFFF", "muted": "#8A8A94", "accent": "#E60012", "on_accent": "#FFFFFF",
-        "accent2": "#FF6A1A", "gold": "#FFC01E", "hl": "#FF2A3A",
+        "accent2": "#FF6A1A", "gold": "#FFC01E", "hl": "#FF2A3A", "lite": 0,
         # 品牌规则：翡翠绿只做状态（涨幅／成功）；陈述色用余烬金而不是青
         "value": "#10B981", "state": "#FFC01E",
         "border": {"w": 2, "color": "#6A0A12"},
@@ -121,7 +121,7 @@ BUILTIN: Dict[str, dict] = {
         "border": {"w": 1, "color": "#2A2A30"},
         "shadow": {"soft": 28, "alpha": 0.50, "dy": 10, "color": "#000000"},
         "row": "#1B1B1F", "line": "#2C2C31",
-        "text_engine": "ass", "body_font": "PingFang SC", "captions": "mrone", "lite": 1,
+        "text_engine": "ass", "body_font": "PingFang SC", "captions": "mrone",
         "restricted": {"owner": "MR ONE", "note": "MR ONE 的个人频道风格，仅限 MR ONE 社群成员或获 MR ONE 授权者使用"},
         "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1},
                  "kicker": {"bold": 1, "upper": 1, "tracking": 0.22},
