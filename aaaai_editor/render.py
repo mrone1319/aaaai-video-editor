@@ -105,9 +105,9 @@ def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
 
 
 def denoise_filter(sb: dict) -> str:
-    """降噪滤镜链（storyboard 写 "denoise": true／"strong"／数字 dB）。
+    """降噪滤镜链。默认开标准档；storyboard 写 "denoise": false 关掉、"strong" 加强、数字＝降几 dB。
     先切掉 70Hz 以下的低频嗡声，再用 FFT 降噪：噪声底按这支素材实测的底噪设定，并持续追踪噪声变化。"""
-    d = sb.get("denoise")
+    d = sb.get("denoise", True)
     if not d:
         return ""
     strong = d == "strong"

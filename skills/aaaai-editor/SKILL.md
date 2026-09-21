@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.11"
+  version: "1.0.12"
 ---
 
 # aaaai-editor 影片总监
@@ -95,8 +95,8 @@ P=$("$A" new <主题英文短名>)
 - autocut 自动去停顿，剪点按能量包络修（段尾等尾音收完、段头留在起音前），会列出仍不干净的剪点。
 - **口头禅与 NG**：`"$A" tidy "$P/storyboard.json"` 列出「嗯／呃」和讲到一半重讲的地方（只列不删）。
   把清单念给用户，拿不准的用 `listen` 剪出来听；用户点头才 `tidy … --apply all`（或 `--apply 1,3`）。删完字幕轨里若还留着重讲的字，改 `work/captions.json` 再 align。
-- **底噪**：transcribe 报人声比底噪低于约 30 dB（风扇、空调、户外），先做降噪 A/B（第 6 步 `denoise-ab`），
-  用户选定后 storyboard 写 `"denoise": true`（标准）或 `"strong"`（加强）；干净的录音不要开。
+- **降噪默认开标准档**（干净的录音几乎不受影响）。底噪明显（transcribe 报人声比底噪低于约 30 dB：风扇、空调、户外）时，
+  做降噪 A/B（第 6 步 `denoise-ab`）给用户听，觉得不够写 `"denoise": "strong"`；用户要原声写 `"denoise": false`。
 - 机位太远：`"$A" framing "$P/storyboard.json" --at <秒>` 出推近对比图给用户选，选定写
   `"framing": {"zoom": 1.2, "cx": 0.5, "cy": 0.4}`（约 1.15–1.25× 安全，再大脸会变特写）。
 
@@ -186,7 +186,7 @@ render／cover 会把成片与封面复制一份到「成品」文件夹（命�
 "$A" check-sync "$P/storyboard.json"
 "$A" music-ab "$P/storyboard.json" --at <秒> --dur 35     # 三种配乐音量的 MP3，发给用户听完再定 db
 ```
-开了降噪要先听：`"$A" denoise-ab "$P/storyboard.json" --at <秒> --dur 20`（原声／标准／加强三支 MP3，发给用户选）。
+底噪明显时先听降噪 A/B：`"$A" denoise-ab "$P/storyboard.json" --at <秒> --dur 20`（原声／标准／加强三支 MP3，发给用户选）。
 check-sync 两关：逐句能量检查（出字时有人声、没早出、剪点没切在尾音上／没咬字头）＋重转录比时间。
 ⚠️ 就修：字幕问题回第 3 步重跑 align，剪点问题改 `cuts`；「ℹ️ 剪点之后还有人声」判断是不是故意砍的，拿不准用 `"$A" probe-cut` 实听。
 
@@ -269,8 +269,8 @@ render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP，**同
 | 音乐太大声 | `music.db` 往下调 |
 | 剪太碎／太拖 | 重跑 autocut 调 `--min-silence`，或手改 `cuts` |
 | 有「嗯」、讲错重讲 | `tidy` 列出来 → 确认后 `--apply` |
-| 有底噪 | `denoise-ab` 听完 → `"denoise": true／"strong"` |
-| 想用片中金句开场 | `hook --text "…"` |
+| 底噪还是明显 | `denoise-ab` 听完 → `"denoise": "strong"`（默认已是标准档；`false` 为原声） |
+| 想用片中金句开场 | `hook --text "…"`；命令会印出剪出来那段的听写，**核对句子完整**，有 ⚠️ 就用 `listen` 听、改 `--from/--to` |
 | 字幕压到脸 | 默认已避脸；仍压到就调 `captions.margin_v` |
 | 卡片别晃／别闪 | `"float": false`／`"sparkle": false` |
 | 结尾太突然 | `outro` 配方或 `"ending": {"fade": 1.2}` |

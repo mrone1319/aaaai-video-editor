@@ -336,6 +336,10 @@ def cmd_hook(a) -> int:
     r = edit.hook(a.storyboard, a.text, a.t_from, a.t_to, a.mode)
     print("✅ 开头 hook：原片 %.2f–%.2f 秒（%.2f 秒），方式 %s；成片现在 %.1f 秒"
           % (r["range"][0], r["range"][1], r["len"], "预告（原位置保留）" if r["mode"] == "teaser" else "挪到开头", r["duration"]))
+    if r.get("heard") is not None:
+        print("🎧 剪出来的这段听起来是：「%s」" % r["heard"])
+    if r.get("tail_missing"):
+        print("⚠️ 句尾好像被切掉了（原话最后几个字没听到）：用 listen 听一下，必要时改用 --from/--to 给原片秒数。")
     print("卡片／推近的时间已跟着换算。开头那几秒原本的标题卡，现在排在 hook 之后——看预览决定要不要挪到 0 秒。")
     return 0
 

@@ -109,11 +109,34 @@ def find_text(sb_path: str, text: str) -> Range:
     return best
 
 
+SNAP_MAX = 1.5   # 字幕时间和真实人声最多差这么多秒
+
+
 def _snap(src: str, a: float, b: float) -> Range:
-    """起点留在起音前、终点等尾音收完（和 autocut 同一套规则）。"""
+    """按真实人声修起止：字幕时间常差 0.5 秒以上，不能直接用。
+    起点：a 落在人声中间就往前找到这段人声的开头；终点：b 之后人声还在继续就一路跟到停顿，再等尾音收完。"""
     e = audio.envelope(src)
-    on = [o for o in e.onsets() if a - 0.35 <= o <= a + 0.15]
-    a2 = (min(on, key=lambda o: abs(o - a)) - 0.09) if on else a - 0.05
+    hop = audio.HOP
+    v = e.voiced_mask(bridge=0.15)          # 字与字之间的小缝补起来；0.15 秒以上的停顿才算句子断开
+    n = len(v)
+    i = min(n - 1, max(0, e.idx(a)))
+    if v[i]:
+        lo = max(0, i - int(SNAP_MAX / hop))
+        while i > lo and v[i - 1]:
+            i -= 1
+        a2 = e.t0 + i * hop - 0.09
+    else:
+        on = [o for o in e.onsets() if a - 0.35 <= o <= a + 0.40]
+        a2 = (min(on, key=lambda o: abs(o - a)) - 0.09) if on else a - 0.05
+    j = min(n - 1, max(0, e.idx(b)))
+    look = min(n - 1, j + int(0.25 / hop))
+    if not v[j] and any(v[j:look + 1]):     # 字幕说结束了，但 0.25 秒内又有人声：还是同一句的尾字
+        j = next(k for k in range(j, look + 1) if v[k])
+    if v[j]:
+        hi = min(n - 1, j + int(SNAP_MAX / hop))
+        while j < hi and v[j + 1]:
+            j += 1
+        b = e.t0 + (j + 1) * hop
     b2 = e.decay_end(b, limit=0.8) + 0.06
     return round(max(0.0, a2), 3), round(b2, 3)
 
@@ -141,7 +164,42 @@ def hook(sb_path: str, text: Optional[str] = None, a: Optional[float] = None, b:
     sb.setdefault("hook", {})
     sb["hook"] = {"source": [a, b], "mode": mode}
     _save(sb_path, sb)
-    return {"range": (a, b), "len": round(lead, 2), "mode": mode, "duration": round(new.duration, 2)}
+    heard = _hear(sb_path, src, a, b)
+    miss = bool(text and heard is not None and _tail_missing(text, heard))
+    return {"range": (a, b), "len": round(lead, 2), "mode": mode, "duration": round(new.duration, 2),
+            "heard": heard, "tail_missing": miss}
+
+
+def _hear(sb_path: str, src: str, a: float, b: float) -> Optional[str]:
+    """把剪出来的那一段单独听写一次（不带提示词），给用户核对句子完不完整。"""
+    try:
+        work = os.path.join(os.path.dirname(os.path.abspath(sb_path)), "work")
+        os.makedirs(work, exist_ok=True)
+        wav = os.path.join(work, "hook16k.wav")
+        env.run([env.ffmpeg(), "-y", "-v", "error", "-ss", "%.3f" % a, "-t", "%.3f" % (b - a), "-i", src,
+                 "-vn", "-ac", "1", "-ar", "16000", wav])
+        lang = _lang_of(sb_path)
+        base = os.path.join(work, "hook_heard")
+        env.run([env.whisper_cli(), "-m", env.whisper_model(lang), "-f", wav, "-l", lang, "-otxt", "-of", base, "-np"])
+        txt = " ".join(open(base + ".txt", encoding="utf-8").read().split())
+        return zh.t2s(txt) if lang == "zh" else txt
+    except (env.ToolError, OSError):
+        return None
+
+
+def _tail_missing(want: str, heard: str) -> bool:
+    """原话最后两个字（英文最后一个词）没出现在剪出来的那段里：多半切掉了句尾。"""
+    w, h = _norm(want), _norm(heard)
+    if not w or not h:
+        return False
+    tail = w[-2:] if any("\u4e00" <= c <= "\u9fff" for c in w[-2:]) else re.findall(r"[a-z0-9]+", _norm_words(want))[-1:]
+    if isinstance(tail, list):
+        return bool(tail) and tail[0] not in h
+    return tail not in h
+
+
+def _norm_words(t: str) -> str:
+    return re.sub(r"[^a-z0-9 ]+", " ", t.lower())
 
 
 # ---------------------------------------------------------------- 口头禅与 NG
@@ -151,7 +209,7 @@ def _tokens(src: str, work: str, lang: str) -> List[Tuple[str, float, float]]:
     os.makedirs(work, exist_ok=True)
     st = os.stat(src)
     cache = os.path.join(work, "tidy_tokens.json")
-    key = [os.path.abspath(src), st.st_size, st.st_mtime_ns, lang, 2]
+    key = [os.path.abspath(src), st.st_size, st.st_mtime_ns, lang, 3]
     try:
         d = json.load(open(cache, encoding="utf-8"))
         if d.get("key") == key:
@@ -159,7 +217,8 @@ def _tokens(src: str, work: str, lang: str) -> List[Tuple[str, float, float]]:
     except (OSError, ValueError):
         pass
     wav = os.path.join(work, "tidy16k.wav")
-    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "16000", wav])
+    from .align import voiced_wav
+    convert = voiced_wav(src, wav)         # 拿掉长停顿再听写，逐词时间才不会漂
     if lang == "auto":
         lang = transcribe.detect_language(wav)
     base = os.path.join(work, "tidy_tokens")
@@ -174,6 +233,7 @@ def _tokens(src: str, work: str, lang: str) -> List[Tuple[str, float, float]]:
             if not txt or txt.startswith("[") or txt.startswith("<") or "from" not in off:
                 continue
             toks.append((zh.t2s(txt), off["from"] / 1000.0, off.get("to", off["from"]) / 1000.0))
+    toks = convert(toks)
     json.dump({"key": key, "tokens": toks}, open(cache, "w", encoding="utf-8"), ensure_ascii=False)
     return toks
 
@@ -227,6 +287,8 @@ def detect(sb_path: str, lang: str = "auto") -> List[dict]:
     for i, (txt, a, b) in enumerate(toks):
         w = re.sub(r"[\W_]+", "", txt.lower())
         if w not in fill or _kept(a, b, cuts) < 0.08 or real_word_under(a, b):
+            continue
+        if not e.voiced(a - 0.05, b + 0.05):   # 那段根本是静音：提示词让 whisper 在静音上「听」出了呃
             continue
         # 「啊／哦」常是句尾语气词：前一个词紧贴着就不算
         if w in ("啊", "哦", "喔", "ah") and i and a - toks[i - 1][2] < 0.08:

@@ -5,10 +5,12 @@
   2. 整篇字幕与字流做**全局序列对齐**（字幕改过错字、改过写法也对得上；逐句找会大量失败）
   3. 每句起点吸附到 ±0.35s 内最近的真实起音，再提前 0.05s
   4. 对不上的句子用前后插值；句尾不拖进长停顿（贴尾音收完处 +0.2s）
-试过不行、别走回头路：直接用段落时间（段内插值飘 1–2s）、逐字等宽重分配（语速不均，差 ±2.6s）。
+试过不行、别走回头路：直接用段落时间（段内插值飘 1–2s）、逐字等宽重分配（语速不均，差 ±2.6s）、
+整支素材直接丢给 whisper（中间有长停顿时逐词时间会漂，一句被拉长到 8 秒以上）——所以先把有人声的段落接起来再听写。
 """
 from __future__ import annotations
 
+import bisect
 import difflib
 import json
 import os
@@ -22,9 +24,69 @@ def _clean(s: str) -> str:
     return "".join(c for c in s.replace("**", "").lower() if c.isalnum())   # 英文大小写不影响对齐
 
 
+PAD = 0.15      # 每段人声前后各留的静音
+MERGE = 0.6     # 两段人声间隔短于这个就当同一段
+
+
+def voiced_wav(src: str, wav: str):
+    """只保留有人声的段落接成一支 16kHz wav（段与段之间约 0.3 秒静音），回传换算函数：
+    接起来的逐词时间 [(字, 起, 迄)] → 原片时间。长停顿会让 whisper 的逐词时间漂掉，拿掉停顿再听写，时间才可靠。"""
+    e = audio.envelope(src)
+    v = e.voiced_mask(bridge=0.3)
+    runs, i, n = [], 0, len(v)
+    while i < n:
+        if v[i]:
+            j = i
+            while j < n and v[j]:
+                j += 1
+            a, b = max(0.0, e.t0 + i * audio.HOP - PAD), e.t0 + j * audio.HOP + PAD
+            if runs and a - runs[-1][1] < MERGE:
+                runs[-1][1] = b
+            else:
+                runs.append([a, b])
+            i = j
+        else:
+            i += 1
+    # 前后都隔着 1 秒以上静音、自己又不到 0.35 秒的一小声（咳嗽、碰撞、清嗓）：不送去听写，
+    # 否则 whisper 会把下一句的头几个字的时间放到它身上
+    keep = []
+    for k, (a, b) in enumerate(runs):
+        gap_l = a - runs[k - 1][1] if k else 9.0
+        gap_r = runs[k + 1][0] - b if k + 1 < len(runs) else 9.0
+        if (b - a - 2 * PAD) < 0.35 and gap_l >= 1.0 and gap_r >= 1.0:
+            continue
+        keep.append([a, b])
+    runs = keep
+    if not runs:
+        runs = [[0.0, e.dur]]
+    sel = "+".join("between(t,%.3f,%.3f)" % (a, b) for a, b in runs)
+    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", src, "-vn", "-af", "aselect='%s',asetpts=N/SR/TB" % sel,
+             "-ac", "1", "-ar", "16000", wav])
+    starts, c = [], 0.0
+    for a, b in runs:
+        starts.append(c)
+        c += b - a
+
+    def chunk(t: float) -> int:
+        return max(0, min(len(runs) - 1, bisect.bisect_right(starts, t) - 1))
+
+    def to_src(t: float, k: int) -> float:
+        a, b = runs[k]
+        return max(a, min(b, a + (t - starts[k])))
+
+    def convert(raw: List[Tuple[str, float, float]]) -> List[Tuple[str, float, float]]:
+        out = []
+        for txt, x, y in raw:
+            k = chunk(x)     # 一个字不会跨过停顿：字尾限制在字头所在的那段人声里（whisper 常把停顿前最后一个字拉到下一段）
+            a = to_src(x, k)
+            out.append((txt, a, max(a, to_src(y, k))))
+        return out
+    return convert
+
+
 def token_stream(src: str, work: str, lang: str) -> List[Tuple[str, float, float]]:
     wav = os.path.join(work, "align16k.wav")
-    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "16000", wav])
+    convert = voiced_wav(src, wav)
     base = os.path.join(work, "align_tokens")
     env.run([env.whisper_cli(), "-m", env.whisper_model(lang), "-f", wav, "-l", lang, "-ojf", "-of", base, "-np"])
     data = json.load(open(base + ".json", encoding="utf-8"))
@@ -38,7 +100,7 @@ def token_stream(src: str, work: str, lang: str) -> List[Tuple[str, float, float
             if "from" not in off:
                 continue
             toks.append((txt, off["from"] / 1000.0, off.get("to", off["from"]) / 1000.0))
-    return toks
+    return convert(toks)
 
 
 def align(sb: dict, pieces: List[dict], lang: str = "zh") -> Tuple[List[dict], dict]:
