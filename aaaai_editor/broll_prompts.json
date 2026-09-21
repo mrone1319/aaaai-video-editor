@@ -1,0 +1,15 @@
+{
+ "_说明": "B-roll 提示词增强：image 用于首帧构图（Flux），motion 用于运镜（图生视频）。kind 由镜头描述里的关键词判断，判断不出就用 default。",
+ "negative": "text, letters, watermark, logo, subtitles, distorted hands, extra fingers, low quality, blurry, jitter",
+ "kinds": {
+  "macro":        {"match": ["macro", "close-up", "close up", "drip", "特写", "微距", "水滴"], "image": "extreme close-up macro shot, shallow depth of field, soft bokeh, crisp detail", "motion": "very slow push-in, subtle focus breathing, slow motion"},
+  "hands":        {"match": ["hands", "typing", "writing", "手", "打字", "写字"], "image": "close-up of hands, natural window light, shallow depth of field", "motion": "gentle handheld drift, natural hand movement, slow motion"},
+  "product":      {"match": ["product", "phone", "laptop", "screen", "device", "手机", "电脑", "产品", "屏幕"], "image": "clean product shot, studio lighting, minimal background", "motion": "slow orbit around the subject, smooth dolly"},
+  "city":         {"match": ["city", "street", "traffic", "skyline", "night", "城市", "街", "夜景"], "image": "cinematic wide shot, city lights, atmospheric haze", "motion": "slow aerial glide forward, parallax, time-lapse feel"},
+  "nature":       {"match": ["nature", "forest", "ocean", "sea", "mountain", "rain", "leaf", "自然", "海", "山", "雨", "树"], "image": "cinematic nature landscape, golden hour light", "motion": "slow pan across the scene, gentle wind movement"},
+  "workspace":    {"match": ["office", "desk", "coffee", "cafe", "meeting", "办公", "咖啡", "会议"], "image": "modern workspace, warm natural light, cinematic composition", "motion": "slow lateral dolly, soft parallax"},
+  "people":       {"match": ["people", "crowd", "person", "team", "audience", "人群", "团队", "观众"], "image": "candid documentary shot, natural expressions, cinematic light", "motion": "slow push-in, natural subtle movement"},
+  "abstract":     {"match": ["abstract", "particles", "light", "transition", "glow", "抽象", "粒子", "光", "转场"], "image": "abstract light forms, dark background, volumetric glow", "motion": "flowing particles, slow swirling motion, seamless loop feel"},
+  "default":      {"match": [], "image": "cinematic shot, natural light, shallow depth of field, high detail", "motion": "slow cinematic push-in, subtle parallax, smooth motion"}
+ }
+}

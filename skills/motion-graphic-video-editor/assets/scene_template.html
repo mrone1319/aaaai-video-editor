@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>scene template</title>
+<!--
+  Motion graphic scene skeleton.
+
+  The contract with the renderer: expose window.__render(frame) that produces
+  byte-identical output for a given frame index, and set window.__ready = true
+  once fonts and images have been wired up. Nothing may depend on wall-clock
+  time — no Date.now(), no Math.random() at render time, no CSS animations or
+  transitions. The renderer seeks by calling __render, and anything
+  time-dependent tears or flickers.
+
+  Runs as-is: it draws a glow ring, a slot-machine counter, a swept title and a
+  staged card, so you can render it immediately to confirm the toolchain works
+  before writing your own content.
+
+      ~/.aaaai-editor/bin/aaaai-editor-python scripts/render_frames.py --scene scene_template.html \
+              --w 1920 --h 1080 --fps 60 --dur 12 --out /tmp/t \
+              --at 1.6,2.4,4.2,6.5,9.0,11.0
+
+  Then replace the CONTENT and TIMELINE blocks with your own.
+-->
+<style>
+/* ---- fonts: copy woff2 files from npm @fontsource/* into ./fonts ---------- */
+@font-face{font-family:'Display';src:url('fonts/display.woff2') format('woff2');font-weight:600;font-display:block}
+@font-face{font-family:'Body';   src:url('fonts/body.woff2')    format('woff2');font-weight:500;font-display:block}
+@font-face{font-family:'Mono';   src:url('fonts/mono.woff2')    format('woff2');font-weight:400;font-display:block}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#08080B;overflow:hidden}
+#stage{position:relative;overflow:hidden;background:#08080B}
+
+/* Glow layers are pre-rendered PNGs composited additively. No CSS blur here —
+   a full-frame blur pass per layer per frame is the main render-speed killer. */
+.glow{position:absolute;left:50%;top:50%;mix-blend-mode:screen;
+      will-change:transform,opacity}
+
+/* Centred flex column. Anchoring a whole stack this way means the same scene
+   file lays out correctly at 16:9, 9:16 and 1:1 with no per-format tuning. */
+.grp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+     display:flex;flex-direction:column;align-items:center;white-space:nowrap}
+
+.disp{font-family:'Display';font-weight:600;letter-spacing:-.02em}
+.mono{font-family:'Mono';font-weight:400;text-transform:uppercase}
+
+/* Slot-machine reel. The window is taller than one cell so neighbours are
+   partly visible while spinning; see the mask note in render(). */
+.reelBox{position:relative;overflow:hidden}
+.reelIn{position:absolute;left:0;top:0;display:flex;flex-direction:column;
+        align-items:center}
+
+.chLine{position:relative;white-space:pre;display:block}
+.chLine span{display:inline-block;will-change:opacity,transform,filter}
+
+.divBlocks{position:relative;display:flex}
+.divBlocks i{display:block;border-radius:999px}
+
+#grid,#vig,#grain,#flash,#fade{position:absolute;left:0;top:0;
+                               width:100%;height:100%}
+#grain{mix-blend-mode:overlay}
+#flash{opacity:0;mix-blend-mode:screen}
+#fade{background:#08080B;opacity:0}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="grid"></div>
+  <img id="bloom" class="glow" src="assets/bloom.png">
+  <img id="ring"  class="glow" src="assets/ring.png">
+  <img id="core"  class="glow" src="assets/core.png">
+  <div id="content"></div>
+  <div id="vig"></div>
+  <div id="grain"></div>
+  <div id="flash"></div>
+  <div id="fade"></div>
+</div>
+
+<script>
+/* =========================================================================
+   PARAMETERS — everything a client might ask to change lives up here
+   ========================================================================= */
+const P    = new URLSearchParams(location.search);
+const W    = +(P.get('w')   || 1920);
+const H    = +(P.get('h')   || 1080);
+const FPS  = +(P.get('fps') || 60);
+const DUR  = +(P.get('dur') || 12.0);
+
+const NUMBER   = P.get('n')    || '03';
+const HEADLINE = P.get('head') || 'days to go';
+/* 必须按用户品牌替换：以下文案与色板全部是中性占位，不代表任何品牌。 */
+const TAGLINE  = 'Your tagline';
+const DATE     = 'DATE';
+const URL_LINE = 'www.example.com';
+
+/* brand palette — 必须按用户品牌替换 (exact values from the brand book /
+   measured from the logo). Placeholder = neutral grey/white two-tone. */
+const INK = '#08080B', PAPER = '#F3F3EE', MUTED = '#9A9AA8';
+const HUES = ['#8A8A8A','#F2F2F2'];
+const SPEC = [[0,[138,138,138]],[1,[242,242,242]]];
+const GRAD90 = 'linear-gradient(90deg,' +
+  HUES.map((c,i)=>`${c} ${HUES.length>1 ? Math.round(i*100/(HUES.length-1)) : 0}%`).join(',') + ')';
+
+/* aspect handling: scale type off the geometric mean so a vertical crop gets
+   proportionally larger text, which is what a phone feed wants */
+const AR = W / H, PORT = AR < 0.92, SQ = AR >= 0.92 && AR < 1.25;
+const S  = Math.sqrt((W * H) / (1920 * 1080));
+const TS = S * (PORT ? 1.02 : (SQ ? 0.94 : 1.0));
+const M  = Math.min(W, H);
+
+const stage = document.getElementById('stage');
+stage.style.width = W + 'px'; stage.style.height = H + 'px';
+
+/* =========================================================================
+   TIMELINE — put every event on a beat of a musical grid.
+   120 BPM: beat = 0.5s, bar = 2.0s. On-grid timing is what makes the film feel
+   deliberate, and it makes scoring arithmetic instead of guesswork.
+   ========================================================================= */
+const BEAT = 0.5, BAR = 2.0;
+const T = {
+  burst:   2.00,   /* bar 2 downbeat */
+  numIn:   3.00,
+  lock:    5.00,   /* bar 3.5 */
+  headIn:  5.50,
+  cardIn:  8.00,   /* bar 5 */
+  cardOut: 10.60,
+  end:     DUR
+};
+
+/* =========================================================================
+   MATH — easings, and the impulse helper that is easy to get wrong
+   ========================================================================= */
+const cl    = (v,a=0,b=1)=> v<a?a:(v>b?b:v);
+const lerp  = (a,b,k)=> a+(b-a)*k;
+const seg   = (t,a,b)=> cl((t-a)/(b-a));
+const eOut  = p=> 1-Math.pow(1-p,3);
+const eExpo = p=> p>=1?1:1-Math.pow(2,-10*p);
+const eIn   = p=> p*p*p;
+const sstep = (a,b,v)=>{ const k=cl((v-a)/(b-a)); return k*k*(3-2*k); };
+const eBack = p=>{ const c=1.70158,c3=c+1;
+                   return 1+c3*Math.pow(p-1,3)+c*Math.pow(p-1,2); };
+
+/* One-shot impulse: 0 before t0, 1 at t0, decaying to 0 by t0+w.
+   Write flashes and hits with this, never as `1 - progress`: before the trigger
+   time a progress term is still 0, so `1 - progress` equals 1 and the flash
+   sits at full brightness from frame 0, washing the whole film grey. */
+const imp = (t,t0,w,k=2.4)=> (t<t0||t>=t0+w) ? 0 : Math.pow(1-(t-t0)/w,k);
+
+/* Seeded PRNG — call at build time only, so scatter is identical every run. */
+function rng(seed){ return function(){ seed|=0; seed=seed+0x6D2B79F5|0;
+  let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t;
+  return ((t^t>>>14)>>>0)/4294967296; }; }
+
+function specRGB(p){ p=cl(p);
+  for(let i=0;i<SPEC.length-1;i++){ const [a,ca]=SPEC[i], [b,cb]=SPEC[i+1];
+    if(p<=b){ const k=(p-a)/(b-a);
+      return [ca[0]+(cb[0]-ca[0])*k, ca[1]+(cb[1]-ca[1])*k, ca[2]+(cb[2]-ca[2])*k]; } }
+  return SPEC[SPEC.length-1][1].slice(); }
+const rgba = (c,a)=> `rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
+const mixc = (a,b,k)=> [a[0]+(b[0]-a[0])*k, a[1]+(b[1]-a[1])*k, a[2]+(b[2]-a[2])*k];
+const PAPER_RGB = [243,243,238];
+
+/* =========================================================================
+   BUILD — glow layers
+   Display sizes come from make_glow.py's printout; they undo the padding baked
+   into the images so the on-screen glow is the size the profile was drawn for.
+   ========================================================================= */
+const gl = {};
+(function(){
+  const set=(id,px)=>{ const e=document.getElementById(id);
+    e.style.width=e.style.height=px+'px';
+    e.style.marginLeft=e.style.marginTop=(-px/2)+'px';
+    e.style.opacity=0; gl[id]=e; };
+  set('ring', 1.505*M); set('core', 0.748*M); set('bloom', 2.09*M);
+})();
+
+/* background pixel field — a cheap way to give black some texture */
+(function(){
+  const g=document.getElementById('grid'), cell=46*S;
+  g.style.background=`radial-gradient(${1.7*S}px ${1.7*S}px at ${cell/2}px ${cell/2}px,`+
+                     `rgba(154,154,168,.16) 0 40%, transparent 55%)`;
+  g.style.backgroundSize=`${cell}px ${cell}px`; g.style.opacity=0;
+})();
+
+/* =========================================================================
+   HELPERS — reusable builders
+   ========================================================================= */
+/* A line split into per-character spans, for sweep reveals. */
+function charLine(text, o){
+  const line=document.createElement('div');
+  line.className='chLine '+(o.cls||'disp');
+  line.style.fontSize=o.size+'px';
+  if(o.mt)    line.style.marginTop=o.mt+'px';
+  if(o.color) line.style.color=o.color;
+  if(o.ls){ line.style.letterSpacing=o.ls+'px';
+            if(o.ls>0) line.style.textIndent=o.ls+'px'; }   /* keeps it centred */
+  const spans=[];
+  for(const ch of text){ const s=document.createElement('span');
+    s.textContent = ch===' ' ? ' ' : ch; line.appendChild(s); spans.push(s); }
+  return {line, spans};
+}
+
+/* Gradient sweep reveal. The look people read as "premium" is not a typewriter
+   — it is colour, blur and vertical offset moving together: each character
+   arrives blurred and tinted, then settles sharp and light as the sweep passes. */
+function sweepChars(o, t, t0, dur, mode, outK){
+  outK = outK || 0;
+  const n = o.spans.length, EDGE = 0.30;
+  const sw = eOut(seg(t, t0, t0+dur)) * 1.30;    /* >1 so the last char lands */
+  for(let i=0;i<n;i++){
+    const p = n>1 ? i/(n-1) : 0;
+    const q = cl((sw - p) / EDGE);
+    const s = o.spans[i];
+    s.style.opacity = sstep(0, 0.55, q) * (1-outK);
+    if(mode==='hot')           s.style.color = rgba(mixc(specRGB(p), PAPER_RGB, sstep(0.22,1,q)), 1);
+    else if(mode==='spectrum') s.style.color = rgba(specRGB(p), 1);
+    s.style.transform = `translateY(${((1-q)*14*S).toFixed(1)}px)`;
+    s.style.filter    = q<0.98 ? `blur(${((1-q)*6*S).toFixed(2)}px)` : 'none';
+  }
+}
+
+function divider(n, w, h, gap){
+  const d=document.createElement('div'); d.className='divBlocks';
+  d.style.gap=gap+'px';
+  for(let i=0;i<n;i++){ const b=document.createElement('i');
+    b.style.width=w+'px'; b.style.height=h+'px'; b.style.background=HUES[i % HUES.length];
+    d.appendChild(b); }
+  return d;
+}
+
+function autofit(el, frac){
+  const max=W*frac; let fs=parseFloat(getComputedStyle(el).fontSize), g=0;
+  while(el.getBoundingClientRect().width>max && g++<70){ fs*=0.97; el.style.fontSize=fs+'px'; }
+}
+
+/* =========================================================================
+   CONTENT — replace this block with your own scene
+   ========================================================================= */
+const content = document.getElementById('content');
+content.style.cssText='position:absolute;left:0;top:0;width:100%;height:100%';
+
+/* --- slot-machine counter ------------------------------------------------- */
+const DIGIT_H = 214*TS;
+const NSIZE   = 176*TS;
+const DIGIT_W = NSIZE*0.83 + 8*TS;      /* advance ratio of the chosen face */
+const BOX_H   = DIGIT_H*1.30;           /* see the reel notes in render()   */
+const REEL_OFF= (BOX_H-DIGIT_H)/2;
+
+let numGrp, reels=[], reelBoxes=[], numWrap, headLine, cdDiv;
+(function(){
+  numGrp=document.createElement('div'); numGrp.className='grp';
+  content.appendChild(numGrp);
+
+  numWrap=document.createElement('div');
+  numWrap.style.cssText=`position:relative;width:${DIGIT_W*2}px;height:${BOX_H}px;`;
+  for(let d=0; d<2; d++){
+    const box=document.createElement('div'); box.className='reelBox';
+    box.style.cssText=`width:${DIGIT_W}px;height:${BOX_H}px;left:${d*DIGIT_W}px;position:absolute;top:0;`;
+    const inn=document.createElement('div'); inn.className='reelIn';
+    inn.style.width=DIGIT_W+'px';
+    inn.style.fontFamily="'Display'"; inn.style.fontWeight=600;
+    inn.style.color=PAPER;
+    for(let k=0;k<90;k++){ const dv=document.createElement('div');
+      dv.textContent=String(k%10);
+      dv.style.cssText=`height:${DIGIT_H}px;width:${DIGIT_W}px;font-size:${NSIZE}px;`+
+                       `display:flex;align-items:center;justify-content:center;`;
+      inn.appendChild(dv); }
+    box.appendChild(inn); numWrap.appendChild(box);
+    reels.push(inn); reelBoxes.push(box);
+  }
+  numGrp.appendChild(numWrap);
+
+  headLine=document.createElement('div'); headLine.className='disp';
+  headLine.textContent=HEADLINE;
+  headLine.style.cssText=`font-size:${46*TS}px;color:${PAPER};margin-top:${-4*TS}px;`;
+  numGrp.appendChild(headLine);
+
+  cdDiv=divider(5, 34*TS, 7*TS, 7*TS);
+  cdDiv.style.marginTop=(38*TS)+'px';
+  numGrp.appendChild(cdDiv);
+})();
+
+/* --- a staged card: one message at a time reads as confident --------------- */
+let card;
+(function(){
+  const g=document.createElement('div'); g.className='grp'; g.style.opacity=0;
+  content.appendChild(g);
+  const k=charLine('mark the dates',{cls:'mono',size:16*TS,ls:5.5*TS,color:MUTED});
+  g.appendChild(k.line);
+  const v=charLine(DATE,{cls:'disp',size:74*TS,ls:-1*TS,mt:26*TS});
+  g.appendChild(v.line); autofit(v.line,0.86);
+  card={g, a:k, b:v};
+})();
+
+/* =========================================================================
+   OVERLAYS
+   ========================================================================= */
+(function(){
+  document.getElementById('vig').style.background =
+    `radial-gradient(120% 90% at 50% 48%, rgba(8,8,11,0) 30%,`+
+    `rgba(8,8,11,.42) 78%, rgba(8,8,11,.82) 100%)`;
+
+  /* Flash is radial, not flat: a full-frame white lift reads as a video-level
+     glitch, a centred bloom reads as light coming off the subject. */
+  document.getElementById('flash').style.background =
+    `radial-gradient(70% 105% at 50% 50%, rgba(243,243,238,.98) 0%,`+
+    `rgba(220,220,220,.55) 32%, rgba(150,150,150,.18) 62%, rgba(8,8,11,0) 84%)`;  /* 必须按用户品牌替换 */
+
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'>`+
+    `<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85'`+
+    ` numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/>`+
+    `</filter><rect width='260' height='260' filter='url(#n)' opacity='0.5'/></svg>`;
+  const g=document.getElementById('grain');
+  g.style.backgroundImage=`url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
+  g.style.backgroundSize=`${260*S}px ${260*S}px`;
+  g.style.opacity=0.055;
+})();
+
+const st = { grid:document.getElementById('grid'),
+             flash:document.getElementById('flash'),
+             fade:document.getElementById('fade'),
+             grain:document.getElementById('grain') };
+
+/* =========================================================================
+   RENDER
+   ========================================================================= */
+function renderLight(t){
+  const pre = t < T.burst;
+  const seedP = seg(t, 0.10, T.burst);
+  const bp = seg(t, T.burst, T.burst+0.34);
+  let ringS, ringO, coreS, coreO, bloomS, bloomO;
+
+  if(pre){
+    const b = 0.5 + 0.5*Math.sin(t*6.4);
+    ringS = lerp(0.030,0.10,eIn(seedP))*(1+0.10*b); ringO = 0.18*seedP;
+    coreS = lerp(0.14,0.34,eIn(seedP))*(1+0.14*b); coreO = lerp(0.24,0.95,seedP);
+    bloomS= lerp(0.12,0.34,seedP);                 bloomO= lerp(0.02,0.13,seedP);
+  } else {
+    const set = eExpo(bp);
+    ringS = lerp(0.10,1.00,set); ringO = 0.86 - 0.36*seg(t,T.burst+0.3,T.lock+1);
+    coreS = lerp(0.34,2.1,eOut(bp));
+    coreO = 1 - eOut(seg(t,T.burst,T.burst+0.55));
+    bloomS= lerp(0.34,1.00,set); bloomO= lerp(0.14,0.26,set);
+  }
+  const out = 1 - seg(t, T.end-1.2, T.end-0.2);
+  gl.ring.style.transform =`scale(${ringS})`;  gl.ring.style.opacity =cl(ringO*out);
+  gl.core.style.transform =`scale(${coreS})`;  gl.core.style.opacity =cl(coreO*out);
+  gl.bloom.style.transform=`scale(${bloomS})`; gl.bloom.style.opacity=cl(bloomO*out);
+
+  st.grid.style.opacity = 0.5*sstep(T.numIn-0.6,T.numIn+0.6,t)*out;
+  const gp = t*10*S;
+  st.grid.style.backgroundPosition = `${gp}px ${gp*0.4}px`;
+}
+
+function renderCounter(t){
+  const vis = t > T.numIn-0.12 && t < T.cardIn-0.10;
+  numGrp.style.opacity = vis ? cl(seg(t,T.numIn,T.numIn+0.5)) *
+                               (1-seg(t,T.cardIn-0.45,T.cardIn-0.10)) : 0;
+  if(!vis) return;
+
+  /* Land on the target by choosing a total that is congruent to it mod 10:
+     the tens reel spins 3 whole turns plus the digit, the ones reel 6. */
+  const spinP = eExpo(seg(t, T.numIn+0.06, T.lock));
+  const totT = 30 + (+NUMBER[0]), totO = 60 + (+NUMBER[1]);
+  let vT = totT*spinP, vO = totO*spinP;
+  const sb = seg(t, T.lock, T.lock+0.34);
+  if(sb>0 && sb<1){ const b=Math.sin(sb*Math.PI)*(1-sb)*0.16; vT-=b; vO-=b*1.5; }
+  reels[0].style.transform = `translateY(${(REEL_OFF - vT*DIGIT_H).toFixed(2)}px)`;
+  reels[1].style.transform = `translateY(${(REEL_OFF - vO*DIGIT_H).toFixed(2)}px)`;
+
+  /* The reel window is taller than one cell and its top/bottom falloff is tied
+     to the spin speed: soft edges while moving, none once locked. A fixed mask
+     would dim the settled digit, and a hard crop chops the neighbouring digits
+     into broken glyph fragments — both look like bugs rather than motion. */
+  const fw = (1-spinP)*0.19;
+  if(fw > 0.004){
+    const m = `linear-gradient(to bottom, rgba(0,0,0,0) 0%,`+
+              `rgba(0,0,0,.4) ${(fw*55).toFixed(1)}%, #000 ${(fw*100).toFixed(1)}%,`+
+              `#000 ${(100-fw*100).toFixed(1)}%, rgba(0,0,0,.4) ${(100-fw*55).toFixed(1)}%,`+
+              `rgba(0,0,0,0) 100%)`;
+    for(const b of reelBoxes){ b.style.webkitMaskImage=m; b.style.maskImage=m; }
+  } else if(reelBoxes[0].style.maskImage !== 'none'){
+    for(const b of reelBoxes){ b.style.webkitMaskImage='none'; b.style.maskImage='none'; }
+  }
+
+  const spd = 1-spinP, smear = spd*spd*22*S;
+  numWrap.style.filter = smear>0.4 ? `blur(${smear.toFixed(1)}px)` : 'none';
+  const pop = 1 + 0.055*Math.sin(cl(seg(t,T.lock,T.lock+0.30))*Math.PI);
+  numWrap.style.transformOrigin = '50% 50%';
+  numWrap.style.transform = `scale(${pop.toFixed(4)})`;
+
+  const hp = eExpo(seg(t, T.headIn, T.headIn+0.46));
+  headLine.style.opacity = hp;
+  headLine.style.transform = `translateY(${((1-hp)*18*S).toFixed(1)}px)`;
+  const dv = eExpo(seg(t, T.headIn+0.4, T.headIn+0.9));
+  cdDiv.style.opacity = dv;
+  cdDiv.style.transform = `scaleX(${(0.2+0.8*dv).toFixed(3)})`;
+}
+
+function renderCard(t){
+  const on = t > T.cardIn-0.05 && t < T.cardOut+0.30;
+  card.g.style.opacity = on ? 1 : 0;
+  if(!on) return;
+  const outK = seg(t, T.cardOut-0.28, T.cardOut+0.06);
+  card.g.style.transform = `translate(-50%,-50%) translateY(${(-outK*22*S).toFixed(1)}px)`;
+  sweepChars(card.a, t, T.cardIn,      0.42, 'none', outK);
+  sweepChars(card.b, t, T.cardIn+0.16, 0.62, 'hot',  outK);
+}
+
+function renderOverlays(t){
+  let f = 0.44*imp(t, T.burst, 0.20, 2.2) + 0.09*imp(t, T.lock, 0.16, 2.6);
+  st.flash.style.opacity = cl(f);
+
+  let d = 1 - seg(t, 0.0, 0.30);                    /* open from black */
+  d = Math.max(d, seg(t, T.end-0.85, T.end-0.05));  /* close to black */
+  st.fade.style.opacity = cl(d);
+
+  /* Grain must move, or it reads as a dirty lens. Derived from t so it stays
+     deterministic — Math.random() here would flicker between renders. */
+  const g = Math.sin(t*913.7)*4373.2;
+  const gx = (g - Math.floor(g))*260*S;
+  const gy = ((g*1.7) - Math.floor(g*1.7))*260*S;
+  st.grain.style.backgroundPosition = `${gx.toFixed(1)}px ${gy.toFixed(1)}px`;
+}
+
+window.__render = function(frame){
+  const t = frame / FPS;
+  renderLight(t);
+  renderCounter(t);
+  renderCard(t);
+  renderOverlays(t);
+};
+
+window.__meta  = {W, H, FPS, DUR, frames: Math.round(DUR*FPS)};
+window.__render(0);
+window.__ready = true;
+</script>
+</body>
+</html>

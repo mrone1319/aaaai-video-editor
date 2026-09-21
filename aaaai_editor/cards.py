@@ -1,0 +1,568 @@
+"""卡片版面：把一条 overlay 规格算成「底板 + 文字块」的绝对坐标与时间。
+
+版面统一走「竖向块堆叠」：每种卡片只负责给出内容块，
+尺寸、换行、定位、动画由同一套逻辑算，所以加新卡片类型只要加一个 blocks_* 函数。
+"""
+from __future__ import annotations
+
+import math
+import os
+from typing import Dict, List, Optional, Tuple
+
+from .theme import resolve_colors
+
+MARGIN_X = 0.058   # 左右安全边距（相对宽）
+TOP_M = 0.085      # 上安全边距（相对高）
+BOT_M = 0.190      # 下安全边距：给字幕留位，卡片不压字幕
+PAD = 0.050        # 卡片内边距（相对宽）
+LH = 1.34          # 行高倍数
+DI, DO = 0.42, 0.30  # 入场／出场时长（秒）
+
+
+def is_cjk(ch: str) -> bool:
+    return ord(ch) > 0x2E80
+
+
+def est_w(text: str, size: float, mono: bool = False, wf: Optional[Tuple[float, float]] = None) -> float:
+    """估算文字像素宽（用于给底板定尺寸；居中由 ffmpeg 的 text_w 精确处理）。
+
+    wf＝(拉丁字宽, 字距)，富文本风格按角色给：展示字体、全大写、加字距都会变宽。
+    """
+    if wf:
+        lat, trk = wf
+    else:
+        lat, trk = (0.62 if mono else 0.55), 0.0  # 等宽字重较厚，估窄了底板留白会不够
+    return (sum(1.0 if is_cjk(c) else lat for c in text) + trk * len(text)) * size
+
+
+def width_factor(th: dict, role: str, mono: bool) -> Optional[Tuple[float, float]]:
+    """富文本风格的字宽估算。drawtext 风格返回 None，走原来的估算，版面逐位不变。"""
+    if th.get("text_engine") != "ass":
+        return None
+    from .richtext import role_cfg
+    cfg = role_cfg(th, role)
+    if cfg["font"] == "display":
+        lat = float((th.get("display_font") or {}).get("width", 0.84 if cfg["upper"] else 0.66))
+    elif mono or cfg["font"] == "mono":
+        lat = 0.62
+    elif cfg["upper"]:
+        lat = 0.68
+    else:
+        lat = 0.56
+    if cfg["bold"] and lat < 0.8:
+        lat += 0.03
+    return lat, float(cfg["tracking"])
+
+
+def wrap(text: str, size: float, maxw: float, mono: bool = False,
+         wf: Optional[Tuple[float, float]] = None) -> List[str]:
+    """按估算宽度换行。中文可任意断；英文按词断；原文里的空格保留（中英之间的空格不吃掉）。"""
+    out: List[str] = []
+    for para in str(text).split("\n"):
+        toks, buf = [], ""
+        for ch in para:
+            if is_cjk(ch) or ch == " ":
+                if buf:
+                    toks.append(buf)
+                    buf = ""
+                toks.append(ch)
+            else:
+                buf += ch
+        if buf:
+            toks.append(buf)
+        line = ""
+        for t in toks:
+            if t == " ":
+                if line and not line.endswith(" "):
+                    line += " "
+                continue
+            cand = line + t
+            if line.strip() and est_w(cand.rstrip(), size, mono, wf) > maxw:
+                out.append(line.rstrip())
+                line = t
+            else:
+                line = cand
+        if line.strip():
+            out.append(line.rstrip())
+    return out or [""]
+
+
+def parse_marks(text: str) -> Tuple[str, List[bool]]:
+    """**关键词** → (去掉标记的文字, 每个字是否高亮)。"""
+    out, mask, on, i = [], [], False, 0
+    s = str(text)
+    while i < len(s):
+        if s.startswith("**", i):
+            on = not on
+            i += 2
+            continue
+        out.append(s[i])
+        mask.append(on)
+        i += 1
+    return "".join(out), mask
+
+
+def line_runs(lines: List[str], plain: str, mask: List[bool]) -> List[Optional[List[Tuple[str, bool]]]]:
+    """把换行后的每一行对回原文的高亮标记；整行没有高亮就给 None。"""
+    res, p = [], 0
+    for ln in lines:
+        runs: List[List] = []
+        for ch in ln:
+            while p < len(plain) and plain[p] != ch:
+                p += 1
+            m = mask[p] if p < len(plain) else False
+            p += 1
+            if runs and runs[-1][1] == m:
+                runs[-1][0] += ch
+            else:
+                runs.append([ch, m])
+        res.append([(a, b) for a, b in runs] if any(b for _, b in runs) else None)
+    return res
+
+
+def fmt_num(v: float, style: str = "comma", digits: int = 0) -> str:
+    s = ("{:,.%df}" % digits).format(v) if digits > 0 else "{:,.0f}".format(round(v))
+    return s if style == "comma" else s.replace(",", "")
+
+
+# ---------------------------------------------------------------- 内容块
+def _blk(text, size, color, **kw) -> dict:
+    d = {"kind": "text", "text": text, "size": size, "color": color, "gap": 0, "align": "center",
+         "delay": 0.0, "mono": False, "lead": None, "lead_color": None, "lead_icon": None, "role": "text"}
+    d.update(kw)
+    return d
+
+
+def _icon_blk(ov, th, W, scale=0.085) -> Optional[dict]:
+    """卡片顶部的主图标（可选实心圆底 icon_badge）。"""
+    if not ov.get("icon"):
+        return None
+    return {"kind": "icon", "name": ov["icon"], "size": round(W * scale * float(ov.get("icon_scale", 1.0))),
+            "color": th["on_accent"] if ov.get("icon_badge") else th["accent"],
+            "badge": th["accent"] if ov.get("icon_badge") else None,
+            "gap": 0, "align": ov.get("align", "center"), "delay": 0.0}
+
+
+def blocks_title(ov, th, W) -> Tuple[List[dict], str]:
+    b = []
+    ib = _icon_blk(ov, th, W)
+    if ib:
+        b.append(ib)
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * 0.030), th["accent"], mono=True,
+                      gap=round(W * 0.024) if b else 0, role="kicker"))
+    b.append(_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.068), th["text"],
+                  gap=round(W * 0.022) if b else 0, role="title"))
+    if ov.get("sub"):
+        b.append(_blk(ov["sub"], round(W * 0.032), th["muted"], gap=round(W * 0.024), role="sub"))
+    return b, "full"
+
+
+def blocks_stat(ov, th, W) -> Tuple[List[dict], str]:
+    b = []
+    ib = _icon_blk(ov, th, W, 0.075)
+    if ib:
+        b.append(ib)
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * 0.028), th["muted"], mono=True,
+                      gap=round(W * 0.020) if b else 0, role="kicker"))
+    c = {"to": float(ov.get("value", 0)), "from": float(ov.get("from", 0)),
+         "prefix": ov.get("prefix", ""), "suffix": ov.get("suffix", ""),
+         "digits": int(ov.get("digits", 0)), "style": ov.get("format", "comma"),
+         "count": bool(ov.get("count", True)), "dur": float(ov.get("count_dur", 1.0))}
+    # 用终值字串量尺寸，计数过程中的中间值不会比它宽
+    widest = c["prefix"] + fmt_num(max(abs(c["to"]), abs(c["from"])), c["style"], c["digits"]) + c["suffix"]
+    num = _blk(widest, round(W * float(ov.get("scale", 1.0)) * 0.150), th["accent"], mono=True,
+               gap=round(W * 0.012) if b else 0, role="number")
+    num["counter"] = c
+    b.append(num)
+    if ov.get("label"):
+        b.append(_blk(ov["label"], round(W * 0.034), th["muted"], gap=round(W * 0.010), role="label"))
+    return b, "fit"
+
+
+def _stagger(items: List[str], mode) -> List[float]:
+    """错峰出现的延迟。数字＝固定间隔；"auto"＝按上一条的字数决定（读得完再出下一条），
+    这是「内容驱动」的节奏——不是随机抖动，也不是机械等距。"""
+    if mode != "auto":
+        return [i * float(mode) for i in range(len(items))]
+    out, acc = [], 0.0
+    for i, t in enumerate(items):
+        out.append(acc)
+        acc += min(0.55, 0.10 + 0.018 * len(t))
+    return out
+
+
+def _at(items, ov, delays: List[float]) -> List[float]:
+    """每条可写 at（成片秒数）：对准口播说到这一条的时刻出现；没写的沿用错峰。"""
+    t0 = float(ov["t"][0])
+    return [max(0.0, float(it["at"]) - t0) if isinstance(it, dict) and it.get("at") is not None else d
+            for it, d in zip(items, delays)]
+
+
+def blocks_bullets(ov, th, W) -> Tuple[List[dict], str]:
+    b = []
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="left", role="kicker"))
+    if ov.get("title"):
+        b.append(_blk(ov["title"], round(W * 0.050), th["text"], align="left",
+                      gap=round(W * 0.012) if b else 0, role="heading"))
+    raw = ov.get("items", [])
+    texts = [it["text"] if isinstance(it, dict) else str(it) for it in raw]
+    delays = _at(raw, ov, _stagger(texts, ov.get("stagger", 0.16)))
+    head = len(b)
+    for i, it in enumerate(raw):
+        icon = it.get("icon") if isinstance(it, dict) else ov.get("marker_icon")
+        blk = _blk(texts[i], round(W * 0.042), th["text"], align="left",
+                   gap=(round(W * 0.030) if (i == 0 and head) else (round(W * 0.026) if i else 0)),
+                   delay=delays[i], role="item")
+        if icon:
+            blk["lead_icon"] = icon
+            blk["lead_color"] = (it.get("color") if isinstance(it, dict) else None) or th["accent"]
+        else:
+            blk["lead"] = "%02d" % (i + 1)
+            blk["lead_color"] = th["accent"]
+        b.append(blk)
+    return b, "full"
+
+
+def blocks_quote(ov, th, W) -> Tuple[List[dict], str]:
+    b = []
+    ib = _icon_blk(dict(ov, align="left"), th, W, 0.07)
+    if ib:
+        b.append(ib)
+    b.append(_blk("「%s」" % ov.get("text", ""), round(W * 0.056), th["text"], align="left",
+                  gap=round(W * 0.022) if b else 0, role="quote"))
+    if ov.get("by"):
+        b.append(_blk("— " + ov["by"], round(W * 0.030), th["muted"], align="left",
+                      gap=round(W * 0.026), role="by"))
+    return b, "full"
+
+
+def blocks_lower_third(ov, th, W) -> Tuple[List[dict], str]:
+    b = [_blk(ov.get("name", ""), round(W * 0.042), th["text"], align="left", role="name")]
+    if ov.get("role"):
+        b.append(_blk(ov["role"], round(W * 0.027), th["muted"], align="left", gap=round(W * 0.008),
+                      role="position"))
+    return b, "fit"
+
+
+def blocks_stamp(ov, th, W) -> Tuple[List[dict], str]:
+    blk = _blk(ov.get("text", ""), round(W * 0.029), th["on_accent"], mono=True, role="stamp")
+    if ov.get("icon"):  # 图标在字前：改左对齐，底板宽按「图标＋字」算
+        blk.update(lead_icon=ov["icon"], lead_color=th["on_accent"], align="left")
+    return [blk], "pill"
+
+
+def blocks_icons(ov, th, W) -> Tuple[List[dict], str]:
+    """图标宫格：每格一个图标＋一行标签，一行最多 cols 格。"""
+    b = []
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, role="kicker"))
+    if ov.get("title"):
+        b.append(_blk(ov["title"], round(W * 0.048), th["text"], gap=round(W * 0.012) if b else 0,
+                      role="heading"))
+    items = [it if isinstance(it, dict) else {"icon": str(it)} for it in ov.get("items", [])]
+    labels = [it.get("label", "") for it in items]
+    b.append({"kind": "grid", "items": items, "delays": _stagger(labels, ov.get("stagger", 0.12)),
+              "cols": int(ov.get("cols", min(4, max(1, len(items))))),
+              "icon_color": th["accent"], "label_color": th["text"],
+              "badge": th["accent"] if ov.get("icon_badge") else None,
+              "badge_glyph": th["on_accent"],
+              "gap": round(W * 0.034) if b else 0, "delay": 0.0})
+    return b, "full"
+
+
+def blocks_text(ov, th, W) -> Tuple[List[dict], str]:
+    return [_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.056),
+                 ov.get("color") or th["text"], role="free")], "none"
+
+
+def blocks_rows(ov, th, W) -> Tuple[List[dict], str]:
+    """编号行卡：每条一张小卡，左边强调色方块编号，右边标题／标签／说明。"""
+    b = []
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="left", role="kicker"))
+    if ov.get("title"):
+        b.append(_blk(ov["title"], round(W * 0.054), th["text"], align="left",
+                      gap=round(W * 0.012) if b else 0, role="heading"))
+    if ov.get("sub"):
+        b.append(_blk(ov["sub"], round(W * 0.030), th["muted"], align="left", gap=round(W * 0.014), role="sub"))
+    items = [it if isinstance(it, dict) else {"title": str(it)} for it in ov.get("items", [])]
+    b.append({"kind": "rows", "items": items,
+              "delays": _at(items, ov, _stagger([it.get("title", "") for it in items], ov.get("stagger", 0.14))),
+              "gap": round(W * 0.034) if b else 0, "delay": 0.0})
+    return b, "full"
+
+
+BUILDERS = {"title": blocks_title, "stat": blocks_stat, "bullets": blocks_bullets,
+            "quote": blocks_quote, "lower_third": blocks_lower_third, "stamp": blocks_stamp,
+            "text": blocks_text, "icons": blocks_icons, "rows": blocks_rows}
+
+ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
+           "top_left": (0.0, 0.0), "top_right": (1.0, 0.0),
+           "bottom_left": (0.0, 1.0), "bottom_right": (1.0, 1.0),
+           "left": (0.0, 0.5), "right": (1.0, 0.5)}
+DEFAULT_POS = {"lower_third": "bottom_left", "stamp": "top_left", "stat": "center"}
+
+
+def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
+    """算出底板、文字项、图标项的绝对坐标、时间、动画。"""
+    if ov.get("colors"):  # 单张卡片改色，可写 "@value" 引用语义色
+        th = resolve_colors(dict(th, **ov["colors"]))
+    typ = ov["type"]
+    # 字号与内距的基准：竖屏＝画面宽；横屏／方形按高度折算，卡片不会比画面还高
+    U = min(W, int(H * 0.75))
+    blocks, mode = BUILDERS[typ](ov, th, U)
+    if ov.get("bleed"):
+        mode = "bleed"
+    mx, pad = round(W * MARGIN_X), round(U * PAD)
+    if mode == "pill":
+        pad = round(U * 0.026)
+    fixed_w = min(W - 2 * mx, W * float(ov["width"])) if ov.get("width") and mode != "bleed" else None
+    maxw_full = (fixed_w or (W - 2 * mx)) - 2 * pad
+
+    # ---- 量尺寸：文字块换行，图标块定方，宫格等底板宽定了再算 ----
+    lines_of: List[List[str]] = []
+    for b in blocks:
+        b["_lead_w"] = 0.0
+        if b["kind"] != "text":
+            lines_of.append([])
+            continue
+        if b.get("lead_icon"):
+            b["_lead_w"] = b["size"] * 1.40
+        elif b["lead"]:
+            b["_lead_w"] = est_w(b["lead"] + "  ", b["size"] * 0.62, True)
+        plain, mask = parse_marks(b["text"])   # **关键词** 只影响颜色，不参与量宽
+        b["_wf"] = width_factor(th, b.get("role", "text"), b["mono"])
+        ls = wrap(plain, b["size"], maxw_full - b["_lead_w"], b["mono"], b["_wf"])
+        b["_runs"] = line_runs(ls, plain, mask) if any(mask) else [None] * len(ls)
+        lines_of.append(ls)
+
+    content_w = 0.0
+    for b, ls in zip(blocks, lines_of):
+        if b["kind"] == "icon":
+            content_w = max(content_w, b["size"])
+        for ln in ls:
+            content_w = max(content_w, est_w(ln, b["size"], b["mono"], b.get("_wf")) + b["_lead_w"])
+
+    if mode == "bleed":
+        plate_w, cbox_x, cbox_w = W, mx + pad, W - 2 * mx - 2 * pad
+    else:
+        if fixed_w:
+            plate_w = fixed_w
+        elif mode == "full":
+            plate_w = min(W - 2 * mx, round(U * 1.6))   # 横屏不拉满整个宽度
+        else:
+            plate_w = min(W - 2 * mx, content_w + 2 * pad)
+        cbox_w = plate_w - 2 * pad
+
+    for b in blocks:  # 宫格：底板宽已知，按格宽排
+        if b["kind"] != "grid":
+            continue
+        n = len(b["items"])
+        cols = max(1, min(b["cols"], n))
+        cw = cbox_w / cols
+        isz = min(cw * 0.46, U * 0.105)
+        lsz = round(U * 0.030)
+        rows, row_h, cell_lines = [], [], []
+        for r0 in range(0, n, cols):
+            row = list(range(r0, min(n, r0 + cols)))
+            ls_row = [wrap(b["items"][i].get("label", ""), lsz, cw * 0.92) if b["items"][i].get("label")
+                      else [] for i in row]
+            cell_lines += ls_row
+            lh = max([len(x) for x in ls_row] + [0]) * lsz * LH
+            rows.append(row)
+            row_h.append(isz + (U * 0.018 + lh if lh else 0))
+        b.update(_cols=cols, _cw=cw, _isz=isz, _lsz=lsz, _rows=rows, _row_h=row_h,
+                 _lines=cell_lines, _rgap=U * 0.030)
+
+    for b in blocks:  # 编号行卡：底板宽已知，逐行量高
+        if b["kind"] != "rows":
+            continue
+        rp, bs, gx = U * 0.030, U * 0.058, U * 0.026
+        ts, tgs, ds = round(U * 0.040), round(U * 0.026), round(U * 0.029)
+        tw = cbox_w - rp * 2 - bs - gx
+        rows = []
+        for it in b["items"]:
+            parts = []
+            for key, sz, gap in (("title", ts, 0), ("tag", tgs, U * 0.006), ("desc", ds, U * 0.010)):
+                if it.get(key):
+                    plain, mask = parse_marks(it[key])
+                    ls = wrap(plain, sz, tw, False, width_factor(th, "row_" + key, False))
+                    parts.append((key, sz, gap if parts else 0, ls,
+                                  line_runs(ls, plain, mask) if any(mask) else [None] * len(ls)))
+            th_ = sum(g + len(ls) * sz * LH for _k, sz, g, ls, _r in parts)
+            rows.append((parts, rp * 2 + max(bs, th_)))
+        b.update(_rp=rp, _bs=bs, _gx=gx, _rowsm=rows, _rgap=U * 0.020)
+
+    def blk_h(b, ls):
+        if b["kind"] == "rows":
+            return sum(h for _p, h in b["_rowsm"]) + b["_rgap"] * (len(b["_rowsm"]) - 1)
+        if b["kind"] == "icon":
+            return b["size"]
+        if b["kind"] == "grid":
+            return sum(b["_row_h"]) + b["_rgap"] * (len(b["_rows"]) - 1)
+        return len(ls) * b["size"] * LH
+
+    body_h = sum(b["gap"] + blk_h(b, ls) for b, ls in zip(blocks, lines_of))
+    last = blocks[-1]
+    body_h += (last["size"] * 0.16 if last["kind"] == "text"
+               else last.get("_lsz", 0) * 0.16 if last["kind"] == "grid" else 0)
+
+    t0, t1 = float(ov["t"][0]), float(ov["t"][1])
+    anim = ov.get("anim") or ("rise" if typ != "stamp" else "fade")
+    dx0, dy0 = {"rise": (0, round(H * 0.026)), "fall": (0, -round(H * 0.026)),
+                "left": (-round(W * 0.05), 0), "right": (round(W * 0.05), 0),
+                "pop": (0, round(H * 0.014)), "fade": (0, 0)}.get(anim, (0, 0))
+    di = 0.26 if anim == "pop" else DI
+
+    if mode == "bleed":
+        px, py, plate_h = 0, 0, H
+        cur = (H - body_h) / 2.0
+    else:
+        plate_h = body_h + 2 * pad
+        ax, ay = ANCHORS.get(ov.get("pos") or DEFAULT_POS.get(typ, "center"), (0.5, 0.5))
+        top_m, bot_m = round(H * TOP_M), round(H * BOT_M)
+        px = mx + ax * (W - 2 * mx - plate_w)
+        py = top_m + ay * (H - top_m - bot_m - plate_h)
+        cbox_x = px + pad
+        cur = py + pad
+
+    plate = None
+    if mode == "bleed":  # 整屏断章：底板只淡入淡出不位移，内容照常动画
+        plate = {"w": W, "h": H, "radius": 0, "fill": th["plate"],
+                 "alpha": float(ov.get("opacity", 0.97)), "border": {"w": 0}, "shadow": {},
+                 "x": 0, "y": 0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
+    elif mode != "none":
+        if mode == "pill":
+            plate = {"w": int(round(plate_w)), "h": int(round(plate_h)),
+                     "radius": int(round(plate_h / 2)), "fill": th["accent"], "alpha": 1.0,
+                     "border": {"w": 0}, "shadow": {"soft": 14, "alpha": 0.30, "dy": 5,
+                                                    "color": "#000000"}}
+        else:
+            plate = {"w": int(round(plate_w)), "h": int(round(plate_h)), "radius": th["radius"],
+                     "fill": th["plate"], "alpha": th["plate_alpha"], "border": th["border"],
+                     "shadow": th["shadow"]}
+        plate.update({"x": int(round(px)), "y": int(round(py)), "dx": dx0, "dy": dy0,
+                      "t0": t0, "t1": t1, "di": di, "do": DO})
+
+    items: List[dict] = []
+    icons: List[dict] = []
+    shapes: List[dict] = []
+    ccx = cbox_x + cbox_w / 2.0
+    common = {"t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0}
+
+    def add_icon(name, x, y, size, color, badge, delay):
+        icons.append(dict(common, name=name, x=round(x, 1), y=round(y, 1), size=int(round(size)),
+                          color=color, badge=badge, t0=t0 + delay))
+
+    for b, ls in zip(blocks, lines_of):
+        cur += b["gap"]
+        if b["kind"] == "icon":
+            x = ccx - b["size"] / 2.0 if b["align"] == "center" else cbox_x
+            add_icon(b["name"], x, cur, b["size"], b["color"], b.get("badge"), b["delay"])
+            cur += b["size"]
+            continue
+        if b["kind"] == "rows":
+            ry = cur
+            rp, bs, gx = b["_rp"], b["_bs"], b["_gx"]
+            row_fill = th.get("row") or (th["plate"][-1] if isinstance(th["plate"], list) else th["plate"])
+            line = th.get("line") or (th.get("border") or {}).get("color") or row_fill
+            for i, (parts, rh) in enumerate(b["_rowsm"]):
+                d = b["delays"][i]
+                shapes.append({"x": cbox_x, "y": ry, "w": cbox_w, "h": rh,
+                               "r": min(float(th["radius"]) * 0.6, 18.0), "fill": row_fill, "line": line})
+                bx, by = cbox_x + rp, ry + rp
+                shapes.append({"x": bx, "y": by, "w": bs, "h": bs, "r": bs * 0.26, "fill": th["accent"]})
+                nsz = int(round(bs * 0.52))
+                items.append(dict(common, size=nsz, color=th["on_accent"], mono=True, t0=t0 + d,
+                                  y=int(round(by + (bs - nsz * 0.72) / 2.0)), cx=int(round(bx + bs / 2.0)),
+                                  text=str(i + 1), stroke=False, role="badge"))
+                ty = ry + rp
+                tx = int(round(bx + bs + gx))
+                col = {"title": th["text"], "tag": th["accent"], "desc": th["muted"]}
+                for key, sz, gap, ls, runs in parts:
+                    ty += gap
+                    for li, ln in enumerate(ls):
+                        items.append(dict(common, size=sz, color=col[key], mono=False, t0=t0 + d,
+                                          y=int(round(ty)), x=tx, text=ln, stroke=False,
+                                          role="row_" + key, runs=runs[li]))
+                        ty += sz * LH
+                ry += rh + b["_rgap"]
+            cur = ry - b["_rgap"]
+            continue
+        if b["kind"] == "grid":
+            k = 0
+            ry = cur
+            for r, row in enumerate(b["_rows"]):
+                off = (b["_cols"] - len(row)) * b["_cw"] / 2.0  # 末行不满时居中
+                for c, i in enumerate(row):
+                    cx0 = cbox_x + off + c * b["_cw"]
+                    it = b["items"][i]
+                    d = b["delays"][i]
+                    col = it.get("color") or (b["badge_glyph"] if b["badge"] else b["icon_color"])
+                    add_icon(it["icon"], cx0 + (b["_cw"] - b["_isz"]) / 2.0, ry, b["_isz"], col,
+                             b["badge"], d)
+                    ly = ry + b["_isz"] + U * 0.018
+                    for ln in b["_lines"][k]:
+                        items.append(dict(common, size=b["_lsz"], color=b["label_color"], mono=False,
+                                          t0=t0 + d, y=int(round(ly)), stroke=False, text=ln,
+                                          cx=int(round(cx0 + b["_cw"] / 2.0)), role="label"))
+                        ly += b["_lsz"] * LH
+                    k += 1
+                ry += b["_row_h"][r] + b["_rgap"]
+            cur = ry - b["_rgap"]
+            continue
+        for li, ln in enumerate(ls):
+            y = cur
+            it = {"size": b["size"], "color": b["color"], "mono": b["mono"],
+                  "t0": t0 + b["delay"], "t1": t1, "di": di, "do": DO,
+                  "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none",
+                  "role": b.get("role", "text"), "runs": b["_runs"][li]}
+            if b["align"] == "center":
+                it["cx"] = int(round(ccx))
+            else:
+                it["x"] = int(round(cbox_x + b["_lead_w"]))
+            if b.get("counter") and li == 0:
+                it["counter"] = b["counter"]
+                it["text"] = None
+            else:
+                it["text"] = ln
+            items.append(it)
+            if li == 0 and b.get("lead_icon"):
+                isz = b["size"] * 0.95
+                add_icon(b["lead_icon"], cbox_x, y + b["size"] * 0.60 - isz / 2.0, isz,
+                         b["lead_color"], None, b["delay"])
+            elif li == 0 and b["lead"]:
+                items.append({"size": int(round(b["size"] * 0.62)), "color": b["lead_color"],
+                              "mono": True, "t0": t0 + b["delay"], "t1": t1, "di": di, "do": DO,
+                              "dx": dx0, "dy": dy0, "x": int(round(cbox_x)),
+                              "y": int(round(y + b["size"] * 0.30)), "text": b["lead"],
+                              "stroke": False, "role": "lead"})
+            cur += b["size"] * LH
+    return {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "t": (t0, t1)}
+
+
+def counter_steps(c: dict, t0: float, t1: float, fps: float) -> List[Tuple[float, float, str]]:
+    """把计数动画摊成若干「值 + 显示区间」，避开 ffmpeg 表达式无法做千分位的限制。"""
+    txt = lambda v: c["prefix"] + fmt_num(v, c["style"], c["digits"]) + c["suffix"]
+    if not c["count"] or c["to"] == c["from"]:
+        return [(t0, t1, txt(c["to"]))]
+    dur = min(max(0.2, c["dur"]), max(0.2, t1 - t0 - 0.1))
+    n = max(2, min(20, int(dur * fps)))
+    steps, prev = [], None
+    for i in range(n):
+        p = (i + 1) / n
+        e = 1 - (1 - p) ** 3  # ease-out
+        v = c["from"] + (c["to"] - c["from"]) * e
+        s = txt(v)
+        a, b = t0 + dur * i / n, t0 + dur * (i + 1) / n
+        if prev is not None and s == prev[2]:
+            prev = (prev[0], b, s)
+            steps[-1] = prev
+        else:
+            prev = (a, b, s)
+            steps.append(prev)
+    steps[-1] = (steps[-1][0], t1, txt(c["to"]))
+    return steps

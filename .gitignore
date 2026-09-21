@@ -1,0 +1,8 @@
+projects/
+dist/
+__pycache__/
+.DS_Store
+work/
+# 作者的开发笔记：只留在本机，不随插件／zip 发出去
+CLAUDE.md
+docs/PLAN.md

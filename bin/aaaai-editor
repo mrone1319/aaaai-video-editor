@@ -1,0 +1,6 @@
+#!/bin/bash
+# 优先用 Homebrew 的 python3.12（带 OpenCC 等可选依赖）；代码本身只用标准库，系统 python3 也能跑
+DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PY=python3
+for c in /opt/homebrew/bin/python3.12 /usr/local/bin/python3.12; do [ -x "$c" ] && PY="$c" && break; done
+PYTHONPATH="$DIR" exec "$PY" -m aaaai_editor "$@"
