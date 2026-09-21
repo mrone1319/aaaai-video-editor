@@ -1,5 +1,3 @@
 {
- "_说明": "通用误听词表（所有人适用）。频道专属的放 profiles/<频道>/glossary.json 或 ~/.aaaai-editor/glossary.json。",
- "Dualipper": "Developer",
- "找轮子": "造轮子"
+ "_说明": "通用误听词表（所有人适用）：左＝听写结果，右＝正确写法。个人／频道专属的放 profiles/<频道>/glossary.json 或 ~/.aaaai-editor/glossary.json。"
 }

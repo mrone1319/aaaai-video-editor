@@ -22,6 +22,9 @@ A="$HOME/.aaaai-editor/bin/aaaai-editor"; APP="$HOME/.aaaai-editor/app"; P="<项
 3. **素材永远不删、不移动、不覆盖**。项目放在 `aaaai-editor config` 显示的 `projects_dir`。
 4. 卡片宁少勿多：一个意思一张卡。
 5. 汇报时如实说明哪些没验证（没听过配乐、只看了静帧……）。
+5a. **判定性听写一律不带提示词**（`listen`、`probe-cut`、`check-sync` 都是）：提示词会在静音处幻听出词，
+   「窗口里听到」也不等于「在窗口开头」，要逐步收窄。
+5b. **不确定的专有名词、人名、品牌名，不照听写定案**：剪出那一小段问用户确认。
 6. **受限风格**：`mrone`（© MR ONE）与 `otg`（© OTG 社群）仅限社群成员或获授权者使用；
    用户没确认过就不要主动推荐，也不要替用户执行 `aaaai-editor authorize`——那是用户本人的确认。
 
@@ -168,10 +171,13 @@ check-sync 两关：逐句能量检查（出字时有人声、没早出、剪点
 "$A" cover "$P/storyboard.json" --at <秒> --text "<6–8 字钩子>" [--sub ...] [--handle @账号]   # 账号默认读设置 handle；横版片出 1920×1080
 "$A" phone "$P/storyboard.json"                  # 用户要在手机上看才做（≤30MB，不是交付物）
 ```
-render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP。封面看 `work/cover_check.png`，提示压脸就改 `--y`。
+render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP，**同一系列各集应一致**（观众听得出各集音量不统一）。
+封面看 `work/cover_check.png`：关键文字在四周各留 15% 安全区（主页裁切不掉字），不能压脸，提示压脸就改 `--y`。
+卡片要抽**成品**的帧验收（每张看中段和收尾前 0.2 秒），不要只看预览或静态图。
 
 ### 8. 交付与交接
 
+**只交一个版本**：`out/final.mp4`（母带）；用户要在手机上看才另做 `phone` 预览版，它不是交付物。封面是固定交付物。
 报告成片路径、封面、时长、响度实测、用了哪些卡片、B-roll 花了多少（`broll_plan.json` 的 spent）与署名、哪些没验证；频道档案有归档规则就照做。
 然后问用户要不要交给 social-content-pipeline；同意就调用该 skill，args **以唤醒词开头**：
 ```
