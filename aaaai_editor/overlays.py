@@ -187,16 +187,19 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             rec = {"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions")), "behind": False,
                    "layers": [], "items": [], "cutout": None, "th": th,
                    "engine": th.get("text_engine", "drawtext")}
-            if th.get("bleed_bg") == "starfield":
+            star = th.get("bleed_bg") == "starfield"
+            if star:
                 inputs.append(["-stream_loop", "-1", "-t", "%.3f" % dur, "-i",
                                fx.starfield(W, H, fps, th.get("accent", "#E60012"), th.get("accent2", "#FF6A1A"))])
             else:
                 png, _m = draw.make_plate({"w": W, "h": H, "radius": 0, "fill": th["plate"], "alpha": 1.0,
                                            "border": {"w": 0}, "shadow": {}}, os.path.join(work, "plates"))
                 inputs.append(["-loop", "1", "-t", "%.3f" % dur, "-i", os.path.relpath(png, work)])
-            rec["layers"].append({"idx": idx, "x": "-%d" % (0 if th.get("bleed_bg") == "starfield" else _m),
-                                  "y": "-%d" % (0 if th.get("bleed_bg") == "starfield" else _m),
-                                  "t0": t0, "t1": t1, "scale": None, "di": DEF_DI, "do": DEF_DO, "fade": True})
+            bg_layer = {"idx": idx, "x": "-%d" % (0 if star else _m), "y": "-%d" % (0 if star else _m),
+                        "t0": t0, "t1": t1, "scale": None, "di": DEF_DI, "do": DEF_DO, "fade": True,
+                        "opacity": float(th.get("takeover_star_alpha", 0.55)) if star else 1.0}
+            if not star:
+                rec["layers"].append(bg_layer)
             idx += 1
             mask, mm = draw.make_plate({"w": bw, "h": bh, "radius": th["radius"], "fill": "#FFFFFF", "alpha": 1.0,
                                         "border": {"w": 0}, "shadow": {}}, os.path.join(work, "plates"))
@@ -222,7 +225,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     rec["post_layers"] = [{"idx": idx, "x": "-%d" % sm, "y": "-%d" % sm, "t0": t0, "t1": t1,
                                            "scale": None, "di": DEF_DI, "do": DEF_DO, "fade": True}]
                     idx += 1
-            fr["blur_bg"] = bool(th.get("lite", 1)) and th.get("bleed_bg") != "starfield"
+            fr["blur_bg"] = True
+            fr["bg_layers"] = [bg_layer] if star else []   # 星空盖在模糊画面之上（半透明）
             prepared.append(rec)
             continue
         if typ == "cutout":
@@ -286,7 +290,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     clip = fx.starfield(W, H, fps, th.get("accent", "#E60012"), th.get("accent2", "#FF6A1A"))
                     inputs.append(["-stream_loop", "-1", "-t", "%.3f" % dur, "-i", clip])
                     rec["layers"].append({"idx": idx, "x": "0", "y": "0", "t0": t0, "t1": t1, "scale": None,
-                                          "di": p["di"], "do": p["do"], "fade": True})
+                                          "di": p["di"], "do": p["do"], "fade": True,
+                                          "opacity": float(th.get("starfield_alpha", 1.0))})
                     idx += 1
                 else:
                     baked = [ic for ic in loose if abs(ic["t0"] - t0) < 1e-6]
@@ -412,12 +417,24 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             src = f["branch"]
             if f.get("blur_bg"):   # 背景：同一段画面放大、模糊、压暗，比纯色底有层次，也和画面连在一起
                 parts.append("[%s]split=2[fsA%d][fsB%d]" % (src, k, k))
-                parts.append("[fsB%d]scale=%d:%d,gblur=sigma=28,lutrgb=r=val*0.34:g=val*0.34:b=val*0.36,"
+                dk = 0.62 if f.get("bg_layers") else 0.34   # 上面还要盖一层半透明星空：画面少压一点
+                parts.append("[fsB%d]scale=%d:%d,gblur=sigma=28,lutrgb=r=val*%.2f:g=val*%.2f:b=val*%.2f,"
                              "format=yuva444p,%s[fbg%d]"
-                             % (k, W // 4 * 2, H // 4 * 2, fadeA(rec["t0"], rec["t1"], DEF_DI, DEF_DO), k))
+                             % (k, W // 4 * 2, H // 4 * 2, dk, dk, dk + 0.02,
+                                fadeA(rec["t0"], rec["t1"], DEF_DI, DEF_DO), k))
                 parts.append("[fbg%d]scale=%d:%d[fbs%d]" % (k, W, H, k))
                 put("fbs%d" % k, "0", "0", rec["t0"], rec["t1"])
                 src = "fsA%d" % k
+            for lay in f.get("bg_layers") or []:
+                n[0] += 1
+                d = max(0.1, lay["t1"] - lay["t0"])
+                pre = "[%d:v]format=rgba" % lay["idx"]
+                if lay.get("opacity", 1.0) < 0.999:
+                    pre += ",colorchannelmixer=aa=%.3f" % lay["opacity"]
+                pre += (",fade=t=in:st=0:d=%.3f:alpha=1,fade=t=out:st=%.3f:d=%.3f:alpha=1,setpts=PTS+%.3f/TB[bgl%d]"
+                        % (lay["di"], max(0.0, d - lay["do"]), lay["do"], lay["t0"], n[0]))
+                parts.append(pre)
+                put("bgl%d" % n[0], lay["x"], lay["y"], lay["t0"], lay["t1"])
             parts.append("[%s]scale=%d:%d,crop=%d:%d:%d:%d,format=yuva444p[fv%d]"
                          % (src, f["vw"], f["vh"], f["bw"], f["bh"], f["cx"], f["cy"], k))
             parts.append("[%d:v]alphaextract,crop=%d:%d:%d:%d[fm%d]"
@@ -471,6 +488,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 n[0] += 1
                 lab = "ov%d" % n[0]
                 pre = "[%d:v]format=rgba" % lay["idx"]
+                if lay.get("opacity", 1.0) < 0.999:   # 半透明（otg 星空：看得到底下的画面）
+                    pre += ",colorchannelmixer=aa=%.3f" % lay["opacity"]
                 if lay["scale"]:
                     pre += ",scale=%d:-1" % lay["scale"]
                 if lay["fade"]:

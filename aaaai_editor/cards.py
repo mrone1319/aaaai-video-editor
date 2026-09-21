@@ -161,7 +161,8 @@ def _lighten(c: str, k: float = 0.5) -> str:
 def is_lite(ov, th) -> bool:
     """口播画面上的标题／金句／人名条：不用方块，用「画面边缘渐变遮罩＋左对齐粗体字＋强调色线条」。
     所有风格默认开启（风格里写 "lite": 0 关闭）；单张卡片可写 "lite": false 回到底板版。"""
-    return bool(th.get("lite", 1)) and ov.get("type") in LITE_TYPES and ov.get("lite", True) \
+    return (bool(th.get("lite", 1)) or ov.get("type") in (th.get("lite_types") or ())) \
+        and ov.get("type") in LITE_TYPES and ov.get("lite", True) \
         and (not ov.get("bleed") or ov.get("chapter") is not None)   # 章节断章在 lite 里改成「压暗画面」，不整屏盖黑
 
 

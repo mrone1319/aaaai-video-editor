@@ -15,6 +15,7 @@ from typing import Callable, Optional, Sequence, Tuple
 from .png import write_rgba
 
 RGB = Tuple[int, int, int]
+PLATE_VER = "2"
 
 
 def hex_rgb(s: str) -> RGB:
@@ -102,7 +103,8 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
 
     spec: w,h,radius,fill(单色或[上,下]),alpha,border{w,color},shadow{soft,alpha,dy}
     """
-    key = hashlib.sha1(json.dumps(spec, sort_keys=True, ensure_ascii=False).encode()).hexdigest()[:16]
+    # 画法改了就把 PLATE_VER 加一：旧缓存自动失效
+    key = hashlib.sha1((PLATE_VER + json.dumps(spec, sort_keys=True, ensure_ascii=False)).encode()).hexdigest()[:16]
     os.makedirs(cache_dir, exist_ok=True)
     path = os.path.join(cache_dir, "plate_%s.png" % key)
     sh = spec.get("shadow") or {}
@@ -121,6 +123,16 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
         sc = hex_rgb(sh.get("color", "#000000"))
         paint(buf, W, H, cx + sh.get("dx", 0), cy + sh.get("dy", 0), hw, hh, r,
               lambda _y: sc, float(sh["alpha"]), max(1.0, float(sh.get("soft", 18))))
+
+    # 半透明底板（毛玻璃）：投影只留在边外，底板里面挖空——否则红色光晕会透上来，整块变成红色
+    if sh and sh.get("alpha", 0) > 0 and float(spec.get("alpha", 1.0)) < 0.9 and spec.get("fill"):
+        for y in range(H):
+            hs = _halfspan(hw, hh, r, abs(y + 0.5 - cy))
+            if hs <= 0:
+                continue
+            x0, x1 = max(0, int(cx - hs + 1)), min(W, int(cx + hs - 1))
+            if x1 > x0:
+                buf[(y * W + x0) * 4:(y * W + x1) * 4] = bytes((x1 - x0) * 4)
 
     sc = spec.get("scrim")
     if sc:   # 画面边缘渐变遮罩：一头最深、渐渐透明，无边框无圆角（字直接排在上面，不用方块）

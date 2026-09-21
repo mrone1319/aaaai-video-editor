@@ -93,14 +93,14 @@ BUILTIN: Dict[str, dict] = {
     # —— 以下三套走 libass 富文本（混色高亮、字距、斜体、展示字体）——
     "otg": {  # 依据 otg-dashboard/BRAND.md
         "desc": "OTG 火箭风：深空黑、OTG 红、火焰点缀、红色光晕、毛玻璃、星空断章、激光扫光",
-        "plate": ["#121216", "#0A0A0A"], "plate_alpha": 0.78, "radius": 18,
+        "plate": ["#121216", "#0A0A0A"], "plate_alpha": 0.40, "radius": 18,   # 毛玻璃：看得穿
         "text": "#FFFFFF", "muted": "#8A8A94", "accent": "#E60012", "on_accent": "#FFFFFF",
         "accent2": "#FF6A1A", "gold": "#FFC01E", "hl": "#FF2A3A", "lite": 0,
         # 品牌规则：翡翠绿只做状态（涨幅／成功）；陈述色用余烬金而不是青
         "value": "#10B981", "state": "#FFC01E",
         "border": {"w": 2, "color": "#6A0A12"},
         "shadow": {"soft": 34, "alpha": 0.55, "dy": 0, "color": "#E60012"},   # 红色光晕
-        "glass": {"sigma": 16}, "bleed_bg": "starfield", "laser": True, "laser_color": "#FFE3E3",
+        "glass": {"sigma": 24}, "bleed_bg": "starfield", "starfield_alpha": 0.72, "lite_types": ["lower_third"], "laser": True, "laser_color": "#FFE3E3",
         "row": "#16161B", "line": "#2A2A31",
         "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono",
         "display_font": {"file": ["~/Library/Fonts/Orbitron-VariableFont_wght.ttf",
@@ -112,6 +112,7 @@ BUILTIN: Dict[str, dict] = {
                  "kicker": {"bold": 1, "upper": 1, "tracking": 0.28},
                  "stamp": {"bold": 1, "upper": 1, "tracking": 0.12},
                  "number": {"font": "mono", "bold": 1}, "badge": {"font": "mono", "bold": 1},
+                 "name": {"bold": 1}, "position": {"bold": 1},
                  "row_title": {"bold": 1}, "name": {"bold": 1}, "label": {"bold": 1}}},
     "mrone": {  # 参考你自己成片里的观感：近黑卡、白色粗标题、金黄高亮与编号
         "desc": "MR ONE 黑金：近黑卡、白色粗标题、金黄关键词与编号方块",
