@@ -79,7 +79,8 @@ def master(source: str, voice_graph: str, total: float, work: str, target: float
         env.run([ff, "-y", "-v", "error", "-i", mix, "-c:a", "aac", "-b:a", "192k", audio])
         rep.update(I=-70.0, TP=-70.0, iters=0, limit=0.0)
         return audio, rep
-    for limit_db in (-1.5, -2.5):
+    # 很响的段落被限幅压得很满时，AAC 编码后真峰值会冒出来 1～2dB：限幅线一次比一次低
+    for limit_db in (-1.5, -2.5, -4.0):
         i0, _ = measure(mix)
         g0 = target - i0
         _limit(mix, out_wav, g0, limit_db, fade, total)
@@ -100,4 +101,10 @@ def master(source: str, voice_graph: str, total: float, work: str, target: float
         rep.update(I=I, TP=TP, iters=iters, limit=limit_db)
         if TP <= -1.0:
             break
+    if rep["TP"] > -1.0:   # 最后保险：整体降一点，真峰值一定 ≤ -1（响度会比目标低一点点，照实回报）
+        cut = rep["TP"] + 1.2
+        env.run([ff, "-y", "-v", "error", "-i", out_wav, "-af", "volume=-%.2fdB" % cut, "-c:a", "aac", "-b:a", "192k",
+                 audio])
+        I, TP = measure(audio)
+        rep.update(I=I, TP=TP, safety=round(cut, 2))
     return audio, rep

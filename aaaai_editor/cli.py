@@ -160,6 +160,10 @@ def cmd_tools(a) -> int:
         for f in T.music_ab(a.storyboard, a.at, a.dur, [float(x) for x in a.db.split(",")]):
             print("🎧 %s" % f)
         print("三支只差配乐音量，发给用户 A/B 听完再定 music.db。")
+    elif k == "denoise-ab":
+        for f in T.denoise_ab(a.storyboard, a.at, a.dur, a.levels.split(",")):
+            print("🎧 %s" % f)
+        print("三支只差降噪强度（原声／标准／加强），发给用户听完再定 storyboard 的 denoise。")
     elif k == "phone":
         print("📱 %s（只供手机预览，不是交付物）" % T.phone(a.storyboard))
     elif k == "framing":
@@ -327,6 +331,34 @@ def cmd_showcase(a) -> int:
     return 0
 
 
+def cmd_hook(a) -> int:
+    from . import edit
+    r = edit.hook(a.storyboard, a.text, a.t_from, a.t_to, a.mode)
+    print("✅ 开头 hook：原片 %.2f–%.2f 秒（%.2f 秒），方式 %s；成片现在 %.1f 秒"
+          % (r["range"][0], r["range"][1], r["len"], "预告（原位置保留）" if r["mode"] == "teaser" else "挪到开头", r["duration"]))
+    print("卡片／推近的时间已跟着换算。开头那几秒原本的标题卡，现在排在 hook 之后——看预览决定要不要挪到 0 秒。")
+    return 0
+
+
+def cmd_tidy(a) -> int:
+    from . import edit
+    if a.apply is not None:
+        ids = [int(x) for x in a.apply.split(",") if x.strip()] if a.apply not in ("", "all") else None
+        r = edit.apply(a.storyboard, ids)
+        print("✅ 删掉 %d 处，省下 %.1f 秒；成片现在 %.1f 秒。字幕轨里若还留着重讲的字，改 work/captions.json 再跑 align。"
+              % (r["removed"], r["saved"], r["duration"]))
+        return 0
+    props = edit.detect(a.storyboard, a.lang)
+    if not props:
+        print("没有找到口头禅或 NG。")
+        return 0
+    for p in props:
+        print("%2d. [成片 %s 秒] %-6s 删 %.2f 秒  %s" % (p["id"], p["t"], p["kind"], p["len"], p["text"]))
+    print("共 %d 处，合计 %.1f 秒。先用 listen 听有疑问的，确认后：tidy <storyboard> --apply all 或 --apply 1,3,5"
+          % (len(props), sum(p["len"] for p in props)))
+    return 0
+
+
 def cmd_keys(a) -> int:
     from . import keys
     if a.action == "set":
@@ -469,6 +501,10 @@ def main(argv=None) -> int:
     t.add_argument("storyboard"); t.add_argument("--at", type=float, default=0.0)
     t.add_argument("--dur", type=float, default=35.0); t.add_argument("--db", default="-16,-18,-20")
     t.set_defaults(fn=cmd_tools, tool="music-ab")
+    t = sub.add_parser("denoise-ab", help="同一段出「原声／标准降噪／加强降噪」三支 MP3 给用户 A/B")
+    t.add_argument("storyboard"); t.add_argument("--at", type=float, default=0.0)
+    t.add_argument("--dur", type=float, default=15.0); t.add_argument("--levels", default="off,on,strong")
+    t.set_defaults(fn=cmd_tools, tool="denoise-ab")
     t = sub.add_parser("phone", help="手机预览版（720 宽、≤30MB）")
     t.add_argument("storyboard"); t.set_defaults(fn=cmd_tools, tool="phone")
     t = sub.add_parser("framing", help="同一帧几种推近倍率的对比图")
@@ -514,6 +550,15 @@ def main(argv=None) -> int:
     cs.add_argument("storyboard")
     cs.add_argument("--tolerance", type=float, default=0.4)
     cs.set_defaults(fn=lambda a: checks.sync(a.storyboard, a.tolerance))
+    hk = sub.add_parser("hook", help="把最强的一句放到片头（teaser＝开头先放一次、原位置保留；move＝挪过去）")
+    hk.add_argument("storyboard"); hk.add_argument("--text", help="那句话的原文（一部分也行）")
+    hk.add_argument("--from", dest="t_from", type=float, help="原片起点秒数"); hk.add_argument("--to", dest="t_to", type=float)
+    hk.add_argument("--mode", choices=["teaser", "move"], default="teaser")
+    hk.set_defaults(fn=cmd_hook)
+    td = sub.add_parser("tidy", help="找口头禅（嗯、呃…）与 NG（讲错重讲），列出来；--apply 套用")
+    td.add_argument("storyboard"); td.add_argument("--lang", default="auto")
+    td.add_argument("--apply", nargs="?", const="all", help="all 或编号，例：--apply 1,3,5")
+    td.set_defaults(fn=cmd_tidy)
     ks = sub.add_parser("keys", help="API 密钥（全部可选）：list／set／remove，存在钥匙串")
     ks.add_argument("action", nargs="?", default="list", choices=["list", "set", "remove"])
     ks.add_argument("names", nargs="*")

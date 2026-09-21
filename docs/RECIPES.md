@@ -8,6 +8,7 @@
 "recipes": [
   {"use":"hook","t":[0.3,4.5],"text":"AI 剪辑的三个步骤","kicker":"EP.01","stamp":"NEW","icon":"rocket"},
   {"use":"speaker","t":[4.8,8],"name":"Alex Chen","role":"内容创作者"},
+  {"use":"avatar","t":[4.8,8],"file":"assets/me.jpg","name":"Alex Chen","role":"内容创作者"},
   {"use":"stat_hit","t":[9,13],"value":24800,"from":1200,"suffix":"+","label":"月活钱包","icon":"wallet"},
   {"use":"chapter","t":[14,17],"index":2,"title":"先定构思，再选效果"},
   {"use":"steps","t":[18,24],"title":"三步完成","items":[{"text":"转录成文字","icon":"mic"}]},
@@ -26,10 +27,14 @@
 | `steps` | 带标题／图标的列表；每条可写 `at`（成片秒数）对准口播说到它的时刻，没写就按字数错峰；`layout: "rows"` 改出编号行卡 | 其余节奏由内容驱动 |
 | `quote_pull` | 引言淡入 + 全程缓推 | 柔和型 |
 | `speaker` | 下三分之一，从左滑入 | |
+| `avatar` | 左下角圆形头像（强调色外圈）＋姓名与职务；照片放 `assets/`，可写 `focus`（`[x, y]` 取景中心，0–1）、`photo_size` | 头像比纯文字更好认人 |
 | `outro` | 画面半透明压暗 + 居中标题与按钮式标签 + 片尾音画同步淡出（可加 logo，`dim: 1` 为全黑） | 尾板＝品牌独立 + 保持 + 音画同步淡出 |
 | `compare` | 上下两组：前一组淡色＋叉，后一组价值色＋勾、晚一拍出现（可写 `reveal` 秒数） | |
 | `takeover` | 卡片接管：画面进圆角框、人物头冲出框上缘、顶部标题；背景是模糊压暗的同段画面 | 需要人像去背（Xcode 工具） |
 | `callout` | 带图标的药丸（默认放大 1.35 倍，可写 `scale`），可 `behind: true` 排到人物后面 | |
+
+**开头预告（不是配方，是剪辑命令）**：`aaaai-editor hook storyboard.json --text "<那句话的几个字>"` 在字幕里找到那句，
+按人声起止修准，剪一份放到片头（`--mode move` 改成搬过去、不重复）；已排好的卡片、推近时间自动顺延。
 
 配方生成的卡片接在手写 `overlays` 后面；`style`、`under_captions` 可写在配方上透传。
 `outro` 应放在片尾：它会把整支片子的最后几秒一起淡出；卡片时长会自动往后多延 1 秒（保持到片尾，不会先于整体淡出消失），并排在字幕下层，最后一句字幕仍可见。

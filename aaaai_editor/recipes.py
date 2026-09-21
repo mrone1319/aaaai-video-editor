@@ -113,6 +113,17 @@ def _speaker(r, beats):
              "anim": "left"}], [], None
 
 
+@recipe("avatar", "头像牌：圆形照片（外圈强调色）＋姓名＋身份，讲到某个人时用；照片放 assets/",
+        ("file", "name"), ("role", "pos", "focus", "photo_size"))
+def _avatar(r, beats):
+    a, b = _t(r)
+    o = {"type": "avatar", "t": [a, b], "file": r["file"], "name": r["name"], "role": r.get("role"), "anim": "left"}
+    for k in ("pos", "focus", "photo_size"):
+        if r.get(k) is not None:
+            o[k] = r[k]
+    return [o], [], None
+
+
 @recipe("outro", "尾板：画面半透明压暗 + 居中标题与按钮式标签，保持到片尾，音画同步淡出（dim 调深浅，1＝全黑）",
         ("text",), ("sub", "logo", "fade", "dim"))
 def _outro(r, beats):

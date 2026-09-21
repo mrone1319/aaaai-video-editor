@@ -100,7 +100,7 @@ BUILTIN: Dict[str, dict] = {
         "value": "#10B981", "state": "#FFC01E",
         "border": {"w": 2, "color": "#6A0A12"},
         "shadow": {"soft": 34, "alpha": 0.55, "dy": 0, "color": "#E60012"},   # 红色光晕
-        "glass": {"sigma": 24}, "bleed_bg": "starfield", "starfield_alpha": 0.72, "lite_types": ["lower_third"], "laser": True, "laser_color": "#FFE3E3",
+        "glass": {"sigma": 24}, "bleed_bg": "starfield", "starfield_alpha": 0.72, "lite_types": ["lower_third", "avatar"], "laser": True, "laser_color": "#FFE3E3",
         "row": "#16161B", "line": "#2A2A31",
         "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono",
         "display_font": {"file": ["~/Library/Fonts/Orbitron-VariableFont_wght.ttf",

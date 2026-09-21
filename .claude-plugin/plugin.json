@@ -1,7 +1,7 @@
 {
   "name": "aaaai-editor",
   "description": "aaaai-editor 影片总监套件（macOS）：口播 AI 剪辑（字幕／双语高亮／卡片／人像穿插／响度 -14 LUFS／封面），并派工品牌动画（motion-graphic-video-editor）与 HeyGen HyperFrames 各种格式，统一收尾验收，交给 social-content-pipeline 打包发布。",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "author": { "name": "MR ONE", "url": "https://www.instagram.com/mrone.ai/" },
   "license": "SEE LICENSE IN LICENSE.md",
   "keywords": ["video", "editing", "captions", "chinese", "motion-graphics", "hyperframes"]

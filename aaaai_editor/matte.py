@@ -143,7 +143,7 @@ def build(source: str, base_graph: str, window: Tuple[float, float], work: str,
     d = os.path.join(work, "mattes")
     os.makedirs(d, exist_ok=True)
     st = os.stat(source)   # 同名换了素材也要重算
-    sig = hashlib.sha1(json.dumps([os.path.abspath(source), st.st_size, int(st.st_mtime), base_graph, a, b,
+    sig = hashlib.sha1(json.dumps([os.path.abspath(source), st.st_size, st.st_mtime_ns, base_graph, a, b,
                                    mw, mh, fps, quality], sort_keys=True).encode()).hexdigest()[:16]
     out = os.path.join(d, "matte_%s.mkv" % sig)
     if os.path.isfile(out):

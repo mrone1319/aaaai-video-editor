@@ -111,9 +111,33 @@ def music_ab(sb_path: str, at: float, dur: float, dbs: List[float]) -> List[str]
     for db in dbs:
         d = os.path.join(sb["_base"], "work", "ab", "db%+d" % int(db))
         os.makedirs(d, exist_ok=True)
-        a_, _rep = loud.master(sb["source"], render._voice_graph(cuts), b - at, d, float(sb["loudness"]),
+        a_, _rep = loud.master(sb["source"], render._voice_graph(cuts, True, render.denoise_filter(sb)), b - at, d,
+                               float(sb["loudness"]),
                                music=dict(sb["music"], db=db))
         mp3 = os.path.join(sb["_base"], "out", "ab_%+ddB.mp3" % int(db))
+        os.makedirs(os.path.dirname(mp3), exist_ok=True)
+        env.run([env.ffmpeg(), "-y", "-v", "error", "-i", a_, "-c:a", "libmp3lame", "-b:a", "192k", mp3])
+        outs.append(mp3)
+    return outs
+
+
+def denoise_ab(sb_path: str, at: float, dur: float, levels: List[str]) -> List[str]:
+    """同一段、不降噪／几种降噪强度各出一支 MP3，让用户听完再定（降噪太重声音会发闷）。"""
+    from . import loud
+    sb = render.load_storyboard(sb_path)
+    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+    b = min(tl.duration, at + dur)
+    cuts = tl.source_ranges(at, b)
+    outs = []
+    for lv in levels:
+        cfg = dict(sb, denoise=(False if lv in ("0", "off") else ("strong" if lv == "strong" else
+                                                                (float(lv) if lv.replace(".", "", 1).isdigit() else True))))
+        d = os.path.join(sb["_base"], "work", "ab", "dn_%s" % lv)
+        os.makedirs(d, exist_ok=True)
+        a_, _rep = loud.master(sb["source"], render._voice_graph(cuts, True, render.denoise_filter(cfg)), b - at, d,
+                               float(sb["loudness"]), music=None)
+        mp3 = os.path.join(sb["_base"], "out", "降噪AB_%s.mp3" % {"0": "原声", "off": "原声", "on": "标准",
+                                                                  "strong": "加强"}.get(lv, lv + "dB"))
         os.makedirs(os.path.dirname(mp3), exist_ok=True)
         env.run([env.ffmpeg(), "-y", "-v", "error", "-i", a_, "-c:a", "libmp3lame", "-b:a", "192k", mp3])
         outs.append(mp3)

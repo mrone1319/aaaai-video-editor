@@ -13,8 +13,10 @@
 | `style` | 覆盖该卡片的风格（任一风格名，`~/.aaaai-editor/bin/aaaai-editor themes` 查看） |
 | `under_captions` | `true` 时排在字幕下层（默认在字幕之上） |
 | `scale` | 字号倍数，默认 1.0 |
+| `float` | `false` 关掉呼吸浮动（默认卡片落定后上下轻浮约 0.4% 画面高、周期 3.2 秒；章节、片尾、1.2 秒以下的卡片不浮） |
+| `sparkle` | `false` 关掉闪光（标题、数据、金句、片尾默认在强调色处闪一两下） |
 
-卡片默认避开画面底部 19%，不压字幕。
+卡片默认避开画面底部 19%，不压字幕。`float`／`sparkle` 也可写在 storyboard 顶层，整支片一起关。
 
 ## 类型
 
@@ -25,6 +27,7 @@
 {"type":"bullets","t":[9,14],"items":["转录成文字","剪掉停顿","加字幕和配乐"], "stagger":0.16}
 {"type":"quote",  "t":[2,6], "text":"不要用随机抖动假装人味", "by":"剪辑笔记"}
 {"type":"lower_third","t":[1,4],"name":"Alex Chen","role":"内容创作者"}
+{"type":"avatar", "t":[1,4], "file":"assets/me.jpg", "name":"Alex Chen", "role":"内容创作者", "focus":[0.5,0.4]}
 {"type":"stamp",  "t":[0,3], "text":"NEW"}
 {"type":"text",   "t":[1,3], "text":"没有底板的纯文字", "color":"#FFFFFF"}
 {"type":"image",  "t":[2,4], "file":"logo.png", "width":0.22, "pos":"top_right", "disc":true}  // disc：黑色 logo 垫白底圆片
@@ -137,3 +140,5 @@ B-roll 时段内不要用 `behind_subject`（人物会被重贴到 B-roll 上面
 - otg 保留自己的特色：红框底板、星空章节页、星空接管背景，但卡片默认都放在上方。
 - 想要旧的整块底板：卡片里写 `"lite": false`；风格 json 里写 `"lite": 0` 则整套风格都不用（`otg` 保持自己的红色底板）。
 - 字幕默认位置见 `docs/STYLE.md`（`captions.margin_v`、`captions.size_scale`）。
+- 字幕避脸（默认开）：人坐得低、脸落到字幕位置时，那几句移到下巴下面；关掉写 `"captions": {"avoid_face": false}`。
+- 印章（`stamp`）与标注（`callout`）一律画在其他卡片上面，不会被标题的遮罩盖住。

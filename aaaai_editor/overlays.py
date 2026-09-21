@@ -28,6 +28,14 @@ def ease(t0: float, d: float) -> str:
     return "(%s)*(%s)*(3-2*(%s))" % (p, p, p)
 
 
+def float_expr(fl: Optional[dict]) -> str:
+    """悬浮呼吸的 y 偏移表达式（与 richtext.float_y 同一条曲线，文字和底板一起动）。"""
+    if not fl:
+        return ""
+    return ("+(%.2f)*sin(2*PI*(t-%.3f)/%.3f)*min(1\\,max(0\\,(t-%.3f)/0.6))"
+            % (fl["a"], fl["s"], fl["p"], fl["s"]))
+
+
 def alpha_expr(t0: float, t1: float, di: float, do: float) -> str:
     return ("min(1\\,max(0\\,(t-%.3f)/%.3f))*min(1\\,max(0\\,(%.3f-t)/%.3f))"
             % (t0, max(di, 0.01), t1, max(do, 0.01)))
@@ -60,8 +68,10 @@ def _drawtext(it: dict, work: str, fps: float) -> List[str]:
     if it.get("dx"):
         x = "%s+(%d)*(1-%s)" % (x, it["dx"], s)
     y = "%d" % it["y"]
+    y_fl = float_expr(it.get("float"))
     if it.get("dy"):
         y = "%s+(%d)*(1-%s)" % (y, it["dy"], s)
+    y += y_fl
     common = ("fontfile=%s:fontsize=%d:fontcolor=%s:x=%s:y=%s:alpha='%s':expansion=none"
               % (q(font), it["size"], col(it["color"]), x, y, alpha_expr(t0, t1, di, do)))
     if it.get("stroke"):
@@ -86,6 +96,24 @@ def _rich(it: dict, th: dict, fps: float) -> List[str]:
             out += richtext.dialogues(it, th, text=txt, a0=a, a1=b, fade_out=(k == len(steps) - 1))
         return out
     return richtext.dialogues(it, th, runs=it.get("runs"))
+
+
+def circle_photo(src: str, size: int, focus: float, cache_dir: str) -> str:
+    """照片裁成正方形（按 focus 决定上下取哪一段，人脸通常在上方）→ 圆形透明边缘（抗锯齿）。"""
+    st = os.stat(src)
+    key = hashlib.sha1(repr((os.path.abspath(src), st.st_size, st.st_mtime_ns, size, round(focus, 3), 1)).encode()).hexdigest()[:16]
+    os.makedirs(cache_dir, exist_ok=True)
+    out = os.path.join(cache_dir, "avatar_%s.png" % key)
+    if os.path.isfile(out):
+        return out
+    from . import env
+    r = size / 2.0
+    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", src, "-vf",
+             "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d:(iw-%d)/2:(ih-%d)*%.3f,format=rgba,"
+             "geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='255*clip((%.2f-hypot(X-%.2f,Y-%.2f))/1.5,0,1)'"
+             % (size, size, size, size, size, size, focus, r - 0.5, r - 0.5, r - 0.5),
+             "-frames:v", "1", out])
+    return out
 
 
 def zoom_filter(zooms: List[dict], W: int, H: int, fps: float) -> str:
@@ -127,7 +155,8 @@ def _merge(rs: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
 def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
           source: Optional[str] = None, base_graph: Optional[str] = None):
     """返回 (输入参数, 组装函数)。组装函数接 base 标签、字幕滤镜、推近滤镜，产出滤镜尾段。"""
-    ovs = sb.get("overlays") or []
+    # 印章、标注是小徽章：画在其他卡片上面，不被标题的遮罩盖住（其余保持原顺序）
+    ovs = sorted(sb.get("overlays") or [], key=lambda o: o.get("type") in ("stamp", "callout"))
     mc = dict({"quality": "balanced", "scale": 0.5, "feather": 2.0}, **(sb.get("matte") or {}))
     inputs: List[List[str]] = []
     prepared: List[dict] = []
@@ -280,6 +309,10 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             if th.get("display_font"):
                 fonts.display(th)          # 先把展示字体固化好，libass 才找得到
             L = cards.layout(ov, th, W, H, fps)
+            fl = L.get("float") if sb.get("float", True) else None
+            fe = float_expr(fl)
+            for it_ in L["items"]:
+                it_["float"] = fl
             rec["th"], rec["engine"] = th, th.get("text_engine", "drawtext")
             loose = list(L.get("icons") or [])
             if L["plate"]:
@@ -332,6 +365,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                         x = "%s+(%d)*(1-%s)" % (x, p["dx"], s_)
                     if p["dy"]:
                         y = "%s+(%d)*(1-%s)" % (y, p["dy"], s_)
+                    y += fe
                     rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": t0, "t1": t1,
                                           "scale": None, "di": p["di"], "do": p["do"], "fade": True})
                     idx += 1
@@ -345,6 +379,41 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                                               "t1": min(t1, st + nfr / float(fps)), "scale": None,
                                               "di": 0.0, "do": 0.0, "fade": False})
                         idx += 1
+            ph = L.get("photo")
+            if ph:   # 头像牌：强调色圆（外圈）＋圆形照片，跟卡片同时进场
+                f = os.path.normpath(os.path.join(sb.get("_base", ""), ph["file"]))
+                if not os.path.isfile(f):
+                    raise FileNotFoundError("头像牌找不到照片：%s" % f)
+                ring = max(3, round(ph["size"] * 0.035))
+                rp, rm = draw.make_plate({"w": ph["size"] + 2 * ring, "h": ph["size"] + 2 * ring,
+                                          "radius": ph["size"] / 2.0 + ring, "fill": ph["ring"], "alpha": 1.0,
+                                          "border": {"w": 0},
+                                          "shadow": {"soft": 16, "alpha": 0.40, "dy": 5, "color": "#000000"}},
+                                         os.path.join(work, "plates"))
+                cp = circle_photo(f, ph["size"], ph["focus"], os.path.join(work, "plates"))
+                for png, off in ((rp, ring + rm), (cp, 0)):
+                    inputs.append(["-loop", "1", "-t", "%.3f" % dur, "-i", os.path.relpath(png, work)])
+                    s_ = ease(t0, ph["di"])
+                    x = "%d" % (ph["x"] - off)
+                    y = "%d" % (ph["y"] - off)
+                    if ph["dx"]:
+                        x = "%s+(%d)*(1-%s)" % (x, ph["dx"], s_)
+                    if ph["dy"]:
+                        y = "%s+(%d)*(1-%s)" % (y, ph["dy"], s_)
+                    y += fe
+                    rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": t0, "t1": t1, "scale": None,
+                                          "di": ph["di"], "do": ph["do"], "fade": True})
+                    idx += 1
+            spk = L.get("sparkle") if sb.get("sparkle", True) else None
+            for sp in (spk or {}).get("spots", []):   # 闪光：四角星序列帧，一次性
+                pat, nfr, cv = fx.sparkle(sp["size"], fps, spk["color"])
+                if sp["t"] + nfr / float(fps) > t1:
+                    continue
+                inputs.append(["-framerate", str(fps), "-i", pat])
+                rec["layers"].append({"idx": idx, "x": "%d" % int(sp["cx"] - cv / 2), "y": "%d" % int(sp["cy"] - cv / 2),
+                                      "t0": sp["t"], "t1": sp["t"] + nfr / float(fps), "scale": None,
+                                      "di": 0.0, "do": 0.0, "fade": False})
+                idx += 1
             for ic in loose:  # 错峰出现的图标：单独一层，跟着自己那一行的时间进场
                 png = icons.make_png(ic["name"], ic["size"], ic["color"], os.path.join(work, "plates"),
                                      badge=ic.get("badge"))
@@ -358,6 +427,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     x = "%s+(%d)*(1-%s)" % (x, ic["dx"], s_)
                 if ic["dy"]:
                     y = "%s+(%d)*(1-%s)" % (y, ic["dy"], s_)
+                y += fe
                 rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": it0, "t1": t1,
                                       "scale": None, "di": ic["di"], "do": ic["do"], "fade": True})
                 idx += 1

@@ -143,7 +143,8 @@ def _icon_blk(ov, th, W, scale=0.085) -> Optional[dict]:
             "gap": 0, "align": ov.get("align", "center"), "delay": 0.0}
 
 
-LITE_TYPES = ("title", "quote", "lower_third", "stat", "bullets", "rows", "compare", "icons")
+LITE_TYPES = ("title", "quote", "lower_third", "stat", "bullets", "rows", "compare", "icons", "avatar")
+LOWER_TYPES = ("lower_third", "avatar")   # 放在画面下沿的卡片
 
 
 def _lighten(c: str, k: float = 0.5) -> str:
@@ -295,6 +296,17 @@ def blocks_quote(ov, th, W) -> Tuple[List[dict], str]:
     return b, "full"
 
 
+def blocks_avatar(ov, th, W) -> Tuple[List[dict], str]:
+    """头像牌：左边圆形照片（外圈强调色），右边姓名＋身份。照片由 layout 留位置、overlays 贴上。"""
+    lite = is_lite(ov, th)
+    ind = round(W * float(ov.get("photo_size", 0.15))) + round(W * 0.030)
+    b = [_blk(ov.get("name", ""), round(W * 0.050), th["text"], align="left", role="name", indent=ind)]
+    if ov.get("role"):
+        b.append(_blk(ov["role"], round(W * 0.032), th["accent"] if lite else th["muted"], align="left",
+                      gap=round(W * 0.010), role="position", indent=ind))
+    return b, "fit"
+
+
 def blocks_lower_third(ov, th, W) -> Tuple[List[dict], str]:
     lite = is_lite(ov, th)
     b = [_blk(ov.get("name", ""), round(W * (0.048 if lite else 0.042)), th["text"], align="left", role="name")]
@@ -383,7 +395,7 @@ def blocks_compare(ov, th, W) -> Tuple[List[dict], str]:
 
 
 BUILDERS = {"compare": blocks_compare, "title": blocks_title, "stat": blocks_stat, "bullets": blocks_bullets,
-            "quote": blocks_quote, "lower_third": blocks_lower_third, "stamp": blocks_stamp,
+            "quote": blocks_quote, "lower_third": blocks_lower_third, "avatar": blocks_avatar, "stamp": blocks_stamp,
             "text": blocks_text, "icons": blocks_icons, "rows": blocks_rows}
 
 ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
@@ -391,7 +403,7 @@ ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
            "bottom_left": (0.0, 1.0), "bottom_right": (1.0, 1.0),
            "left": (0.0, 0.5), "right": (1.0, 0.5)}
 # 口播画面：卡片默认放上方，避开脸（人通常在画面中间）
-DEFAULT_POS = {"lower_third": "bottom_left", "stamp": "top_left", "title": "top", "quote": "top", "stat": "top", "bullets": "top",
+DEFAULT_POS = {"avatar": "bottom_left", "lower_third": "bottom_left", "stamp": "top_left", "title": "top", "quote": "top", "stat": "top", "bullets": "top",
                "rows": "top", "compare": "top", "icons": "top"}
 
 
@@ -426,7 +438,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         bar_h = max(4, round(U * 0.0085))
         blocks[0]["gap"] = blocks[0].get("gap", 0) + bar_h + round(U * 0.036)
     if lite:
-        if typ == "lower_third":   # 人名条：左边一条竖线，字在线右侧
+        if typ in LOWER_TYPES:   # 人名条／头像牌：字在竖线或照片右侧
             pad = round(U * 0.030)
         else:                      # 标题／金句：字左贴安全边，上方一条强调色短横线
             pad = 0
@@ -442,7 +454,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         if b["kind"] != "text":
             lines_of.append([])
             continue
-        if b.get("lead_icon"):
+        if b.get("indent"):
+            b["_lead_w"] = float(b["indent"])
+        elif b.get("lead_icon"):
             b["_lead_w"] = b["size"] * 1.40
         elif b["lead"]:
             b["_lead_w"] = est_w(b["lead"] + "  ", b["size"] * 0.62, True)
@@ -522,7 +536,13 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             return sum(b["_row_h"]) + b["_rgap"] * (len(b["_rows"]) - 1)
         return len(ls) * b["size"] * LH
 
+    photo_sz = round(U * float(ov.get("photo_size", 0.15))) if typ == "avatar" else 0
+    if photo_sz:   # 头像牌：文字在照片旁边垂直置中
+        text_h = sum(b["gap"] + blk_h(b, ls) for b, ls in zip(blocks, lines_of))
+        blocks[0]["gap"] = blocks[0].get("gap", 0) + max(0.0, (photo_sz - text_h) / 2.0)
     body_h = sum(b["gap"] + blk_h(b, ls) for b, ls in zip(blocks, lines_of))
+    if photo_sz:
+        body_h = max(body_h, photo_sz)
     last = blocks[-1]
     body_h += (last["size"] * 0.16 if last["kind"] == "text"
                else last.get("_lsz", 0) * 0.16 if last["kind"] == "grid" else 0)
@@ -539,7 +559,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         cur = (H - body_h) / 2.0
     else:
         plate_h = body_h + 2 * pad
-        dpos = ({t: "top_left" for t in LITE_TYPES if t != "lower_third"} if lite else DEFAULT_POS)
+        dpos = ({t: "top_left" for t in LITE_TYPES if t not in LOWER_TYPES} if lite else DEFAULT_POS)
         if lite and ov.get("chapter") is not None:
             dpos = {"title": "left"}   # 章节：画面中段偏左，像一页书的章节页
         ax, ay = ANCHORS.get(ov.get("pos") or dpos.get(typ, DEFAULT_POS.get(typ, "center")), (0.5, 0.5))
@@ -562,20 +582,20 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         chap = ov.get("chapter") is not None
         if chap:
             band = H
-        elif typ == "lower_third":
+        elif typ in LOWER_TYPES:
             band = int(round(H * 0.40))
         else:   # 遮罩深的部分盖住内容，再往下渐渐透明（清单长，遮罩就长）
             content_end = py + plate_h
             band = int(round(min(H * 0.80, max(H * 0.38, content_end + H * 0.17))))
-        by0 = H - band if (typ == "lower_third" and not chap) else 0
+        by0 = H - band if (typ in LOWER_TYPES and not chap) else 0
         plate = {"w": W, "h": band, "radius": 0, "fill": None, "alpha": 1.0, "border": {"w": 0}, "shadow": {},
                  "scrim": {"color": sc_col, "power": 1.3,
                            # 长清单会盖到脸：干脆把遮罩压深，变成一个明确的「清单时刻」，不要半透明地糊在脸上
                            "alpha": 0.80 if chap else (float(th.get("scrim_alpha", 0.78))
-                                                      if (typ == "lower_third" or py + plate_h < H * 0.40) else 0.90),
-                           "hold": 1.0 if chap else (0.72 if typ == "lower_third"
+                                                      if (typ in LOWER_TYPES or py + plate_h < H * 0.40) else 0.90),
+                           "hold": 1.0 if chap else (0.72 if typ in LOWER_TYPES
                                                      else min(0.72, max(0.45, (py + plate_h) / band))),
-                           "dir": "up" if typ == "lower_third" else "down"},
+                           "dir": "up" if typ in LOWER_TYPES else "down"},
                  "x": 0, "y": by0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
     elif mode != "none":
         if mode == "pill":
@@ -705,7 +725,40 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                               "y": int(round(y + b["size"] * 0.30)), "text": b["lead"],
                               "stroke": False, "role": "lead"})
             cur += b["size"] * LH
-    return {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "t": (t0, t1)}
+    L = {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "t": (t0, t1)}
+    # 闪光：主卡（标题、数据、金句、片尾）进场时，主文字旁边闪出几颗四角星
+    if (typ in ("title", "stat", "quote") or bleed_lite) and ov.get("chapter") is None \
+            and ov.get("sparkle", th.get("sparkle", True)):
+        main = max((it for it in items if it.get("text") or it.get("counter")), key=lambda it: it["size"], default=None)
+        if main:
+            sz = float(main["size"])
+            if main.get("counter"):
+                c_ = main["counter"]
+                txt = c_["prefix"] + fmt_num(max(abs(c_["to"]), abs(c_["from"])), c_["style"], c_["digits"]) + c_["suffix"]
+            else:
+                txt = main["text"]
+            w_ = est_w(txt.replace("**", ""), sz, main.get("mono", False))
+            x0 = main["x"] if main.get("x") is not None else main["cx"] - w_ / 2.0
+            x1, y_ = x0 + w_, float(main["y"])
+            st_ = t0 + di * 0.7
+            spots = [(x1 + 0.12 * sz, y_ - 0.25 * sz, 0.95 * sz, 0.0), (x0 + w_ * 0.60, y_ - 0.50 * sz, 0.55 * sz, 0.14),
+                     (x1 + 0.50 * sz, y_ + 0.62 * sz, 0.45 * sz, 0.26)]
+            sp = []
+            for cx_, cy_, s_, d_ in spots:
+                s_ = max(24.0, min(s_, U * 0.16))
+                sp.append({"cx": min(W - s_ * 0.6, max(s_ * 0.6, cx_)), "cy": min(H - s_ * 0.6, max(s_ * 0.6, cy_)),
+                           "size": int(s_), "t": round(st_ + d_, 3)})
+            if t1 - t0 > 3.2:   # 停留比较久：过一会儿大的那颗再闪一次
+                sp.append(dict(sp[0], t=round(st_ + 1.9, 3)))
+            L["sparkle"] = {"spots": sp, "color": th["accent"]}
+    # 悬浮呼吸：进场落定后整张卡轻轻上下浮动（整屏章节／片尾不浮）
+    if ov.get("float", th.get("float", True)) and mode != "bleed" and ov.get("chapter") is None and t1 - t0 > 1.2:
+        L["float"] = {"a": max(2.0, round(U * 0.0036, 1)), "p": 3.2, "s": round(t0 + di + 0.05, 3)}
+    if photo_sz:
+        L["photo"] = {"file": ov.get("file", ""), "x": round(cbox_x), "y": round(py + pad + (body_h - photo_sz) / 2.0),
+                      "size": photo_sz, "ring": th["accent"], "focus": float(ov.get("focus", 0.35)),
+                      "t0": t0, "t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0}
+    return L
 
 
 def counter_steps(c: dict, t0: float, t1: float, fps: float) -> List[Tuple[float, float, str]]:

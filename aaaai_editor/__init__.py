@@ -2,4 +2,4 @@
 
 Copyright (c) 2026 MR ONE (@mrone.ai). All rights reserved. 见 LICENSE.md。
 """
-__version__ = "1.0.10"
+__version__ = "1.0.11"

@@ -293,7 +293,8 @@ def _line(t: str, extra: Optional[dict], st: dict, h: int, words: Sequence[str],
 
 def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean",
               highlight: Sequence[str] = (), margin_v: Optional[float] = None,
-              size_scale: Optional[float] = None, hl_color: Optional[str] = None) -> None:
+              size_scale: Optional[float] = None, hl_color: Optional[str] = None,
+              faces: Optional[list] = None, t_off: float = 0.0) -> None:
     """margin_v：字幕底边离画面底部的比例（storyboard 的 captions.margin_v 可覆盖；0.30≈画面 70% 处）；
     size_scale：字号倍率（captions.size_scale）。"""
     st = dict(STYLES[style])
@@ -314,8 +315,13 @@ def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean"
     ) % (w, h, font, size, st["primary"], st["outline"], st["back"], st["bold"], st.get("border_style", 1),
          max(1, int(round(h * st["outline_w"]))), st["shadow"], int(w * 0.06), int(w * 0.06),
          int(h * st["margin_v"]))
-    lines = ["Dialogue: 0,%s,%s,Cap,,0,0,0,,%s" % (_ts(e[0]), _ts(e[1]),
-                                                   _line(e[2], e[3] if len(e) > 3 else None, st, h, highlight, w))
-             for e in events]
+    mvs = [None] * len(events)
+    if faces:   # 字幕避脸：脸落在字幕位置的那几句，改放到下巴下面
+        from . import faces as faces_mod
+        mvs = faces_mod.margins([(e[0] + t_off, e[1] + t_off, e[2], e[3] if len(e) > 3 else None) for e in events],
+                                faces, h, st, st["margin_v"])
+    lines = ["Dialogue: 0,%s,%s,Cap,,0,0,%d,,%s" % (_ts(e[0]), _ts(e[1]), mv or 0,
+                                                    _line(e[2], e[3] if len(e) > 3 else None, st, h, highlight, w))
+             for e, mv in zip(events, mvs)]
     with open(path, "w", encoding="utf-8") as f:
         f.write(head + "\n".join(lines) + "\n")

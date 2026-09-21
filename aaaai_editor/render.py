@@ -104,14 +104,37 @@ def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
     return ";".join(parts)
 
 
-def _voice_graph(cuts, has_audio: bool = True) -> str:
+def denoise_filter(sb: dict) -> str:
+    """降噪滤镜链（storyboard 写 "denoise": true／"strong"／数字 dB）。
+    先切掉 70Hz 以下的低频嗡声，再用 FFT 降噪：噪声底按这支素材实测的底噪设定，并持续追踪噪声变化。"""
+    d = sb.get("denoise")
+    if not d:
+        return ""
+    strong = d == "strong"
+    nr = 20.0 if strong else (float(d) if isinstance(d, (int, float)) and not isinstance(d, bool) else 12.0)
+    try:
+        from . import audio
+        floor = audio.envelope(sb["source"]).floor
+    except env.ToolError:
+        floor = -50.0
+    # afftdn 的噪声门槛要比实测底噪（10ms RMS 的第 10 百分位）高 15～20dB 才抓得到噪声；
+    # 实测：底噪 -47dB 的风扇声，门槛 -30、降 12dB → 底噪降到 -58dB，人声响度不变
+    nf = max(-80.0, min(-20.0, floor + (20.0 if strong else 15.0)))
+    return "highpass=f=70,afftdn=nr=%.1f:nf=%.1f" % (max(1.0, min(40.0, nr)), nf)
+
+
+def _voice_graph(cuts, has_audio: bool = True, denoise: str = "") -> str:
     if not has_audio:   # 素材没有音轨（屏幕录制、动画片）：补一条等长静音，后面照常混配乐
         total = sum(b - a for a, b in cuts)
         return "anullsrc=r=48000:cl=stereo,atrim=duration=%.3f[voice]" % total
     parts = []
+    src = "[0:a]"
+    if denoise:   # 整条音轨先降噪再切段：降噪器要连续的声音才估得准噪声
+        parts.append("[0:a]%s,asplit=%d%s" % (denoise, len(cuts), "".join("[dn%d]" % i for i in range(len(cuts)))))
     for i, (a, b) in enumerate(cuts):
         d = b - a
-        parts.append("[0:a]atrim=start=%.3f:end=%.3f,asetpts=PTS-STARTPTS,afade=t=in:d=%s,afade=t=out:st=%.3f:d=%s[a%d]"
+        src = ("[dn%d]" % i) if denoise else "[0:a]"
+        parts.append(src + "atrim=start=%.3f:end=%.3f,asetpts=PTS-STARTPTS,afade=t=in:d=%s,afade=t=out:st=%.3f:d=%s[a%d]"
                      % (a, b, FADE, max(0.0, d - FADE), FADE, i))
     n = len(cuts)
     parts.append("%sconcat=n=%d:v=0:a=1[voice]" % ("".join("[a%d]" % i for i in range(n)), n))
@@ -153,7 +176,7 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
         captions.write_ass(ev, os.path.join(work, ass_name), w, h,
                            sb["captions"].get("font") or env.find_font(), sb["captions"]["style"],
                            sb["captions"].get("highlight") or (), sb["captions"].get("margin_v"),
-                           sb["captions"].get("size_scale"), _hl_color(sb))
+                           sb["captions"].get("size_scale"), _hl_color(sb), sb.get("_faces"), t0)
     zooms = sb.get("zooms") or []
     zoom_str = overlays.zoom_filter(zooms, w, h, fps) if zooms else None
     # 人像遮罩按「不带 format 的剪辑图」生成，成片改画质不会让遮罩缓存失效
@@ -213,6 +236,16 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
     # ---- 字幕事件（按整片时间轴算一次；分段时再平移）----
     cap_events = None
     cap = sb["captions"]
+    sb["_faces"] = None
+    if cap.get("enabled") and cap.get("avoid_face", True):   # 字幕避脸（需要人像分割；没有就跳过）
+        try:
+            from . import faces
+            sb["_faces"] = faces.track(sb, tl, int(out["width"]), int(out["height"]))
+            moved = sum(1 for _t, f in sb["_faces"] if f and f[1] > 0.62)
+            if moved:
+                print("🙂 字幕避脸：有 %d 个时间点脸的位置偏低，那几句字幕会移到下巴下面" % moved)
+        except (env.ToolError, OSError) as e:
+            print("（字幕避脸跳过：%s）" % str(e).splitlines()[0][:80])
     if cap.get("enabled"):
         tr_path = os.path.join(sb["_base"], cap.get("transcript", "work/transcript.json"))
         if not os.path.isfile(tr_path):
@@ -275,7 +308,10 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
     fade = float((sb.get("ending") or {}).get("fade", 0) or 0)
     if not info.get("has_audio"):
         print("🔇 素材没有音轨：用静音垫底%s" % ("，照常混配乐" if mu else ""))
-    audio, rep = loud.master(sb["source"], _voice_graph(cuts, info.get("has_audio", True)), tl.duration, work, target,
+    dn = denoise_filter(sb) if info.get("has_audio", True) else ""
+    if dn:
+        print("🎙 降噪：%s" % dn.split(",")[-1])
+    audio, rep = loud.master(sb["source"], _voice_graph(cuts, info.get("has_audio", True), dn), tl.duration, work, target,
                              music=mu, fade=fade)
     print("🔊 响度 %.1f LUFS・真峰值 %.1f dBTP（人声 %+.1fdB%s，迭代 %d 次）"
           % (rep["I"], rep["TP"], rep["voice_gain"],
@@ -320,7 +356,8 @@ def preview_subs(sb_path: str, t_from: Optional[float] = None, t_to: Optional[fl
     info = env.probe(sb["source"])
     g = _video_base(cuts, w, h, fps, False, None, sb.get("framing"), bool(info.get("hdr")))
     g += ";[base]%sformat=yuv420p[v]" % (("subtitles=filename=%s," % ass) if ass else "")
-    g += ";" + _voice_graph(cuts, info.get("has_audio", True)) + ";[voice]aformat=channel_layouts=stereo[a]"
+    g += ";" + _voice_graph(cuts, info.get("has_audio", True), denoise_filter(sb) if info.get("has_audio", True) else "") \
+        + ";[voice]aformat=channel_layouts=stereo[a]"
     out = os.path.splitext(sb["output"]["path"])[0] + "_subs.mp4"
     os.makedirs(os.path.dirname(out), exist_ok=True)
     env.run([env.ffmpeg(), "-y", "-v", "error", "-i", sb["source"], "-filter_complex", g, "-map", "[v]",

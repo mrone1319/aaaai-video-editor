@@ -164,22 +164,35 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
     else:
         body = _esc(raw)
 
+    fl = it.get("float")
+
+    def float_y(t):   # 与 overlays.float_expr 同一条曲线
+        if not fl or t <= fl["s"]:
+            return 0.0
+        import math
+        return fl["a"] * math.sin(2 * math.pi * (t - fl["s"]) / fl["p"]) * min(1.0, (t - fl["s"]) / 0.6)
+
     def pos_at(t):
         k = 1.0 - _smooth((t - t_in) / di)
-        return x + dx * k, y + dy * k
+        return x + dx * k, y + dy * k + float_y(t)
 
     def alpha_at(t):
         return 1.0 - min(1.0, max(0.0, (t - t_in) / di))   # 0＝不透明
 
     # 时间断点：入场 4 段 + 静止段
     cuts = [t_in + di * j / 4.0 for j in range(5)]
+    if fl:   # 浮动：落定后每 0.2 秒一段 \move，折线逼近正弦
+        tt = max(fl["s"], a0)
+        while tt < a1:
+            cuts.append(tt)
+            tt += 0.2
     pts = sorted({a0, a1} | {c for c in cuts if a0 < c < a1})
     out = []
     for u, v in zip(pts, pts[1:]):
         if v - u < 0.005:
             continue
         tags = list(base)
-        moving = u < t_in + di - 1e-6 and (dx or dy)
+        moving = (u < t_in + di - 1e-6 and (dx or dy)) or bool(fl and v > fl["s"])
         x0, y0 = pos_at(u)
         if moving:
             x1, y1 = pos_at(v)

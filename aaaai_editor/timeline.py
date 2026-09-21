@@ -14,7 +14,8 @@ class Timeline:
     """
 
     def __init__(self, cuts: List[Range], fps: float = 0.0):
-        self.cuts = sorted((float(a), float(b)) for a, b in cuts if b > a)
+        # 保留 storyboard 写的顺序（不排序）：可以把后面的一句挪到开头当 hook，或重复一次当预告
+        self.cuts = [(float(a), float(b)) for a, b in cuts if b > a]
         self.fps = float(fps or 0)
         self.offsets: List[float] = []
         self.lengths: List[float] = []

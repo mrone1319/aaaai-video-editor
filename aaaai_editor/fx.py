@@ -112,3 +112,48 @@ def sweep(w: int, h: int, radius: float, fps: float, color: str = "#FFFFFF", pea
                 buf[(y * w + a) * 4:(y * w + z) * 4] = prof[(a - x0) * 4:(z - x0) * 4]
         write_rgba(pat % f, w, h, buf)
     return pat, n
+
+
+def sparkle(size: int, fps: float, color: str = "#FFFFFF", dur: float = 0.9) -> Tuple[str, int, int]:
+    """闪光：一颗四角星，放大→转一点→缩小淡出。白色星芯、外缘带一点强调色。
+    返回 (帧序列模板, 帧数, 画布边长)。"""
+    c = max(24, int(size * 1.6)) & ~1
+    key = hashlib.sha1(repr((c, fps, color, dur, 1)).encode()).hexdigest()[:12]
+    d = os.path.join(FX, "sparkle_%s" % key)
+    n = max(6, int(round(dur * fps)))
+    pat = os.path.join(d, "k_%03d.png")
+    if os.path.isfile(pat % (n - 1)):
+        return pat, n, c
+    os.makedirs(d, exist_ok=True)
+    ar, ag, ab = hex_rgb(color)
+    h = c / 2.0
+    for f in range(n):
+        p = f / float(n - 1)
+        s = math.sin(math.pi * p) ** 0.8            # 大小：0 → 1 → 0
+        al = math.sin(math.pi * p) ** 0.6           # 透明度
+        rot = math.radians(10 + 35 * p)
+        R = h * 0.92 * max(s, 0.001)
+        cr, sr = math.cos(rot), math.sin(rot)
+        buf = bytearray(c * c * 4)
+        for y in range(c):
+            dy_ = y + 0.5 - h
+            for x in range(c):
+                dx_ = x + 0.5 - h
+                u, v = (dx_ * cr + dy_ * sr) / R, (-dx_ * sr + dy_ * cr) / R
+                au, av = abs(u), abs(v)
+                if au > 1.4 or av > 1.4:
+                    continue
+                star = max(0.0, 1.0 - (math.sqrt(au) + math.sqrt(av)) ** 2)   # 四角星（星形线）
+                r2 = u * u + v * v
+                glow = 0.45 * math.exp(-r2 / 0.06)
+                a = min(1.0, star * 1.6 + glow) * al
+                if a <= 0.004:
+                    continue
+                t = min(1.0, math.sqrt(r2) * 1.4)          # 中心白、外缘偏强调色
+                j = (y * c + x) * 4
+                buf[j] = int(255 + (ar - 255) * t)
+                buf[j + 1] = int(255 + (ag - 255) * t)
+                buf[j + 2] = int(255 + (ab - 255) * t)
+                buf[j + 3] = int(a * 255)
+        write_rgba(pat % f, c, c, buf)
+    return pat, n, c

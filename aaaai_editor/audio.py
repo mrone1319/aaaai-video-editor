@@ -115,7 +115,7 @@ def _cache_file(path: str) -> Optional[str]:
         st = os.stat(path)
     except OSError:
         return None
-    sig = hashlib.sha1(json.dumps([os.path.abspath(path), st.st_size, int(st.st_mtime), HOP]).encode()).hexdigest()[:16]
+    sig = hashlib.sha1(json.dumps([os.path.abspath(path), st.st_size, st.st_mtime_ns, HOP]).encode()).hexdigest()[:16]
     return os.path.join(os.path.expanduser("~/.cache/aaaai-editor/envelope"), sig + ".json")
 
 

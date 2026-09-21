@@ -77,6 +77,9 @@ aaaai-editor align storyboard.json                   # 字幕逐句贴到真实�
 aaaai-editor preview storyboard.json --subs          # 只烧字幕的一分钟预览（可加 --from/--to）
 aaaai-editor bgm                                     # 常备配乐（7 首原创，music.file 写 bgm:<曲名>）
 aaaai-editor music-ab storyboard.json --at 10        # 三种配乐音量的 A/B 样片
+aaaai-editor denoise-ab storyboard.json --at 10      # 降噪 A/B（原声／标准／加强），选定写 "denoise"
+aaaai-editor tidy storyboard.json [--apply all|1,3]  # 找口头禅（嗯／呃）与讲到一半重讲；确认后才删
+aaaai-editor hook storyboard.json --text "…"         # 把片中一句剪到开头当预告（--mode move 为搬移）
 aaaai-editor framing storyboard.json --at 3          # 推近倍率对比图（选定写 framing）
 aaaai-editor cover storyboard.json --at 5 --text "别怕 AI"   # 封面：竖版 1080×1920＋1080×1350；横版 1920×1080
 aaaai-editor phone storyboard.json                   # 手机预览版（≤30MB）
