@@ -1,6 +1,6 @@
 ---
 name: motion-graphic-video-editor
-description: "代码化动效品牌片制作——用无头 Chromium（Playwright）+ Python（numpy/scipy/Pillow）+ ffmpeg 产出广播级 MP4（60fps、原创合成配乐、多画幅），不用 AE、不用模板、不用版权音乐。适用：宣传片、预告片、片头、倒计时、发布片、Logo 动画／Logo sting、品牌焕新、品牌片、动效、文字动画、数据动画／数字揭示、活动公告；用户丢来参考片要求仿其剪辑风格；品牌书 PDF 或 Logo 连同动画需求一起到达时。边界：讲解片／网站转影片／幻灯片／产品发布讲解 → HyperFrames；真人口播剪辑 → aaaai-video-editor。动手前必须先走 Intake（问需求、收素材、定方向）。Code-based motion graphics video editor: promo, teaser, countdown, launch film, logo sting, rebrand reveal, stat/data reveal, event announcement, title sequence, kinetic typography or animated logo delivered as a real video file; also when a reference clip is handed over to copy its editing style, or a brand book / logo arrives with an animation request. Explainers, website-to-video, slides and product-launch walkthroughs go to HyperFrames; talking-head footage edits go to aaaai-video-editor. ALWAYS run Intake before building."
+description: "代码化动效品牌片制作——用无头 Chromium（Playwright）+ Python（numpy/scipy/Pillow）+ ffmpeg 产出广播级 MP4（60fps、原创合成配乐、多画幅），不用 AE、不用模板、不用版权音乐。适用：宣传片、预告片、片头、倒计时、发布片、Logo 动画／Logo sting、品牌焕新、品牌片、动效、文字动画、数据动画／数字揭示、活动公告；用户丢来参考片要求仿其剪辑风格；品牌书 PDF 或 Logo 连同动画需求一起到达时。边界：讲解片／网站转影片／幻灯片／产品发布讲解 → HyperFrames；真人口播剪辑 → aaaai-editor。动手前必须先走 Intake（问需求、收素材、定方向）。Code-based motion graphics video editor: promo, teaser, countdown, launch film, logo sting, rebrand reveal, stat/data reveal, event announcement, title sequence, kinetic typography or animated logo delivered as a real video file; also when a reference clip is handed over to copy its editing style, or a brand book / logo arrives with an animation request. Explainers, website-to-video, slides and product-launch walkthroughs go to HyperFrames; talking-head footage edits go to aaaai-editor. ALWAYS run Intake before building."
 ---
 
 # 通用型 Motion Graphic Video Editor — 整合技能手册
@@ -187,7 +187,7 @@ SK=<本 SKILL.md 所在目录>/scripts     # 脚本在本 SKILL.md 同目录的 
 - **叠加层顺序**：背景光晕 → 大字 → 产品层 → 文案/尾板 → 暗角 → 扫描线 multiply → 动态颗粒 → imp 闪光 → 收黑层。
 - **模式 B**：转场只用 blur + scale + opacity、色相全程漂移、永不静止。
 - **性能**：成本在栅格化不在 JS——先杀 blur 层；大层辉光预渲染 PNG；画外元素 `display:none`。
-- **Alpha 图层**：`--alpha` 渲染时场景读 `alpha=1`，跳过所有背景/氛围/收黑层，只留前景；产出 PNG 序列，供以实拍为主的剪辑流程（aaaai-video-editor）叠加。
+- **Alpha 图层**：`--alpha` 渲染时场景读 `alpha=1`，跳过所有背景/氛围/收黑层，只留前景；产出 PNG 序列，供以实拍为主的剪辑流程（aaaai-editor）叠加。
 
 全文（含缓动词汇表代码、alpha 契约代码与命令）详见 `references/scene-authoring.md`（§6.1–§6.7）。
 
@@ -305,7 +305,7 @@ bash "$SK/encode.sh" frames/L out/film_16x9.mp4 --audio out/score.wav --fps 60  
 
 ## 在 aaaai-editor 套件里（与剪辑、收尾衔接）
 
-本 skill 负责**动画与品牌片的创意和渲染**；成片的字幕、响度、封面、验收交给 `aaaai-video-editor`：
+本 skill 负责**动画与品牌片的创意和渲染**；成片的字幕、响度、封面、验收交给 `aaaai-editor`：
 
 - **叠进口播**：场景按 §6.7 透明契约渲染 → `bash "$SK/encode.sh" <帧目录> <out.mov> --alpha` 出 ProRes 4444 `.mov` →
   在 aaaai-editor 的 storyboard 加 `{"type": "clip", "t": [起, 迄], "file": "<mov 路径>", "width": 1.0}`。

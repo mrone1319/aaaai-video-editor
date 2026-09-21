@@ -8,7 +8,7 @@ T="$HOME/.Trash/aaaai-editor-卸载-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$T"
 [ -e "$HOME_DIR/app" ] && mv "$HOME_DIR/app" "$T/" && echo "✔ 程序已移到废纸篓"
 [ -e "$HOME_DIR/bin" ] && mv "$HOME_DIR/bin" "$T/"
 for base in "$HOME/.claude/skills" "$HOME/.agents/skills"; do
-  for n in aaaai-video-editor motion-graphic-video-editor social-content-pipeline; do
+  for n in aaaai-editor motion-graphic-video-editor social-content-pipeline; do
     d="$base/$n"
     [ -e "$d" ] || [ -L "$d" ] || continue
     sub="$T/$(basename "$(dirname "$base")")"; mkdir -p "$sub"
@@ -16,9 +16,6 @@ for base in "$HOME/.claude/skills" "$HOME/.agents/skills"; do
     b="$(ls -d "$base"-backup-*/"$n" 2>/dev/null | tail -1)"   # 安装时备份过的同名旧 skill：放回原位
     [ -n "$b" ] && mv "$b" "$d" && echo "  ↩ 还原安装前的 $n"
   done
-done
-for c in aaaai-editor; do
-  grep -qs "aaaai-video-editor" "$HOME/.claude/commands/$c.md" && mv "$HOME/.claude/commands/$c.md" "$T/" && echo "✔ 斜杠命令 /$c 已移除"
 done
 if command -v codex >/dev/null 2>&1; then
   for m in aaaai-editor; do

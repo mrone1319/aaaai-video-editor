@@ -1,5 +1,9 @@
 # 更新记录
 
+## v1.0.1（2026-09-21）
+
+- 入口统一：skill 改名为 `aaaai-editor`，Claude Code 里只有一个 `/aaaai-editor`（不再同时出现 `/aaaai-video-editor`）；去掉多余的命令文件。
+
 ## v1.0.0（2026-09-21）
 
 第一个正式版本。
@@ -22,13 +26,13 @@
 - API 密钥存 macOS 钥匙串、只在用户终端输入。
 
 **总监与派工**
-- aaaai-video-editor（总监）：开工前提问（风格、配乐、字幕、画幅）、流程与验收。
+- aaaai-editor（总监）：开工前提问（风格、配乐、字幕、画幅）、流程与验收。
 - motion-graphic-video-editor：代码化品牌动画片（拆解参考片、构思定稿、原创配乐）。
 - HeyGen HyperFrames（官方插件）：讲解片、网站转影片、产品发布等格式；做完回到 aaaai-editor 统一收尾。
 - social-content-pipeline：多平台文案、出图（Canva 可选）、打包发布。
 
 **安装与平台**
-- Claude Code 插件（`aaaai-editor@aaaai-editor`）与 zip 安装包；斜杠命令 `/aaaai-editor`。
+- Claude Code 插件（`aaaai-editor@aaaai-editor`）与 zip 安装包；在 Claude Code 里输入 `/aaaai-editor` 启动（skill 本身就叫 aaaai-editor，只有这一个入口）。
 - 安装前须知（会装什么、哪些要花钱、隐私）；AI 代跑时不替用户默认同意；模型下载可续传。
 - 支持 ChatGPT Codex（skill 与 MCP）；MCP 服务器 `aaaai-editor mcp` 也可给 Claude Desktop、Cursor 使用。
 - 程序在 `~/.aaaai-editor/app`，用户资料在 `~/.aaaai-editor/`，更新不覆盖；卸载移到废纸篓并还原原有的同名 skill。

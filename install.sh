@@ -192,13 +192,7 @@ if [ "$SKILLS" = 1 ]; then
     if [ "$DEV" = 1 ]; then ln -sfn "${d%/}" "$dst"; else rm -rf "$dst"; cp -R "${d%/}" "$dst"; touch "$dst/.aaaai-editor-suite"; fi
     ok "$n"
   done
-  mkdir -p "$HOME/.claude/commands"
-  if [ ! -e "$HOME/.claude/commands/aaaai-editor.md" ] || grep -qs "aaaai-video-editor" "$HOME/.claude/commands/aaaai-editor.md"; then
-    rm -f "$HOME/.claude/commands/aaaai-editor.md"
-    if [ "$DEV" = 1 ]; then ln -s "$SRC/commands/aaaai-editor.md" "$HOME/.claude/commands/aaaai-editor.md"
-    else cp "$SRC/commands/aaaai-editor.md" "$HOME/.claude/commands/aaaai-editor.md"; fi && ok "斜杠命令 /aaaai-editor"
-  fi
-elif [ "$PLUGIN" = 1 ]; then ok "插件安装：skill 与 /aaaai-editor 命令由 Claude Code 插件提供"
+elif [ "$PLUGIN" = 1 ]; then ok "插件安装：skill 由 Claude Code 插件提供（在 Claude Code 里输入 /aaaai-editor 使用）"
 else ok "跳过（--no-skills）"; fi
 
 # ---------- 6. HeyGen HyperFrames（其他格式） ----------

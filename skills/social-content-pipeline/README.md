@@ -79,7 +79,7 @@
 **不适合：**
 - 一条快速推文或说明文字——直接问即可
 - 整月内容排期（本 skill 设计上一次做 1–2 条）
-- 需要从头制作视频（请先用 aaaai-video-editor 或 motion-graphic-video-editor），或需要替你点击"发布"
+- 需要从头制作视频（请先用 aaaai-editor 或 motion-graphic-video-editor），或需要替你点击"发布"
 
 ---
 

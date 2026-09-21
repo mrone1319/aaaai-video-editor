@@ -11,7 +11,7 @@
 
 | 组件 | 做什么 |
 |---|---|
-| `aaaai-video-editor`（skill）＋ `aaaai-editor` 引擎 | 总监：派工、口播剪辑、字幕、卡片、人像、响度、封面、验收 |
+| `aaaai-editor`（skill）＋ `aaaai-editor` 引擎 | 总监：派工、口播剪辑、字幕、卡片、人像、响度、封面、验收 |
 | `motion-graphic-video-editor`（skill） | 品牌片与动效：拆解参考片、构思定稿、公式库、透明图层输出 |
 | `social-content-pipeline`（skill） | 发布：搜集、角度、X/IG 文案、出图、打包 |
 | HeyGen HyperFrames（安装器从官方装） | 讲解片、网站转影片、产品发布、音乐影片、幻灯片等格式 |
@@ -33,7 +33,7 @@
 
 ## 第一次用
 
-- 在 Claude Code 里说「/aaaai-editor」，或直接丢一段视频说「帮我剪」；在 Codex 里说「用 aaaai-video-editor 剪 <文件>」。
+- 在 Claude Code 里说「/aaaai-editor」，或直接丢一段视频说「帮我剪」；在 Codex 里说「用 aaaai-editor 剪 <文件>」。
   它会先问你：风格、配乐、字幕；如果素材是横拍的，还会问要不要裁成竖版。
 - 中文、英文等语言会自动识别；竖版、横版、方形都能做。
 - **受限风格**：`mrone`（© MR ONE）、`otg`（© OTG 社群）只给社群成员或获授权者。确认后执行
@@ -86,7 +86,7 @@ aaaai-editor broll status|plan|estimate|gen|sheet|place   # B-roll 流水线
 aaaai-editor mcp                                     # 以 MCP 服务器运行
 ```
 
-完整剪片流程（开工前提问、修字幕、设计卡片、验收、交接发布）见套件里的 `skills/aaaai-video-editor/SKILL.md`（唤醒词 `/aaaai-editor`）。
+完整剪片流程（开工前提问、修字幕、设计卡片、验收、交接发布）见套件里的 `skills/aaaai-editor/SKILL.md`（唤醒词 `/aaaai-editor`）。
 
 ## storyboard.json
 

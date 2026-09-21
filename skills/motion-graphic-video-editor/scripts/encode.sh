@@ -19,7 +19,7 @@
 # ProRes 4444 was verified frame-for-frame correct (decoded alpha matches
 # the source PNG exactly) — use it unless a specific downstream tool needs
 # WebM, in which case re-test the VP9 path on that machine before trusting it.
-# If the destination is a footage-led editing workflow (e.g. aaaai-video-editor)
+# If the destination is a footage-led editing workflow (e.g. aaaai-editor)
 # that only needs the raw frames, skip encoding
 # entirely and hand over the PNG directory as-is — that is the primary
 # interop path; this flag is for when a packaged alpha video file is wanted.

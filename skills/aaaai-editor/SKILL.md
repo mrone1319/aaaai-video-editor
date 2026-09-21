@@ -1,8 +1,8 @@
 ---
-name: aaaai-video-editor
+name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # aaaai-editor 影片总监
@@ -220,7 +220,7 @@ render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP。封�
 - 没有 AskUserQuestion：固定三问改成一条消息列出选项问用户。
 - 没有 SendUserFile：直接给出图片／影片的完整路径。
 - 没有 `${CLAUDE_PLUGIN_ROOT}`：请用户在终端执行安装包里的 `install.sh`。
-- 斜杠命令 `/aaaai-editor` 只在 Claude Code；Codex 里用户说「用 aaaai-video-editor 剪…」即可。
+- 斜杠命令 `/aaaai-editor` 只在 Claude Code；Codex 里用户说「用 aaaai-editor 剪…」即可。
 - 看画面：用该平台的读图能力打开抽出来的 PNG；不能读图就请用户看过再往下。
 - B-roll 也可以走 MCP 工具（`generate_broll_clip` 等，见 `$APP/docs/00-快速安装.md`），同样要先报价、用户同意才带 `confirmed`。
 

@@ -80,7 +80,7 @@ const ALPHA = params.get('alpha') === '1';
 - 只保留真正要被合成到别处素材上的前景元素：Logo、文字、图卡、粒子本体。
 - 收黑层/硬切黑场在 alpha 模式下**禁用**（黑色收场在透明合成里会变成一块不透明黑幕，不是"变暗"）——用透明度归零代替。
 - 这一层产出的是**PNG 序列**，不是最终成片；不需要额外做 §9 配乐、§10.3 交片六查那一整套，只需按 §10.1 抽帧核对透明区域确实是透明（比如用 Pillow 读 alpha 通道，边缘应为 0，前景应接近 255，不能整张图都是低透明度的灰蒙蒙）。
-- 用途：把这个 skill 当作"特效层供应商"，被以实拍为主的剪辑流程（aaaai-video-editor）用 ffmpeg `overlay` 滤镜叠加使用，而不是自己产出完整片子。
+- 用途：把这个 skill 当作"特效层供应商"，被以实拍为主的剪辑流程（aaaai-editor）用 ffmpeg `overlay` 滤镜叠加使用，而不是自己产出完整片子。
 
 ```bash
 ~/.aaaai-editor/bin/aaaai-editor-python "$SK/render_frames.py" --scene scene.html --w 1920 --h 1080 --fps 60 --dur 6 \
