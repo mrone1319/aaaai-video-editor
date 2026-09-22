@@ -41,7 +41,7 @@ ask()  { [ "$YES" = 1 ] && return 0; [ "$TTY" = 1 ] || return 1; read -r -p "  $
 
 VER="$(cat "$SRC/VERSION" 2>/dev/null || echo "?")"
 echo "aaaai-editor 影片总监套件 v$VER 安装器"
-[ "$(uname -s)" = Darwin ] || { echo "目前只支持 macOS。"; exit 1; }
+[ "$(uname -s)" = Darwin ] || { echo "这个安装器给 macOS 用；Windows 请双击 Install-Windows.cmd（或执行 install.ps1）。"; exit 1; }
 
 # ---------- 0. 安装前须知 ----------
 cat <<'NOTICE'

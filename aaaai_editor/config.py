@@ -12,14 +12,16 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from typing import Dict, List
 
 HOME = os.path.expanduser(os.environ.get("AAAAI_EDITOR_HOME") or "~/.aaaai-editor")
 APP = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+_VIDEOS = "~/Videos" if sys.platform == "win32" else "~/Movies"   # Windows 的「视频」、Mac 的「影片」
 DEFAULTS = {
-    "projects_dir": "~/Movies/aaaai-editor",          # Finder 侧栏的「影片」里
-    "exports_dir": "~/Movies/aaaai-editor/成品",       # 成片／封面自动复制一份到这里（按项目名命名）；设空字串就不复制
+    "projects_dir": _VIDEOS + "/aaaai-editor",          # Finder 侧栏的「影片」里（Windows：「视频」）
+    "exports_dir": _VIDEOS + "/aaaai-editor/成品",       # 成片／封面自动复制一份到这里（按项目名命名）；设空字串就不复制
     "profile": "",
     "handle": "",          # 封面上印的账号名，例：@yourname
     "brand_dir": "~/Documents/brand-profiles",
@@ -77,7 +79,11 @@ def export(src: str, project_dir: str, suffix: str = "") -> str:
     dst = os.path.join(d, os.path.basename(os.path.normpath(project_dir)) + suffix + ext)
     if os.path.exists(dst):
         os.remove(dst)
-    if subprocess.run(["cp", "-c", src, dst], capture_output=True).returncode != 0:
+    try:   # macOS APFS：cp -c 秒复制、不多占空间；其他系统直接复制
+        cloned = sys.platform == "darwin" and subprocess.run(["cp", "-c", src, dst], capture_output=True).returncode == 0
+    except OSError:
+        cloned = False
+    if not cloned:
         shutil.copyfile(src, dst)
     return dst
 

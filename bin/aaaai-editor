@@ -1,6 +1,14 @@
 #!/bin/bash
 # 优先用 Homebrew 的 python3.12（带 OpenCC 等可选依赖）；代码本身只用标准库，系统 python3 也能跑
+# Windows 的 Git Bash（Claude Code 在 Windows 上用它执行命令）：用 py 启动器，路径转成 Windows 格式
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    command -v cygpath >/dev/null 2>&1 && DIR="$(cygpath -w "$DIR")"
+    export PYTHONUTF8=1 PYTHONPATH="$DIR"
+    if command -v py >/dev/null 2>&1; then exec py -3 -X utf8 -m aaaai_editor "$@"; fi
+    exec python -X utf8 -m aaaai_editor "$@" ;;
+esac
 PY=python3
 for c in /opt/homebrew/bin/python3.12 /usr/local/bin/python3.12; do [ -x "$c" ] && PY="$c" && break; done
 PYTHONPATH="$DIR" exec "$PY" -m aaaai_editor "$@"

@@ -11,6 +11,7 @@ import os
 import re
 from typing import Dict, List, Optional, Sequence, Tuple
 
+from . import env
 from .timeline import Timeline
 
 TRACK = "work/captions.json"
@@ -287,7 +288,7 @@ def _line(t: str, extra: Optional[dict], st: dict, h: int, words: Sequence[str],
         est = len(str(extra["en"])) * 0.56 * en_size
         if usable and est > usable:   # 英文太长：缩字号塞进一行，最小到中文字号的 0.42
             en_size = max(int(h * st["size"] * 0.42), int(en_size * usable / est))
-        out += "\\N{\\fn%s\\fs%d\\b0\\i0}%s" % (st.get("en_font", DEF_EN_FONT), en_size,
+        out += "\\N{\\fn%s\\fs%d\\b0\\i0}%s" % (env.font_family(st.get("en_font", DEF_EN_FONT)), en_size,
                                                 esc(str(extra["en"])))
     return out_prefix + out
 

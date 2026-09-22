@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import os
 from typing import List, Optional
 
@@ -70,6 +71,19 @@ def _seek_inputs(cuts, source: str) -> List[str]:
     for a, b in cuts:
         args += ["-ss", "%.3f" % a, "-t", "%.3f" % (b - a + 1.0), "-i", source]
     return args
+
+
+def hw_encoder() -> List[str]:
+    """硬件编码：Mac 用 VideoToolbox；Windows 依次试 NVIDIA、Intel、AMD；都没有就用软件编码（快一点的预设）。"""
+    if env.MAC:
+        return ["-c:v", "h264_videotoolbox", "-q:v", "70", "-pix_fmt", "yuv420p"]
+    for enc, extra in (("h264_nvenc", ["-cq", "21", "-preset", "p5"]), ("h264_qsv", ["-global_quality", "21"]),
+                       ("h264_amf", ["-quality", "quality", "-qp_i", "20", "-qp_p", "22"])):
+        p = subprocess.run([env.ffmpeg(), "-v", "error", "-f", "lavfi", "-i", "color=s=64x64:d=0.1", "-c:v", enc,
+                            "-f", "null", "-"], capture_output=True)
+        if p.returncode == 0:
+            return ["-c:v", enc] + extra + ["-pix_fmt", "yuv420p"]
+    return ["-c:v", "libx264", "-preset", "medium", "-crf", "17"]
 
 
 def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
@@ -186,8 +200,8 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
     zoom_str = overlays.zoom_filter(zooms, w, h, fps) if zooms else None
     # 人像遮罩按「不带 format 的剪辑图」生成，成片改画质不会让遮罩缓存失效
     ov_inputs, assemble = overlays.build(sb, work, w, h, fps, source=sb["source"],
-                                         base_graph=_video_base(cuts, w, h, fps, False, nframes,
-                                                                sb.get("framing"), sb.get("_hdr", False)))
+                                         base_graph={"cuts": cuts, "framing": sb.get("framing"),
+                                                     "hdr": sb.get("_hdr", False)})
     seek_base = 1 + sum(g.count("-i") for g in ov_inputs)   # 各段跳转输入排在卡片素材之后
     parts = [_video_base(cuts, w, h, fps, bool(ov_inputs) and not proxy, nframes, sb.get("framing"),
                          sb.get("_hdr", False), seek_base)]
@@ -195,6 +209,13 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
     if zoom_str:
         parts.append("[base]%s[zb]" % zoom_str)
         cur = "zb"
+    trs = sb.get("_transitions") or []
+    if trs:   # 甩镜转场：只动剪辑点前后那几帧
+        from . import transitions
+        tg = transitions.graph("[%s]" % cur, "[tr]", trs, w, h, fps, t0, (t1 - t0) if t1 is not None else None)
+        if tg:
+            parts.append(tg)
+            cur = "tr"
     tail, cur = assemble(cur, ("subtitles=filename=%s" % ass_name) if ass_name else None, zoom_str)
     if tail:
         parts.append(tail)
@@ -213,7 +234,7 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
     if proxy:
         venc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "30"]
     elif sb["output"].get("encoder") == "hw":   # 长片赶时间：Apple 硬件编码，快数倍、文件稍大、画质略低
-        venc = ["-c:v", "h264_videotoolbox", "-q:v", "70", "-pix_fmt", "yuv420p"]
+        venc = hw_encoder()
     else:
         venc = ["-c:v", "libx264", "-preset", "slow", "-crf", "15"]
     env.run(args + ["-filter_complex", ";".join(parts), "-map", "[vout]", "-an"]
@@ -239,6 +260,9 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
     sb["_hdr"] = bool(info.get("hdr"))
     if sb["_hdr"]:
         print("🎨 素材是 HDR（iPhone 常见）：自动转成 SDR 色彩")
+
+    from . import transitions as _tr
+    sb["_transitions"] = _tr.resolve(sb, tl)   # 转场吸附到剪辑点（成片时间）
 
     # ---- 字幕事件（按整片时间轴算一次；分段时再平移）----
     cap_events = None

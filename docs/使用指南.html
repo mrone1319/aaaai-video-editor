@@ -260,7 +260,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.0.19</span><span class="chip">macOS</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.0.20</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
@@ -299,11 +299,24 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   <div class="eyebrow">02 · 准备</div>
   <h2>开始之前</h2>
   <div class="need">
-    <div><b>一台 Mac</b><span>macOS；人像去背（文字穿插、卡片接管）用的是 Mac 自带的 Apple Vision，免费、不联网。</span></div>
-    <div><b>Claude Code</b><span>桌面版或终端版都行；也支持 ChatGPT Codex。</span></div>
-    <div><b>装好 aaaai-editor</b><span>zip 安装包里双击「双击安装.command」，或装 Claude Code 插件。第一次约下载 3GB（语音模型、ffmpeg 等）。</span></div>
+    <div><b>一台电脑</b><span>Mac 或 Windows 都行（需求见下表）。人像去背：Mac 用系统自带的 Apple Vision，Windows 用 Google MediaPipe，都免费、不联网。</span></div>
+    <div><b>Claude Code</b><span>桌面版或终端版都行；也支持 ChatGPT Codex。Windows 要先装好 Git（安装器会帮你装）。</span></div>
+    <div><b>装好 aaaai-editor</b><span>Mac：双击「双击安装.command」；Windows：双击「Install-Windows.cmd」；也能装 Claude Code 插件。第一次约下载 3GB。</span></div>
     <div><b>一支素材</b><span>手机竖拍最理想：人坐画面中间、上半身完整、声音清楚、背景安静。</span></div>
   </div>
+  <h3>电脑需求</h3>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Mac</th><th>Windows</th></tr></thead>
+    <tbody>
+      <tr><td><b>系统</b></td><td>macOS 13 Ventura 以上</td><td>Windows 10（22H2）或 Windows 11，64 位</td></tr>
+      <tr><td><b>处理器</b></td><td><b>Apple M 系列（M1 以上）</b>。Intel 芯片的 Mac 能装，但转录、人像去背、渲染会慢很多，不建议</td><td>近 5 年的 Intel／AMD 64 位处理器；有 NVIDIA、Intel 或 AMD 显卡的话，出片可以开硬件加速。ARM 版 Windows 暂不支持</td></tr>
+      <tr><td><b>内存</b></td><td>最少 8GB，<b>建议 16GB</b></td><td>最少 8GB，<b>建议 16GB</b></td></tr>
+      <tr><td><b>硬盘</b></td><td colspan="2">至少留 <b>20GB</b>（工具与语音模型约 3GB，其余给素材和成片；手机 4K 素材一分钟约 0.5GB）</td></tr>
+      <tr><td><b>网络</b></td><td colspan="2">安装时要下载约 3GB；之后剪片不用联网（只有 B-roll 素材、AI 生成、内容生产线查资料会用到）</td></tr>
+      <tr><td><b>怎么看自己的电脑</b></td><td>左上角苹果图标 ›「关于本机」：芯片写 Apple M 开头就可以</td><td>「设置 › 系统 › 系统信息」：看「系统类型」是 64 位、内存大小</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><b class="k">WINDOWS</b><span>Windows 版刚推出，已照 Mac 版同样的流程写好，但还需要在更多 Windows 电脑上实测；遇到问题请把画面截图给 Claude，它会帮你排查。</span></div>
   <div class="note tip"><b class="k">TIP</b><span>装完第一次，可以直接跟 Claude 说「帮我检查 aaaai-editor 装好没有」，它会跑一次体检，全部 ✅ 就能开工。详细安装步骤、会装哪些东西、哪些要花钱，见套件里的 <code>docs/00-快速安装.md</code>。</span></div>
   <div class="note ok"><b class="k">不用花钱</b><span>剪片、字幕、卡片、配乐、音效、响度、封面全部免费。唯一可能花钱的是「AI 生成 B-roll」，而且每次都会先报价问你。</span></div>
 </section>
@@ -699,7 +712,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   <div class="tbl"><table>
     <thead><tr><th>东西</th><th>位置</th><th>说明</th></tr></thead>
     <tbody>
-      <tr><td><b>成品（最好找）</b></td><td><code>影片 › aaaai-editor › 成品</code></td><td>每次正式渲染和做封面后自动复制一份，以项目名命名。Finder 侧栏「影片」就找得到。</td></tr>
+      <tr><td><b>成品（最好找）</b></td><td><code>影片 › aaaai-editor › 成品</code><br><span style="color:var(--ink-3)">Windows：视频 › aaaai-editor › 成品</span></td><td>每次正式渲染和做封面后自动复制一份，以项目名命名。Finder 侧栏「影片」（Windows 资源管理器的「视频」）就找得到。</td></tr>
       <tr><td>项目文件夹</td><td><code>影片 › aaaai-editor › 日期-主题</code></td><td>一支片一个文件夹。</td></tr>
       <tr><td>正式成片</td><td><code>项目 › out › final.mp4</code></td><td>唯一的交付版本（母带）。</td></tr>
       <tr><td>预览版</td><td><code>项目 › out › final_preview.mp4</code></td><td>半分辨率，只看版面，不是成品。</td></tr>
@@ -760,7 +773,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">社群风格</b><span><code>mrone</code> 与 <code>otg</code> 是两个频道／社群的品牌风格：你可以用，但名称、配色和品牌元素归原权利人，不要用它们做冒充该品牌、或让人误以为是官方的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.0.19 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
+    <span>aaaai-editor v1.0.20 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
 </section>
@@ -820,6 +833,8 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     brollblur: function(){ return frame(el("rect",{x:0,y:0,width:W,height:H,fill:"#2E4452"}) + el("rect",{x:0,y:56,width:W,height:50,fill:"#4A6B80"}) + el("path",{d:"M0 96 L20 80 L36 90 L54 72 L90 94 L90 106 L0 106 Z",fill:"#27414F"}) + cap(118)); },
     image: function(){ return frame(person() + el("circle",{cx:72,cy:18,r:10,fill:"#fff"}) + el("rect",{x:66,y:13,width:12,height:10,rx:2,fill:"#15181D"}) + cap()); },
     clip: function(){ return frame(person() + el("path",{d:"M10 30 Q30 8 50 26 T84 20",fill:"none",stroke:"var(--accent)","stroke-width":2.4}) + el("circle",{cx:84,cy:20,r:3,fill:"var(--accent)"}) + line(10,38,40,4) + cap()); },
+    whip: function(){ return frame(el("rect",{x:0,y:0,width:W,height:H,fill:"var(--screen)"}) + [0,1,2,3].map(function(i){ return el("g",{opacity:(0.28+i*0.22).toFixed(2)}, person({cx:26+i*9,cy:64})); }).join("") +
+      [0,1,2,3,4].map(function(i){ return el("rect",{x:6+i*3,y:48+i*14,width:30,height:1.4,fill:"#fff",opacity:.35}); }).join("") + el("path",{d:"M60 30 L80 30 M74 24 L80 30 L74 36",stroke:"var(--accent)","stroke-width":2,fill:"none"}) + cap()); },
     faceavoid: function(){ return frame(person({cy:104,r:12}) + el("rect",{x:26,y:146,width:38,height:3,rx:1.5,fill:"var(--cap)"}) + el("path",{d:"M45 114 L45 140",stroke:"var(--accent)","stroke-width":1,"stroke-dasharray":"2 2"}) + el("path",{d:"M42 137 L45 142 L48 137",fill:"none",stroke:"var(--accent)","stroke-width":1})); }
   };
 
@@ -855,7 +870,8 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       {k:"sparkle", n:"呼吸与闪光", c:"自动", look:"卡片落定后轻轻上下浮动；标题、数据、金句、片尾在强调色处闪一两下。", when:"默认就有。", say:"卡片别晃／不要闪光", note:"不需要就说一声关掉。"},
       {k:"zoom", n:"推近", c:"zooms", look:"缓推（铺陈）或瞬切推近（落点、数字揭晓），像换机位。", when:"落点、金句、数字揭晓；每分钟最多 3 次瞬切。", say:"说出结论那一刻瞬切推近", note:"机位太远还可以全片推近，它会出对比图给你选倍率。"},
       {k:"confetti", n:"拉炮彩带", c:"confetti", look:"彩色纸片从中下方喷出、边转边飘落。", when:"达成里程碑、公布好消息。", say:"说到破十万粉时放拉炮，加拉炮声", note:"一支片一次就好。"},
-      {k:"countdown", n:"圆环倒数", c:"countdown", look:"圆环每秒缩短＋中间大数字，每秒一声滴答；默认在头顶上方。", when:"「三、二、一」、揭晓前的悬念。", say:"揭晓前做 3 秒倒数", note:"不要滴答声可以关。"}
+      {k:"countdown", n:"圆环倒数", c:"countdown", look:"圆环每秒缩短＋中间大数字，每秒一声滴答；默认在头顶上方。", when:"「三、二、一」、揭晓前的悬念。", say:"揭晓前做 3 秒倒数", note:"不要滴答声可以关。"},
+      {k:"whip", n:"甩镜转场", c:"transitions · whip", look:"换段落的剪辑点前后约 0.3 秒：画面放大、横向甩出去再甩回来，带动态模糊，自动配「咻」。字幕和卡片不受影响。", when:"真正换话题、进下一段的时候。", say:"讲完第一个弯、进第二个弯的时候加甩镜转场", note:"一分钟最多 2–3 个；片长不会变。"}
     ]},
     {h:"画面技巧", sub:"让画面有层次", items:[
       {k:"behind", n:"文字穿插", c:"behind_subject", look:"大字排在人物后面，人站在字前面。", when:"人物居中、头顶有空间的片头标题。", say:"片头标题做文字穿插，字在我后面", note:"需要人像去背。", need:"人像去背"},
@@ -917,6 +933,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     ["剪太碎／太拖","停顿留长一点；这段整段剪掉"],
     ["开头不够抓人","换一句当开头预告；推荐几句给我"],
     ["结尾太突然","结尾加片尾卡；最后淡出慢一点"],
+    ["换段落想有节奏感","进下一段的时候加甩镜转场"],
     ["人太小、机位太远","整支推近一点（它会出对比图让你选）"],
     ["手机上先看看","出一个手机预览版（30MB 以内，不是成品）"],
     ["要正式成品","出成片、做封面"],

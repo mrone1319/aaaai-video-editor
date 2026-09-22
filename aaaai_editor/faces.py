@@ -53,7 +53,7 @@ def track(sb: dict, tl, W: int, H: int) -> List[Tuple[float, Optional[Tuple[floa
     cache = os.path.join(sb["_base"], "work", "faces_%s.json" % key)
     if os.path.isfile(cache):
         return [(t, tuple(b) if b else None) for t, b in json.load(open(cache))]
-    helper = matte.helper()
+    helper = matte.helper_cmd()
     z = float(fr.get("zoom", 1.0))
     if z > 1.0001:
         cx, cy = float(fr.get("cx", 0.5)), float(fr.get("cy", 0.4))
@@ -70,7 +70,7 @@ def track(sb: dict, tl, W: int, H: int) -> List[Tuple[float, Optional[Tuple[floa
         k = len(raw) // (sw * sh * 4)
         if not k:
             continue
-        masks = subprocess.run([helper, str(sw), str(sh), "balanced"], input=raw[:k * sw * sh * 4],
+        masks = subprocess.run(helper + [str(sw), str(sh), "balanced"], input=raw[:k * sw * sh * 4],
                                capture_output=True).stdout
         for i in range(min(k, len(masks) // (sw * sh))):
             out.append((round(off + STEP / 2 + i * STEP, 3), _band(masks[i * sw * sh:(i + 1) * sw * sh], sw, sh)))

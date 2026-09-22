@@ -57,6 +57,11 @@ def collect(sb: dict) -> List[Tuple[float, str, float]]:
     out: List[Tuple[float, str, float]] = []
     for x in sb.get("sfx") or []:
         out.append((float(x["t"]), path(x.get("sound", "pop")), float(x.get("db", 0.0))))
+    for tr in sb.get("_transitions") or sb.get("transitions") or []:   # 甩镜转场默认配「咻」（用吸附后的时间）
+        s = tr.get("sfx", "whoosh")
+        if s:
+            out.append((max(0.0, float(tr.get("t", 0)) - float(tr.get("dur", 0.32)) / 2.0 - 0.05), path(s),
+                        float(tr.get("sfx_db", 0.0))))
     for ov in sb.get("overlays") or []:
         s = ov.get("sfx")
         if not s:

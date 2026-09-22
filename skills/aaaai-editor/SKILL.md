@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.19"
+  version: "1.0.20"
 ---
 
 # aaaai-editor 影片总监
@@ -39,10 +39,11 @@ A="$HOME/.aaaai-editor/bin/aaaai-editor"; APP="$HOME/.aaaai-editor/app"; P="<项
 ```
 - **没装好**：先把 `${CLAUDE_PLUGIN_ROOT}/docs/00-快速安装.md` 的「安装前先知道这些」摘要给用户看
   （会装什么、约 3GB 下载、哪些可选／要花钱），**用户同意才装**。然后：
-  - 插件安装：`bash "${CLAUDE_PLUGIN_ROOT}/install.sh" --plugin`（后台执行、看日志）。没有终端可问时，安装器对
+  - 插件安装：`bash "${CLAUDE_PLUGIN_ROOT}/install.sh" --plugin`（后台执行、看日志）。
+    **Windows**（`uname -s` 是 MINGW／MSYS）：改用 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "${CLAUDE_PLUGIN_ROOT}/install.ps1")" -NoSkills`。没有终端可问时，安装器对
     「要不要装 Homebrew／Xcode 工具／下载模型」一律**跳过**，最后列出「还剩这些要你自己做」——原样转告用户，
     请他在「终端」App 里执行（装 Homebrew 要输入开机密码，只能用户自己来）。
-  - zip 安装：请用户双击安装包里的「双击安装.command」。
+  - zip 安装：请用户双击安装包里的「双击安装.command」（Windows：「Install-Windows.cmd」）。
   - 在 Codex 等没有 `${CLAUDE_PLUGIN_ROOT}` 的平台：请用户在终端执行安装包里的 `install.sh`。
 - **插件更新过**：`cat "${CLAUDE_PLUGIN_ROOT}/VERSION"` 与 `cat "$APP/VERSION"` 不同，就重跑上面那行同步程序（用户资料不受影响）。
 - **有频道档案**（`profile` 不为空）：先读 `$APP/profiles/<profile>/rules.md`，再读 `~/.aaaai-editor/profiles/<profile>/rules.md`（若有）。
@@ -180,6 +181,8 @@ P=$("$A" new <主题英文短名>)
 - 对比写成「以为 vs 其实」「以前 vs 现在」：`{"use":"compare","t":[a,b],"left":{"title":"你以为最贵","items":["订阅费"]},"right":{"title":"其实最贵","items":["绕路的时间"]}}`。
 - 密度：每 8–15 秒最多一个主卡（hook／stat_hit／steps／quote_pull／compare／takeover）；30 秒以下短片 hook + 一个主卡 + outro。
 - 人物居中的口播，标题卡可加 `"behind_subject": true` 做文字穿插。黑色 logo 用 `image` 卡加 `"disc": true`。
+- **转场**：换段落时可以加甩镜转场 `"transitions": [{"t": <成片秒数>, "type": "whip"}]`（会吸附到最近的剪辑点，自动配「咻」），
+  一分钟最多 2–3 个，只放在真正换话题的地方；不要放在文字穿插（`behind_subject`）的时段里。
 - 卡片默认会**轻轻上下浮动（呼吸感）**，标题、数据、金句、片尾还会有一两下**闪光**；不要就在该卡片或 storyboard 顶层写
   `"float": false`／`"sparkle": false`。
 - 全部参数：`$APP/docs/CARDS.md`、`$APP/docs/STYLE.md`；微调用 `"$A" expand` 看展开结果。
@@ -187,7 +190,7 @@ P=$("$A" new <主题英文短名>)
 ### 5. 预览并看画面
 
 **成品放哪里要讲清楚**：每次 `preview`／`render`／`cover` 做完，都把**完整绝对路径**告诉用户，并在 Finder 里点出来
-（`open -R "<文件路径>"`），能发给用户的用 SendUserFile 直接发。预览版是 `out/final_preview.mp4`（半分辨率、只给看版面），
+（`open -R "<文件路径>"`；Windows 用 `explorer.exe /select,"<路径>"`），能发给用户的用 SendUserFile 直接发。预览版是 `out/final_preview.mp4`（半分辨率、只给看版面），
 **正式成品是 `out/final.mp4`，要跑 `render` 才有**——不要把预览当成品，也不要没渲染就说成品在 `out/final.mp4`。
 render／cover 会把成片与封面复制一份到「成品」文件夹（命令输出里 📦 那一行，默认 `~/Movies/aaaai-editor/成品/<项目名>.mp4`）：
 **交付时告诉用户这个路径**，并说明在 Finder 侧栏「影片 → aaaai-editor → 成品」就找得到。
@@ -267,6 +270,17 @@ render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP，**同
 - **密钥由用户在自己的终端绑定**：`~/.aaaai-editor/bin/aaaai-editor keys set FAL_KEY`（钥匙串隐藏输入）。
   绝对不要叫用户把密钥贴进聊天，也不要把密钥写进命令或文件。
 - 图片／图标素材：`/media-use`（HeyGen）。
+
+## 在 Windows 上
+
+Windows 版用 `install.ps1`（双击 `Install-Windows.cmd`）安装；命令、storyboard、流程都一样，差别只有：
+- Claude Code 在 Windows 用 **Git Bash** 执行命令：本手册的 `"$A"`（`$HOME/.aaaai-editor/bin/aaaai-editor`）照样能用；
+  在 PowerShell／命令提示字元里则用 `%USERPROFILE%\.aaaai-editor\bin\aaaai-editor.cmd`。
+- **在资源管理器里点出文件**：`explorer.exe /select,"<Windows 路径>"`（取代 macOS 的 `open -R`）；Git Bash 里先用 `cygpath -w` 转路径。
+- 项目与成品默认在「视频」文件夹：`~/Videos/aaaai-editor/`、`~/Videos/aaaai-editor/成品/`。
+- 人像去背（文字穿插、卡片接管）用 MediaPipe，不需要 Xcode；`doctor` 显示 ❌ 就请用户重跑 `install.ps1`。
+- 密钥存在 Windows 凭据管理器，用户在自己的 PowerShell 视窗执行 `aaaai-editor.cmd keys set <名称>`。
+- 硬件编码（`"encoder": "hw"`）会依次试 NVIDIA、Intel、AMD；都没有就用软件编码。字体用微软雅黑，Mac 字体名自动对应。
 
 ## 在其他平台使用（ChatGPT Codex 等）
 

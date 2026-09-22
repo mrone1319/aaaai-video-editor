@@ -154,6 +154,15 @@ B-roll 时段内不要用 `behind_subject`（人物会被重贴到 B-roll 上面
 {"type":"glow",      "t":[13.6,17], "box":[0.035,0.695,0.60,0.098]}     // 关注框：[左, 上, 宽, 高] 比例，一呼一吸（pulse 秒数）
 ```
 
+**转场**（写在 storyboard 顶层，不是 overlays）：
+
+```jsonc
+"transitions": [{"t": 14.9, "type": "whip"}, {"t": 34.4, "type": "whip", "dir": "right", "dur": 0.4, "sfx": ""}]
+```
+
+- `t` 写成片秒数，会吸附到 ±0.6 秒内最近的剪辑点；只动前后约 0.3 秒（`dur`）的帧，片长不变，卡片与字幕不受影响。
+- `dir`：画面往 `left`（默认）或 `right` 甩；`sfx` 默认 `whoosh`，写 `""` 关掉。一分钟最多 2–3 个，放在真正换话题的地方。
+
 - 组合卡片 `proof`（证据截图）、`flow`（工作流步骤）、`cta`（行动号召）的写法见 `docs/RECIPES.md`「卡片收合三连发」。
 - 音效：任何卡片可写 `"sfx": "<名称>"`（卡片出现时响，`sfx_at` 改时间、`sfx_db` 调单个音量）；
   或 storyboard 顶层 `"sfx": [{"t": 秒, "sound": "coin", "db": 0}]`；整体音量 `"sfx_level": "quiet"／"normal"／"loud"`。

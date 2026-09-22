@@ -1,6 +1,6 @@
 # aaaai-editor 影片总监套件
 
-**© 2026 MR ONE（@mrone.ai）** · 免费提供给被授权人 · macOS · 见 `LICENSE.md`
+**© 2026 MR ONE（@mrone.ai）** · 免费提供给被授权人 · macOS · Windows · 见 `LICENSE.md`
 
 在 Claude Code（或 ChatGPT Codex）里说一句「/aaaai-editor」、丢一段视频，就能完成：转录 → 剪掉停顿 → 中英双语字幕与关键词高亮 →
 按内容加卡片（数据跳数、编号清单、章节断章、人物穿插、卡片接管）与 B-roll（自备、Pexels 免费素材、低价 AI 生成，先报价再执行）→ 配乐闪避 → 响度锁定 -14 LUFS → 封面 →
@@ -22,6 +22,7 @@
 **先看 [`docs/00-快速安装.md`](docs/00-快速安装.md)**：里面写了会装什么、哪些可选、哪些要花钱、隐私、耗时与空间、更新、卸载和常见问题。
 
 - **zip 安装包**（最简单）：解压后双击「双击安装.command」。如果被 macOS 拦下：打开「系统设置 → 隐私与安全性」，点「仍要打开」。
+- **Windows**：解压后双击「Install-Windows.cmd」（用 winget 装依赖、每一项先问你；详见快速安装的「方法 C」）。
 - **Claude Code 插件**（能一键更新）：先装好 Claude Code 和 GitHub 登录（`gh auth login` 和 `gh auth setup-git`），再用 **https 地址**安装：
   ```bash
   claude plugin marketplace add https://github.com/mrone1319/aaaai-video-editor.git

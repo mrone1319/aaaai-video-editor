@@ -78,6 +78,7 @@ s["overlays"] = [{"type": "proof", "t": [1.2, 5.0], "file": "assets/shot.png", "
                  {"type": "glow", "t": [6.0, 8.5], "box": [0.1, 0.6, 0.8, 0.1]},
                  {"type": "flow", "t": [9.2, 11.0], "kicker": "流程", "steps": [{"icon": "camera", "top": "拍", "big": "3 分钟", "at": 9.3}, {"icon": "money", "top": "赚", "big": "进账", "at": 10.0}]},
                  {"type": "cta", "t": [11.0, 14.0], "hold": True, "question": "怎么**入门**", "keyword": "留言", "badge": "发给你", "sfx": "ding"}]
+s["transitions"] = [{"t": 6.0, "type": "whip"}]
 json.dump(s, open(S + "/c/storyboard.json", "w"), ensure_ascii=False)
 PYX
 cp "$R/work/transcript.json" "$S/c/work/"

@@ -226,7 +226,7 @@ def _data_uri(path: str) -> str:
     d = tempfile.mkdtemp(prefix="aaaai-editor-up-")
     try:
         tmp = os.path.join(d, "up.jpg")
-        if path.lower().endswith((".heic", ".heif")):
+        if env.MAC and path.lower().endswith((".heic", ".heif")):
             env.run(["sips", "-s", "format", "jpeg", "-Z", "1280", path, "--out", tmp])
         else:
             env.run([env.ffmpeg(), "-y", "-v", "error", "-i", path, "-vf",

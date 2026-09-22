@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import shutil
 import subprocess
-from typing import Tuple
+import sys
+from typing import List, Tuple
 
 from . import env
 
@@ -104,8 +106,21 @@ while true {
 '''
 
 
+def helper_cmd() -> List[str]:
+    """分割助手的命令：macOS 是编译好的 Swift（Apple Vision）；Windows 是 MediaPipe 的 Python 助手。"""
+    if sys.platform == "win32":
+        import importlib.util
+        if not importlib.util.find_spec("mediapipe") or not importlib.util.find_spec("numpy"):
+            raise env.ToolError("Windows 的人像去背需要 mediapipe（重跑 install.ps1，或 pip install mediapipe numpy）"
+                                "（不用人像穿插／卡片接管的话可以忽略）")
+        return [sys.executable, "-X", "utf8", "-m", "aaaai_editor.matte_win"]
+    return [helper()]
+
+
 def helper() -> str:
-    """返回分割助手路径；首次使用时编译（源码哈希变了会重编）。"""
+    """返回分割助手路径；首次使用时编译（源码哈希变了会重编）。Windows 请用 helper_cmd()。"""
+    if sys.platform == "win32":
+        return " ".join(helper_cmd())
     os.makedirs(CACHE, exist_ok=True)
     tag = hashlib.sha1(SWIFT_SRC.encode()).hexdigest()[:12]
     exe = os.path.join(CACHE, "personmatte_%s" % tag)
@@ -133,29 +148,60 @@ def available() -> bool:
         return False
 
 
-def build(source: str, base_graph: str, window: Tuple[float, float], work: str,
+def window_graph(source: str, spec: dict, a: float, b: float, W: int, H: int, fps: float):
+    """只解码和 [a,b] 有重叠的剪辑段（各段跳转读取），处理方式与正式渲染完全相同，帧一一对得上。
+    原本每个遮罩都把整支素材解码一次（手机 4K 很慢）；现在只读需要的那几段。回传 (输入参数, 滤镜图, 段起点)。"""
+    from . import render
+    from .timeline import Timeline
+    cuts = [tuple(c) for c in spec["cuts"]]
+    tl = Timeline(cuts, fps)
+    idx = [i for i, (off, ln) in enumerate(zip(tl.offsets, tl.lengths)) if off < b and off + ln > a]
+    if not idx:
+        idx = [len(cuts) - 1]
+    i0, i1 = idx[0], idx[-1]
+    sub = cuts[i0:i1 + 1]
+    off0 = tl.offsets[i0]
+    g = render._video_base(sub, W, H, fps, False, None, spec.get("framing"), spec.get("hdr", False), seek_base=1)
+    inputs = ["-i", source] + render._seek_inputs(sub, source)
+    return inputs, g, off0
+
+
+def build(source: str, base_graph, window: Tuple[float, float], work: str,
           W: int, H: int, fps: float, quality: str = "balanced",
           scale: float = 0.5, key: str = "") -> Tuple[str, int, int]:
-    """为成片时间轴上的 [a,b] 生成遮罩视频。返回 (路径, 遮罩宽, 遮罩高)。"""
+    """为成片时间轴上的 [a,b] 生成遮罩视频。返回 (路径, 遮罩宽, 遮罩高)。
+    base_graph：剪辑规格 {cuts, framing, hdr}（只解码需要的段）；旧的整支滤镜图字串也还能用。"""
     a, b = window
     mw = max(16, int(round(W * scale)) & ~1)
     mh = max(16, int(round(H * scale)) & ~1)
     d = os.path.join(work, "mattes")
     os.makedirs(d, exist_ok=True)
     st = os.stat(source)   # 同名换了素材也要重算
-    sig = hashlib.sha1(json.dumps([os.path.abspath(source), st.st_size, st.st_mtime_ns, base_graph, a, b,
+    if isinstance(base_graph, dict):
+        inputs, graph, off0 = window_graph(source, base_graph, a, b, W, H, fps)
+    else:
+        inputs, graph, off0 = ["-i", source], base_graph, 0.0
+    sig = hashlib.sha1(json.dumps([os.path.abspath(source), st.st_size, st.st_mtime_ns, graph, a - off0, b - off0,
                                    mw, mh, fps, quality], sort_keys=True).encode()).hexdigest()[:16]
     out = os.path.join(d, "matte_%s.mkv" % sig)
     if os.path.isfile(out):
         return out, mw, mh
 
     ff = env.ffmpeg()
+    if isinstance(base_graph, dict):
+        # 用帧号裁：秒数相减有浮点误差，落在帧边界上会差一帧（遮罩就和画面错开）。取整方式与按秒裁切相同
+        k0 = int(round(off0 * fps))
+        f0, f1 = (int(math.ceil(t * fps - 1e-6)) - k0 for t in (a, b))
+        cut = "trim=start_frame=%d:end_frame=%d" % (max(0, f0), max(1, f1))
+    else:
+        cut = "trim=%.3f:%.3f" % (a, b)
     dec = subprocess.Popen(
-        [ff, "-v", "error", "-i", source, "-filter_complex",
-         "%s;[base]trim=%.3f:%.3f,setpts=PTS-STARTPTS,scale=%d:%d[o]" % (base_graph, a, b, mw, mh),
+        [ff, "-v", "error"] + inputs + ["-filter_complex",
+         "%s;[base]tpad=stop_mode=clone:stop_duration=0.5,%s,setpts=PTS-STARTPTS,scale=%d:%d[o]"
+         % (graph, cut, mw, mh),
          "-map", "[o]", "-f", "rawvideo", "-pix_fmt", "bgra", "-"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=work)
-    seg = subprocess.Popen([helper(), str(mw), str(mh), quality],
+    seg = subprocess.Popen(helper_cmd() + [str(mw), str(mh), quality],
                            stdin=dec.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     dec.stdout.close()
     enc = subprocess.Popen(

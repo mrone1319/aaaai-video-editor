@@ -15,6 +15,8 @@ DEF_DI, DEF_DO = cards.DI, cards.DO
 
 def q(s: str) -> str:
     """滤镜参数里的路径／字串引用。"""
+    if env.WIN and len(s) > 2 and s[1] == ":" and s[2] in "\\/":   # Windows 路径：C:\a\b → C\:/a/b（冒号不能当参数分隔）
+        return "'" + s.replace("\\", "/").replace(":", "\\:").replace("'", r"'\''") + "'"
     return "'" + s.replace("\\", "\\\\").replace("'", r"'\''") + "'"
 
 
@@ -108,7 +110,7 @@ def circle_photo(src: str, size: int, focus: float, cache_dir: str) -> str:
         return out
     from . import env
     r = size / 2.0
-    if src.lower().endswith((".heic", ".heif")):   # iPhone 照片：少数 HEIC 版本 ffmpeg 解不了，先用系统 sips 转 JPEG
+    if env.MAC and src.lower().endswith((".heic", ".heif")):   # iPhone 照片：少数 HEIC 版本 ffmpeg 解不了，先用系统 sips 转 JPEG
         jpg = os.path.join(cache_dir, "avatar_%s_src.jpg" % key)
         try:
             env.run(["sips", "-s", "format", "jpeg", src, "--out", jpg])
@@ -249,7 +251,7 @@ def face_lift(ov: dict, th: dict, W: int, H: int, fps: float, faces) -> dict:
 
 
 def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
-          source: Optional[str] = None, base_graph: Optional[str] = None):
+          source: Optional[str] = None, base_graph=None):
     """返回 (输入参数, 组装函数)。组装函数接 base 标签、字幕滤镜、推近滤镜，产出滤镜尾段。"""
     # 印章、标注是小徽章：画在其他卡片上面，不被标题的遮罩盖住（其余保持原顺序）
     # 卡片接管（整屏底）最先画；印章、标注、关注框、倒数圈、彩带最后画；其余照原顺序

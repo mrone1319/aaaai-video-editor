@@ -251,7 +251,7 @@ def cover(sb_path: str, at: float, text: str, sub: str = "", handle: Optional[st
         from . import matte
         raw = subprocess.run([env.ffmpeg(), "-v", "error", "-i", frame, "-vf", "scale=270:480", "-f", "rawvideo",
                               "-pix_fmt", "bgra", "-"], capture_output=True).stdout
-        m = subprocess.run([matte.helper(), "270", "480", "accurate"], input=raw, capture_output=True).stdout
+        m = subprocess.run(matte.helper_cmd() + ["270", "480", "accurate"], input=raw, capture_output=True).stdout
         rows = [y_ for y_ in range(480) if sum(1 for x in range(270) if m[y_ * 270 + x] > 128) > 12]
         if rows:
             f0, f1 = rows[0] * 4, (rows[0] + (rows[-1] - rows[0]) * 0.35) * 4

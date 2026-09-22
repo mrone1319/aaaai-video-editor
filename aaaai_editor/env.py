@@ -7,8 +7,13 @@ import re
 import os
 import shutil
 import subprocess
+import sys
 from functools import lru_cache
 from typing import List, Optional, Sequence
+
+WIN = sys.platform == "win32"
+MAC = sys.platform == "darwin"
+EXE = ".exe" if WIN else ""
 
 
 class ToolError(RuntimeError):
@@ -18,7 +23,7 @@ class ToolError(RuntimeError):
 def run(cmd: Sequence[str], cwd: Optional[str] = None, capture: bool = True) -> subprocess.CompletedProcess:
     """执行外部命令；失败时带上 stderr 尾部抛出，方便定位。"""
     p = subprocess.run(list(cmd), cwd=cwd, stdout=subprocess.PIPE if capture else None,
-                       stderr=subprocess.PIPE if capture else None, text=True)
+                       stderr=subprocess.PIPE if capture else None, text=True, encoding="utf-8", errors="replace")
     if p.returncode != 0:
         tail = (p.stderr or "")[-1500:]
         raise ToolError("命令失败（%d）：%s\n%s" % (p.returncode, " ".join(cmd[:4]) + " …", tail))
@@ -37,20 +42,23 @@ def ffmpeg() -> str:
     cands: List[str] = []
     if os.environ.get("AAAAI_EDITOR_FFMPEG"):
         cands.append(os.environ["AAAAI_EDITOR_FFMPEG"])
-    cands += ["/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg", "/usr/local/opt/ffmpeg-full/bin/ffmpeg"]
+    if WIN:   # 安装器放的完整版 ffmpeg、winget 装的 Gyan.FFmpeg（都带 libass）
+        cands += glob.glob(os.path.join(_home(), "tools", "ffmpeg*", "bin", "ffmpeg.exe"))
+    else:
+        cands += ["/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg", "/usr/local/opt/ffmpeg-full/bin/ffmpeg"]
     w = which("ffmpeg")
     if w:
         cands.append(w)
     for c in cands:
         if os.path.isfile(c) and _has_filter(c, "subtitles"):
             return c
-    raise ToolError("找不到带 libass 的 ffmpeg（需要 subtitles 滤镜）。安装：brew install ffmpeg-full，"
-                    "或设 AAAAI_EDITOR_FFMPEG=/path/to/ffmpeg")
+    raise ToolError("找不到带 libass 的 ffmpeg（需要 subtitles 滤镜）。安装：%s，或设 AAAAI_EDITOR_FFMPEG=ffmpeg 的完整路径"
+                    % ("winget install Gyan.FFmpeg（或重跑 install.ps1）" if WIN else "brew install ffmpeg-full"))
 
 
 def ffprobe() -> str:
     f = ffmpeg()
-    sibling = os.path.join(os.path.dirname(f), "ffprobe")
+    sibling = os.path.join(os.path.dirname(f), "ffprobe" + EXE)
     if os.path.isfile(sibling):
         return sibling
     w = which("ffprobe")
@@ -62,21 +70,37 @@ def ffprobe() -> str:
 BREW_BINS = ["/opt/homebrew/bin", "/usr/local/bin"]   # 从 GUI／MCP 启动时 PATH 很短，Homebrew 目录要自己找
 
 
+def _home() -> str:
+    return os.path.expanduser(os.environ.get("AAAAI_EDITOR_HOME") or "~/.aaaai-editor")
+
+
+def _extra_bins() -> List[str]:
+    if WIN:   # 安装器放工具的地方、winget 的指令捷径
+        d = [os.path.join(_home(), "tools", "whisper"), os.path.join(_home(), "tools", "whisper", "Release")]
+        d += glob.glob(os.path.join(_home(), "tools", "ffmpeg*", "bin"))
+        la = os.environ.get("LOCALAPPDATA")
+        if la:
+            d.append(os.path.join(la, "Microsoft", "WinGet", "Links"))
+        return d
+    return BREW_BINS
+
+
 def which(name: str) -> Optional[str]:
     w = shutil.which(name)
     if w:
         return w
-    for d in BREW_BINS:
-        c = os.path.join(d, name)
-        if os.access(c, os.X_OK):
+    for d in _extra_bins():
+        c = os.path.join(d, name + EXE)
+        if os.path.isfile(c) and (WIN or os.access(c, os.X_OK)):
             return c
     return None
 
 
 def whisper_cli() -> str:
-    w = os.environ.get("AAAAI_EDITOR_WHISPER") or which("whisper-cli")
+    w = os.environ.get("AAAAI_EDITOR_WHISPER") or which("whisper-cli") or (which("main") if WIN else None)
     if not w:
-        raise ToolError("找不到 whisper-cli。安装：brew install whisper-cpp（或重跑安装器）")
+        raise ToolError("找不到 whisper-cli。安装：%s" % ("重跑 install.ps1（会从 whisper.cpp 官方下载）" if WIN
+                                                    else "brew install whisper-cpp（或重跑安装器）"))
     return w
 
 
@@ -132,10 +156,32 @@ def probe(path: str) -> dict:
 
 
 CJK_FONTS = ["PingFang SC", "Heiti SC", "STHeiti", "Noto Sans CJK SC", "Noto Sans SC", "Arial Unicode MS"]
+# Mac 上的字体名 → Windows 自带的对应字体（主题、字幕写的是 Mac 字体名）
+WIN_FONT_MAP = {"PingFang SC": "Microsoft YaHei", "Heiti SC": "Microsoft YaHei", "STHeiti": "SimHei",
+                "Hiragino Sans GB": "Microsoft YaHei", "Songti SC": "SimSun", "Arial Unicode MS": "Microsoft YaHei",
+                "Avenir Next Bold": "Segoe UI Semibold", "Avenir Next": "Segoe UI"}
+WIN_FONT_FILES = {"Microsoft YaHei": "msyh.ttc", "SimHei": "simhei.ttf", "SimSun": "simsun.ttc",
+                  "Segoe UI": "segoeui.ttf", "Segoe UI Semibold": "seguisb.ttf", "Arial": "arial.ttf"}
+
+
+def win_font_file(family: str) -> str:
+    """Windows 字体名 → 系统字体文件夹里的文件（找不到就用微软雅黑）。"""
+    d = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts")
+    f = os.path.join(d, WIN_FONT_FILES.get(font_family(family) or "", "msyh.ttc"))
+    return f if os.path.isfile(f) else os.path.join(d, "msyh.ttc")
+
+
+def font_family(name: Optional[str]) -> Optional[str]:
+    """按平台换字体名：Windows 没有苹方、宋体-简，换成微软雅黑、宋体。"""
+    if WIN and name:
+        return WIN_FONT_MAP.get(name, name)
+    return name
 
 
 def find_font() -> str:
     """用 fc-list 找第一个可用的中文字体名（找不到就交给 libass 自己回退）。"""
+    if WIN:
+        return "Microsoft YaHei"
     fc = shutil.which("fc-list")
     if fc:
         out = subprocess.run([fc, ":", "family"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
@@ -171,7 +217,7 @@ def doctor() -> int:
         line(False, "卡片字体", str(e))
     try:
         from . import matte as _mt
-        line(True, "人像去背", _mt.helper())
+        line(True, "人像去背", " ".join(_mt.helper_cmd()))
     except Exception as e:  # 只影响 behind_subject／cutout
         line(False, "人像去背", str(e))
     try:

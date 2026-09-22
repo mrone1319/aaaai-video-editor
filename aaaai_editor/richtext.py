@@ -17,7 +17,7 @@ import subprocess
 from functools import lru_cache
 from typing import Dict, List, Optional, Tuple
 
-from . import fonts
+from . import env, fonts
 
 
 # ---------------------------------------------------------------- 字体度量（纯标准库解析 sfnt）
@@ -63,6 +63,8 @@ def locate(family: str) -> Tuple[str, int]:
     for f in sorted(os.listdir(fd)) if os.path.isdir(fd) else []:
         if f.replace(" ", "").lower().startswith(key.lower()) and f.lower().endswith((".ttf", ".otf")):
             return os.path.join(fd, f), 0   # 安装器下载的开源字体、固化的展示字体都在这里
+    if env.WIN:   # Windows 没有 fc-match：按字体名对应到 C:\Windows\Fonts
+        return env.win_font_file(family), 0
     out = subprocess.run(["fc-match", "-f", "%{file}|%{index}", family], capture_output=True, text=True).stdout
     f, _, idx = out.partition("|")
     return f, int(idx or 0)
@@ -111,8 +113,8 @@ def family_for(th: dict, key: str, text: str) -> str:
     if key == "mono" and not has_cjk(text):
         return th.get("mono_font", "IBM Plex Mono")
     if key == "serif":
-        return th.get("serif_font", "Songti SC")
-    return th.get("body_font", "Hiragino Sans GB")
+        return env.font_family(th.get("serif_font", "Songti SC"))
+    return env.font_family(th.get("body_font", "Hiragino Sans GB"))
 
 
 def _smooth(p: float) -> float:

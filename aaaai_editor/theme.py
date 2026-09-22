@@ -20,6 +20,9 @@ CJK_FONTS = [
     "/System/Library/Fonts/PingFang.ttc",
     "/Library/Fonts/Arial Unicode.ttf",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+    os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "msyhbd.ttc"),   # Windows：微软雅黑粗体
+    os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "msyh.ttc"),
+    os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", "simhei.ttf"),
 ]
 NUM_FONTS = [
     os.path.expanduser("~/Library/Fonts/IBMPlexMono-Bold.ttf"),
