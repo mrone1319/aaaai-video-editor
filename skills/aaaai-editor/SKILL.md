@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.17"
+  version: "1.0.18"
 ---
 
 # aaaai-editor 影片总监
@@ -25,14 +25,16 @@ A="$HOME/.aaaai-editor/bin/aaaai-editor"; APP="$HOME/.aaaai-editor/app"; P="<项
 5a. **判定性听写一律不带提示词**（`listen`、`probe-cut`、`check-sync` 都是）：提示词会在静音处幻听出词，
    「窗口里听到」也不等于「在窗口开头」，要逐步收窄。
 5b. **不确定的专有名词、人名、品牌名，不照听写定案**：剪出那一小段问用户确认。
-6. **受限风格**：`mrone`（© MR ONE）与 `otg`（© OTG 社群）仅限社群成员或获授权者使用；
-   用户没确认过就不要主动推荐，也不要替用户执行 `aaaai-editor authorize`——那是用户本人的确认。
+6. **社群风格**：`mrone`（© MR ONE）与 `otg`（© OTG 社群）人人可用、不需授权，但**不是首选**：
+   一般用户问风格时，只把它们放在选项最后（或写进 Other 的说明），**绝不标 (Recommended)、不放第一个**；
+   只有频道档案是 `mrone`（`"$A" config` 的 profile＝mrone，也就是 MR ONE 本人）时，才把 `mrone` 当推荐。
+   用户选了也照做，但提醒：品牌归原权利人，别拿来冒充该品牌。
 
 ## 第零步：环境与频道档案
 
 ```bash
 [ -x "$A" ] || echo "未安装"
-"$A" config        # 程序／资料位置、projects_dir、当前频道档案 profile、已授权风格
+"$A" config        # 程序／资料位置、projects_dir、当前频道档案 profile
 "$A" doctor        # 全部 ✅ 才开工
 ```
 - **没装好**：先把 `${CLAUDE_PLUGIN_ROOT}/docs/00-快速安装.md` 的「安装前先知道这些」摘要给用户看
@@ -72,8 +74,8 @@ HyperFrames 没装：`claude plugin marketplace add https://github.com/heygen-co
 | `ink` | 商业、知识，稳重 |
 | `neon` / `gold` / `trust` | Web3、加密、理财 |
 | `serif` / `paper` / `mag` | 评论、观点、编辑感 |
-| `mrone` 🔒 | MR ONE 口播（黑金、双语高亮字幕、编号清单）——**已授权才列** |
-| `otg` 🔒 | OTG 社群内容（OTG 红、Orbitron、毛玻璃、星空断章、激光扫光）——**已授权才列** |
+| `mrone` · 社群风格 | MR ONE 口播（黑金、双语高亮字幕、编号清单）——**只有 profile＝mrone 才推荐**，其他人放最后 |
+| `otg` · 社群风格 | OTG 社群内容（OTG 红、Orbitron、毛玻璃、星空断章、激光扫光）——放最后，不推荐 |
 
 **② 配乐**：`"$A" bgm` 看常备配乐（7 首原创、零版权），挑最贴的 1–2 首放选项（写 BPM 与感觉）；
 其余选项：用你提供的音乐文件／**HeyGen 音乐库**（一万首以上）／不加配乐。

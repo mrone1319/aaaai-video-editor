@@ -44,20 +44,13 @@ def cmd_adopt(a) -> int:
 
 
 def cmd_authorize(a) -> int:
-    from . import config, theme as th
+    """旧版命令：社群风格现在人人可用，不需要授权。保留命令，免得旧说明照做时报错。"""
+    from . import theme as th
     allt = th.all_themes()
     for n in a.themes:
-        t = allt.get(n)
-        if not t or not t.get("restricted"):
-            print("「%s」不是受限风格，不需要授权。" % n)
-            return 1
-        print("「%s」：%s" % (n, t["restricted"]["note"]))
-    if not a.yes:
-        ans = input("确认你是这些品牌的社群成员或已获授权？输入 yes：").strip().lower()
-        if ans != "yes":
-            print("未确认，没有改动。")
-            return 1
-    print("✅ 已确认：%s" % "、".join(config.authorize(a.themes)))
+        t = allt.get(n) or {}
+        c = t.get("community")
+        print("「%s」%s" % (n, ("是社群风格，现在不需要授权就能用（%s）" % c["note"]) if c else "不需要授权"))
     return 0
 
 
@@ -78,7 +71,6 @@ def cmd_config(a) -> int:
     print("aaaai-editor %s｜程序 %s｜用户资料 %s" % (__version__, config.APP, config.HOME))
     for k, v in c.items():
         print("  %-13s %s" % (k, v))
-    print("  %-13s %s" % ("authorized", "、".join(config.authorized()) or "（无）"))
     return 0
 
 
@@ -203,11 +195,10 @@ def cmd_render(a) -> int:
 def cmd_themes(a) -> int:
     from . import config
     base = os.path.dirname(os.path.abspath(a.storyboard)) if getattr(a, "storyboard", None) else None
-    ok = set(config.authorized())
-    for n, t in theme.all_themes(base).items():   # 不经授权检查：受限风格也列出来，标上锁
-        lock = ""
-        if t.get("restricted"):
-            lock = "  ✅ 已授权" if n in ok else "  🔒 %s（aaaai-editor authorize %s）" % (t["restricted"]["note"], n)
+    allt = theme.all_themes(base)
+    for n in theme.list_themes(base):   # 社群风格排在最后、标出权利人：可以用，但不是首选
+        t = allt[n]
+        lock = "  ·社群风格 © %s（可用，非首选）" % t["community"]["owner"] if t.get("community") else ""
         t = theme.resolve_colors(dict(t))
         print("%-7s 强调 %s  价值 %s  陈述 %s  %s%s" % (n, t["accent"], t["value"], t["state"], t.get("desc", ""), lock))
     print("\n字体：中文 %s\n      数字 %s" % (theme.cjk_font(), theme.num_font()))
@@ -488,7 +479,7 @@ def main(argv=None) -> int:
     ad.add_argument("--no-transcribe", action="store_true")
     ad.add_argument("--width", type=int); ad.add_argument("--height", type=int); ad.add_argument("--fps", type=int)
     ad.set_defaults(fn=cmd_adopt)
-    au = sub.add_parser("authorize", help="确认你有权使用受限风格（mrone／otg）")
+    au = sub.add_parser("authorize", help="（旧版命令）社群风格 mrone／otg 现在不需授权")
     au.add_argument("themes", nargs="+"); au.add_argument("--yes", action="store_true")
     au.set_defaults(fn=cmd_authorize)
     cf = sub.add_parser("config", help="查看／修改设置（--set projects_dir=~/Videos/aaaai-editor）")

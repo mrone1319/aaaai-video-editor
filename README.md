@@ -39,8 +39,7 @@
 - 在 Claude Code 里说「/aaaai-editor」，或直接丢一段视频说「帮我剪」；在 Codex 里说「用 aaaai-editor 剪 <文件>」。
   它会先问你：风格、配乐、字幕；如果素材是横拍的，还会问要不要裁成竖版。
 - 中文、英文等语言会自动识别；竖版、横版、方形都能做。
-- **受限风格**：`mrone`（© MR ONE）、`otg`（© OTG 社群）只给社群成员或获授权者。确认后执行
-  `~/.aaaai-editor/bin/aaaai-editor authorize mrone`（或 `otg`）。
+- **社群风格**：`mrone`（© MR ONE）、`otg`（© OTG 社群）人人可用，排在风格清单最后、不作首选推荐；品牌归原权利人，请勿用来冒充。
 - **建自己的频道档案**（剪辑规则、误听词）：复制 `~/.aaaai-editor/app/profiles/TEMPLATE` 到 `~/.aaaai-editor/profiles/<名字>`，
   再执行 `~/.aaaai-editor/bin/aaaai-editor config --set profile=<名字>`。
 - **自己的风格**：放在 `~/.aaaai-editor/themes/*.json`（写法见 `themes/README.md`）。
@@ -56,7 +55,7 @@
 | 位置 | 内容 | 更新时 |
 |---|---|---|
 | `~/.aaaai-editor/app/` | 程序本体 | 会被新版替换 |
-| `~/.aaaai-editor/`（config.json、themes/、profiles/、glossary.json、authorized.json、fonts/、models/） | 你的设置与自定义 | **不动** |
+| `~/.aaaai-editor/`（config.json、themes/、profiles/、glossary.json、fonts/、models/） | 你的设置与自定义 | **不动** |
 | `~/Movies/aaaai-editor/`（Finder 的「影片」） | 你的项目；`成品/` 里是每支片的成片与封面 | **不动** |
 
 ## 命令总览（Claude 会替你执行，一般不用手打；没加进 PATH 时 `aaaai-editor` 写成 `~/.aaaai-editor/bin/aaaai-editor`）

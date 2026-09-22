@@ -2,7 +2,7 @@
 
 ~/.aaaai-editor/                 （可用环境变量 AAAAI_EDITOR_HOME 改）
   config.json             项目目录、当前频道档案、品牌档案库位置
-  authorized.json         受限风格的授权确认（mrone © MR ONE、otg © OTG 社群）
+  authorized.json         （旧版）社群风格的授权确认；现在 mrone／otg 不需授权，这个文件留着也无妨
   themes/  profiles/      用户自己的风格与频道档案
   glossary.json           用户自己的误听词表
   fonts/  models/         下载的开源字体、whisper 模型

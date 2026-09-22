@@ -70,8 +70,8 @@ cat <<'NOTICE'
   · Claude 内建的文件 skill（docx／pdf 等）只在你要求导出文件时使用
 隐私：视频、音频、字幕都只在你的电脑上处理。只有 B-roll 的画面描述／搜索词（和你选填的首帧照片）
   会发给 Pexels 或 fal，而且每次都会先问你。
-版权：程序免费给指定的人用；mrone（© MR ONE）、otg（© OTG 社群）两套风格
-  只限社群成员或获授权者（详见 LICENSE.md）。
+版权：程序免费使用；mrone（© MR ONE）、otg（© OTG 社群）是社群风格，
+  可以使用但品牌归原权利人（详见 LICENSE.md）。
 ────────────────────────────────────────────────────────────
 NOTICE
 if [ "$YES" != 1 ] && [ "$TTY" = 1 ]; then read -r -p "  看完了，继续安装？[Y/n] " r; case "$r" in n|N) echo "已取消。"; exit 0;; esac
@@ -268,7 +268,6 @@ echo
 echo "完成。在 Claude Code 里说「/aaaai-editor」或丢一段视频进去就能开始。"
 echo "发布流水线要「出图」的话：在 Claude 里连接 Canva 等设计工具的连接器（第一次用时 Claude 会提示）。"
 echo "Claude Desktop／Cursor 想用 B-roll 工具：把 MCP 服务器设为命令 $HOME_DIR/bin/aaaai-editor、参数 mcp（见 docs/00-快速安装.md）。"
-echo "受限风格 mrone（© MR ONE）、otg（© OTG 社群）只给社群成员或获授权者：确认后执行"
-echo "    $HOME_DIR/bin/aaaai-editor authorize mrone   （或 otg）"
+echo "社群风格 mrone（© MR ONE）、otg（© OTG 社群）可以直接使用，品牌归原权利人，请勿用来冒充。"
 echo "建立自己的频道档案：复制 $HOME_DIR/app/profiles/TEMPLATE 到 $HOME_DIR/profiles/<名字>，再"
 echo "    $HOME_DIR/bin/aaaai-editor config --set profile=<名字>"

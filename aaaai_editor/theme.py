@@ -105,7 +105,7 @@ BUILTIN: Dict[str, dict] = {
         "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono",
         "display_font": {"file": ["~/Library/Fonts/Orbitron-VariableFont_wght.ttf",
                                   "~/.aaaai-editor/fonts/Orbitron[wght].ttf"], "wght": 900, "name": "OrbitronBlack"},
-        "restricted": {"owner": "OTG 社群", "note": "OTG 名称、配色与品牌元素归 OTG 社群所有，仅限 OTG 社群成员或获 OTG 授权者使用"},
+        "community": {"owner": "OTG 社群", "note": "社群风格：OTG 名称、配色与品牌元素 © OTG 社群；可以使用，请勿用来冒充 OTG"},
         "captions": "otg",
         "type": {"title": {"font": "display", "italic": 1, "upper": 1},
                  "heading": {"font": "display", "italic": 1, "upper": 1},
@@ -123,7 +123,7 @@ BUILTIN: Dict[str, dict] = {
         "shadow": {"soft": 28, "alpha": 0.50, "dy": 10, "color": "#000000"},
         "row": "#1B1B1F", "line": "#2C2C31",
         "text_engine": "ass", "body_font": "PingFang SC", "captions": "mrone",
-        "restricted": {"owner": "MR ONE", "note": "MR ONE 的个人频道风格，仅限 MR ONE 社群成员或获 MR ONE 授权者使用"},
+        "community": {"owner": "MR ONE", "note": "社群风格：MR ONE 的个人频道风格 © MR ONE；可以使用，请勿用来冒充 MR ONE"},
         "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1},
                  "kicker": {"bold": 1, "upper": 1, "tracking": 0.22},
                  "stamp": {"bold": 1}, "row_title": {"bold": 1}, "row_tag": {"bold": 1},
@@ -179,19 +179,17 @@ def resolve_colors(t: dict) -> dict:
     return t
 
 
-class Restricted(RuntimeError):
+class Restricted(RuntimeError):   # 旧版的受限风格错误；社群风格现在不需授权，保留名称给旧代码引用
     pass
 
 
 def check_access(key: str, t: dict) -> None:
-    """受限风格（品牌归属他人）：使用者须先确认自己是该社群成员或已获授权。只是君子协定，不是加密锁。"""
-    r = t.get("restricted")
-    if not r:
-        return
-    from .config import authorized
-    if key not in authorized():
-        raise Restricted("「%s」风格受限：%s。\n  如果你是社群成员或已获授权，执行 aaaai-editor authorize %s 确认后即可使用。"
-                         % (key, r.get("note", "版权归 %s" % r.get("owner", "原作者")), key))
+    """社群风格（mrone © MR ONE、otg © OTG 社群）人人可用，不需授权；只是不当首选推荐（见 SKILL）。"""
+    return
+
+
+def is_community(t: dict) -> bool:
+    return bool(t.get("community") or t.get("restricted"))
 
 
 def theme(name: Optional[str], base_dir: Optional[str] = None, brand: Optional[dict] = None) -> dict:
@@ -208,9 +206,6 @@ def theme(name: Optional[str], base_dir: Optional[str] = None, brand: Optional[d
 
 
 def list_themes(base_dir: Optional[str] = None, usable_only: bool = False) -> List[str]:
+    """全部风格；社群风格（mrone、otg）排在最后——可以用，但不是首选。"""
     th = all_themes(base_dir)
-    if not usable_only:
-        return list(th)
-    from .config import authorized
-    ok = set(authorized())
-    return [k for k, v in th.items() if not v.get("restricted") or k in ok]
+    return [k for k in th if not is_community(th[k])] + [k for k in th if is_community(th[k])]

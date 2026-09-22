@@ -112,7 +112,7 @@ def fit_units(style: str, w: int, h: int) -> float:
 
 
 def resolve_style(sb: dict) -> str:
-    """字幕样式没写就跟随卡片风格（mrone／otg 有配套的双语高亮字幕）；这两套字幕样式也受同名风格的授权限制。"""
+    """字幕样式没写就跟随卡片风格（mrone／otg 有配套的双语高亮字幕）。"""
     from . import theme
     cap = sb["captions"]
     if not cap.get("style"):
