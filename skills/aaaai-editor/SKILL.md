@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.14"
+  version: "1.0.15"
 ---
 
 # aaaai-editor 影片总监
@@ -148,6 +148,12 @@ P=$("$A" new <主题英文短名>)
 | 自我介绍／嘉宾 | `speaker` |
 | A 对比 B | `compare` |
 | 强调人物本身 | `takeover`（画面进框、人物头冲出框） |
+| 秀证据（收入、后台数据、订单、评价截图） | **卡片收合**：`takeover`（`"bg":"paper"`）＋ `proof` 证据截图卡（截图放 `assets/`；`pill` 日期胶囊、`stamp` 金额印章对准说出数字那刻 `stamp_at`，可配 `"stamp_sfx":"coin"`） |
+| 讲自己的流程（拍→剪→赚） | 接管期间放 `flow` 工作流步骤卡，每步 `at` 对准台词，最后一张自动强调色 |
+| 结尾要观众留言／私信 | 最后一个 `takeover` 写 `"hold":true` 停到片尾 ＋ `cta` 行动号召卡（`question_at`／`cta_at` 对准台词），不用再加 `outro` |
+| 达成里程碑、庆祝 | `confetti` 拉炮彩带（可配 `"sfx":"confetti"`） |
+| 「三、二、一」倒数 | `countdown`（每秒一声 tick） |
+| 提醒点关注、指某个按钮／区域 | `glow` 关注框（`box` 写 [左, 上, 宽, 高] 比例），会一呼一吸 |
 | 结尾 | `outro`（片尾音画同步淡出） |
 | 需要复杂动效 | motion-graphic-video-editor 做透明图层 → `{"type":"clip","t":[a,b],"file":"<mov>"}` |
 | 讲到一个画面（产品界面、现场、物件） | **B-roll**：`{"type":"broll","t":[a,b],"file":"assets/<素材>","from":<秒>}`；横式素材加 `"mode":"blur"` 或 `"letterbox"`；图片会自动缓慢推近（写法见 `$APP/docs/CARDS.md`） |
@@ -160,6 +166,11 @@ P=$("$A" new <主题英文短名>)
 - 标题、金句、人名条、数据跳数、清单、编号行卡、对比，默认都是「画面上沿渐变遮罩＋左对齐粗体字＋强调色线条」（所有风格通用，
   otg 保留红框底板但也放上方），人名条在下沿，片尾是整屏卡片加强调色按钮式标签。
 - 章节断章会把整个画面压暗 1–2 秒（人仍看得见），一支片最多 3–4 个；卡片接管适合金句或结论，一支片 1 次就够。
+- **卡片收合**（秀证据型内容）：一支片 2–3 个 `takeover` 窗口——爆点秀证据、中段讲流程、结尾 `hold` 停在行动号召。
+  接管期间上方 6%～32% 是面板区，`proof`／`flow`／`cta` 和其他卡片会自动放进去、改成底板版（纸面背景时白卡深字）；
+  两张截图并排写 `"x":0.285` 与 `"x":0.715`。截图要是真的（用户提供），不要自己编数据。需要人像去背（头冲出框）。
+- **音效**：默认不加。用户要节奏感或提到音效才加，一分钟 3～6 个就够：金额／数字揭晓 `coin`、面板弹出 `pop`、接管进场 `whoosh`、
+  结论 `ding`。卡片上写 `"sfx"`，或 storyboard 写 `"sfx": [{"t":秒,"sound":"coin"}]`；整体音量 `"sfx_level"`。预览时请用户听。
 - 清单别超过 3–4 条、每条一行；编号行卡的说明（desc）尽量短。清单一长会盖到脸，预览时特别看这一点。
 - 对比写成「以为 vs 其实」「以前 vs 现在」：`{"use":"compare","t":[a,b],"left":{"title":"你以为最贵","items":["订阅费"]},"right":{"title":"其实最贵","items":["绕路的时间"]}}`。
 - 密度：每 8–15 秒最多一个主卡（hook／stat_hit／steps／quote_pull／compare／takeover）；30 秒以下短片 hook + 一个主卡 + outro。

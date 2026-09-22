@@ -45,9 +45,11 @@ def load_storyboard(path: str) -> dict:
                 raise env.ToolError("常备配乐库没有这首：%s（aaaai-editor bgm 看清单）" % sb["music"]["file"])
         sb["music"]["file"] = os.path.normpath(os.path.join(base, f))
     try:
-        return recipes.expand(sb)
+        sb = recipes.expand(sb)
     except ValueError as e:
         raise env.ToolError(str(e))
+    from . import composites
+    return composites.expand(sb)   # 证据截图／工作流／行动号召／倒数 → 基本卡片；卡片接管期间的排版
 
 
 def _hl_color(sb: dict) -> Optional[str]:
@@ -175,7 +177,11 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
                            sb["captions"].get("font") or env.find_font(), sb["captions"]["style"],
                            sb["captions"].get("highlight") or (), sb["captions"].get("margin_v"),
                            sb["captions"].get("size_scale"), _hl_color(sb),
-                           sb.get("_faces") if sb["captions"].get("avoid_face", True) else None, t0)
+                           sb.get("_faces") if sb["captions"].get("avoid_face", True) else None, t0,
+                           [(float(o["t"][0]), float(o["t"][1]), h * float(o.get("top", 0.34)),
+                             h * (float(o.get("top", 0.34)) + float(o.get("height", 0.50))))
+                            for o in sb.get("overlays") or []
+                            if o.get("type") == "frame" and (o.get("bg") == "paper" or str(o.get("bg", "")).startswith("#"))])
     zooms = sb.get("zooms") or []
     zoom_str = overlays.zoom_filter(zooms, w, h, fps) if zooms else None
     # 人像遮罩按「不带 format 的剪辑图」生成，成片改画质不会让遮罩缓存失效
@@ -313,8 +319,13 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
     dn = denoise_filter(sb) if info.get("has_audio", True) else ""
     if dn:
         print("🎙 降噪：%s" % dn.split(",")[-1])
+    from . import sfx as sfx_mod
+    fx_items = [x for x in sfx_mod.collect(sb) if x[0] < tl.duration]
+    if fx_items:
+        print("🔔 音效 %d 个" % len(fx_items))
     audio, rep = loud.master(sb["source"], _voice_graph(cuts, info.get("has_audio", True), dn), tl.duration, work, target,
-                             music=mu, fade=fade)
+                             music=mu, fade=fade, sfx=fx_items,
+                             sfx_gain=sfx_mod.gain_for((sb.get("sfx_level") or None)))
     print("🔊 响度 %.1f LUFS・真峰值 %.1f dBTP（人声 %+.1fdB%s，迭代 %d 次）"
           % (rep["I"], rep["TP"], rep["voice_gain"],
              ("、配乐 %+.1fdB" % rep["music_gain"]) if mu else "", rep["iters"]))

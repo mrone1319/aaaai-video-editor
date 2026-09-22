@@ -346,8 +346,23 @@ def blocks_icons(ov, th, W) -> Tuple[List[dict], str]:
 
 
 def blocks_text(ov, th, W) -> Tuple[List[dict], str]:
-    return [_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.056),
-                 ov.get("color") or th["text"], role="free")], "none"
+    col = ov.get("color") or th["text"]
+    if isinstance(col, str) and col.startswith("@"):   # "@muted" 这类：引用风格的语义色
+        col = th.get(col[1:], th["text"])
+    return [_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.056), col, role="free")], "none"
+
+
+def blocks_step(ov, th, W) -> Tuple[List[dict], str]:
+    """工作流步骤卡（flow 展开出来的一张）：图标＋一行小字＋粗体大字，置中。"""
+    b = []
+    ib = _icon_blk(ov, th, W, 0.058)
+    if ib:
+        b.append(ib)
+    if ov.get("top"):
+        b.append(_blk(ov["top"], round(W * 0.026), th["muted"], gap=round(W * 0.012) if b else 0, role="label"))
+    b.append(_blk(ov.get("big", ""), round(W * float(ov.get("scale", 1.0)) * 0.040), th["text"],
+                  gap=round(W * 0.008) if b else 0, role="heading"))
+    return b, "fit"
 
 
 def blocks_rows(ov, th, W) -> Tuple[List[dict], str]:
@@ -394,7 +409,7 @@ def blocks_compare(ov, th, W) -> Tuple[List[dict], str]:
 
 BUILDERS = {"compare": blocks_compare, "title": blocks_title, "stat": blocks_stat, "bullets": blocks_bullets,
             "quote": blocks_quote, "lower_third": blocks_lower_third, "avatar": blocks_avatar, "stamp": blocks_stamp,
-            "text": blocks_text, "icons": blocks_icons, "rows": blocks_rows}
+            "text": blocks_text, "icons": blocks_icons, "rows": blocks_rows, "step": blocks_step}
 
 ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
            "top_left": (0.0, 0.0), "top_right": (1.0, 0.0),
@@ -407,6 +422,9 @@ DEFAULT_POS = {"avatar": "bottom_left", "lower_third": "bottom_left", "stamp": "
 
 def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     """算出底板、文字项、图标项的绝对坐标、时间、动画。"""
+    if ov.get("_result"):  # 工作流最后一张「结果」卡：强调色底、字用强调色上的对比色
+        th = dict(th, plate=th["accent"], plate_alpha=1.0, text=th["on_accent"], muted=th["on_accent"],
+                  accent=th["on_accent"])
     if ov.get("colors"):  # 单张卡片改色，可写 "@value" 引用语义色
         th = resolve_colors(dict(th, **ov["colors"]))
     typ = ov["type"]
@@ -564,6 +582,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         top_m, bot_m = round(H * float(ov.get("_top_m", TOP_M))), round(H * BOT_M)   # _top_m：避脸时往上挪
         px = mx + ax * (W - 2 * mx - plate_w)
         py = top_m + ay * (H - top_m - bot_m - plate_h)
+        if ov.get("_xy"):   # 指定位置：[水平中心, 上缘]（相对画面宽／高）——组合卡片与卡片接管的面板区用
+            px = min(max(0.0, float(ov["_xy"][0]) * W - plate_w / 2.0), W - plate_w)
+            py = float(ov["_xy"][1]) * H - (pad if mode == "none" else 0)   # 无底板的字：上缘就是字的上缘
         cbox_x = px + pad
         cur = py + pad
 
@@ -698,7 +719,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             y = cur
             it = {"size": b["size"], "color": b["color"], "mono": b["mono"],
                   "t0": t0 + b["delay"], "t1": t1, "di": di, "do": DO,
-                  "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none" and not lite,
+                  "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none" and not lite and ov.get("halo", True),
                   "soft": False, "hl": th.get("hl") if lite else None,
                   "role": b.get("role", "text"), "runs": b["_runs"][li]}
             if b["align"] == "center":

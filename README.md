@@ -76,6 +76,7 @@ aaaai-editor proof storyboard.json [--final]         # 按卡片时间自动抽�
 aaaai-editor align storyboard.json                   # 字幕逐句贴到真实人声
 aaaai-editor preview storyboard.json --subs          # 只烧字幕的一分钟预览（可加 --from/--to）
 aaaai-editor bgm                                     # 常备配乐（7 首原创，music.file 写 bgm:<曲名>）
+aaaai-editor sfx                                     # 音效清单（金币、啵、叮、咻…，卡片上写 "sfx"）
 aaaai-editor music-ab storyboard.json --at 10        # 三种配乐音量的 A/B 样片
 aaaai-editor denoise-ab storyboard.json --at 10      # 降噪 A/B（默认已开标准档；"denoise": "strong"／false）
 aaaai-editor tidy storyboard.json [--apply all|1,3]  # 找口头禅（嗯／呃）与讲到一半重讲；确认后才删

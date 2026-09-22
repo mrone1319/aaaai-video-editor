@@ -8,7 +8,7 @@ import hashlib
 import os
 from typing import Dict, List, Optional, Tuple
 
-from . import cards, draw, fonts, fx, icons, matte, richtext, theme
+from . import cards, composites, draw, env, fonts, fx, icons, matte, richtext, theme
 
 DEF_DI, DEF_DO = cards.DI, cards.DO
 
@@ -142,6 +142,55 @@ def zoom_filter(zooms: List[dict], W: int, H: int, fps: float) -> str:
             % (zexpr, axe, aye, W, H, fps))
 
 
+def framed_image(src: str, w: int, h: int, border: int, radius: int, work: str) -> Tuple[str, int]:
+    """证据截图：白色圆角框＋阴影，截图四角跟着圆。回传 (png, 四周留给阴影的边距)。按内容缓存。"""
+    st = os.stat(src)
+    key = hashlib.sha1(repr((os.path.abspath(src), st.st_size, st.st_mtime_ns, w, h, border, radius, 1)).encode()
+                       ).hexdigest()[:16]
+    out = os.path.join(work, "plates", "proof_%s.png" % key)
+    plate, m = draw.make_plate({"w": w + 2 * border, "h": h + 2 * border, "radius": radius, "fill": "#FFFFFF",
+                                "alpha": 1.0, "border": {"w": 0},
+                                "shadow": {"soft": 22, "alpha": 0.38, "dy": 8, "color": "#000000"}},
+                               os.path.join(work, "plates"))
+    if os.path.isfile(out):
+        return out, m
+    r = max(2, radius - border)
+    corner = "if(gt(hypot(max(0,abs(X-W/2)-(W/2-%d)),max(0,abs(Y-H/2)-(H/2-%d))),%d),0,alpha(X,Y))" % (r, r, r)
+    g = ("[1:v]scale=%d:%d:flags=lanczos,format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='%s'[s];"
+         "[0:v][s]overlay=%d:%d:format=auto" % (w, h, corner, m + border, m + border))
+    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", plate, "-i", src, "-filter_complex", g, "-frames:v", "1", out])
+    return out, m
+
+
+def glow_png(w: int, h: int, bw: int, color: str, soft: int, work: str) -> Tuple[str, int]:
+    """关注框：强调色圆角外框＋向外的光晕（实心圆角块加光晕，再把中间挖空）。"""
+    r = min(h // 2, max(12, int(h * 0.28)))
+    plate, m = draw.make_plate({"w": w, "h": h, "radius": r, "fill": color, "alpha": 1.0, "border": {"w": 0},
+                                "shadow": {"soft": soft, "alpha": 0.9, "dy": 0, "color": color}},
+                               os.path.join(work, "plates"))
+    out = plate.replace(".png", "_ring%d.png" % bw)
+    if not os.path.isfile(out):
+        ri = max(2, r - bw)
+        cx, cy = m + w / 2.0, m + h / 2.0
+        hole = ("lte(hypot(max(0,abs(X-%.1f)-%.1f),max(0,abs(Y-%.1f)-%.1f)),%d)"
+                % (cx, w / 2.0 - bw - ri, cy, h / 2.0 - bw - ri, ri))
+        env.run([env.ffmpeg(), "-y", "-v", "error", "-i", plate, "-vf",
+                 "format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(%s,0,alpha(X,Y))'" % hole,
+                 "-frames:v", "1", out])
+    return out, m
+
+
+def ring_src(S: int, fps: float, color: str) -> str:
+    """倒数圆环（lavfi 来源）：淡色底圈＋强调色弧，每秒从满圈顺时针缩到空。"""
+    r, g, b = draw.hex_rgb(color)
+    c = S / 2.0
+    ro, ri = c * 0.96, c * 0.80
+    rad = "hypot(X-%.1f,Y-%.1f)" % (c, c)
+    ang = "mod(atan2(X-%.1f,%.1f-Y)+2*PI,2*PI)/(2*PI)" % (c, c)
+    a = "255*between(%s,%.1f,%.1f)*if(lte(%s,1-mod(T,1)),1,0.22)" % (rad, ri, ro, ang)
+    return "color=c=black@0:s=%dx%d:r=%s,format=rgba,geq=r=%d:g=%d:b=%d:a='%s'" % (S, S, fps, r, g, b, a)
+
+
 def _merge(rs: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
     out: List[Tuple[float, float]] = []
     for a, b in sorted(rs):
@@ -196,7 +245,10 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
           source: Optional[str] = None, base_graph: Optional[str] = None):
     """返回 (输入参数, 组装函数)。组装函数接 base 标签、字幕滤镜、推近滤镜，产出滤镜尾段。"""
     # 印章、标注是小徽章：画在其他卡片上面，不被标题的遮罩盖住（其余保持原顺序）
-    ovs = sorted(sb.get("overlays") or [], key=lambda o: o.get("type") in ("stamp", "callout"))
+    # 卡片接管（整屏底）最先画；印章、标注、关注框、倒数圈、彩带最后画；其余照原顺序
+    ovs = sorted(sb.get("overlays") or [],
+                 key=lambda o: 0 if o.get("type") == "frame" else
+                 (2 if o.get("type") in ("stamp", "callout", "glow", "ring", "confetti") else 1))
     mc = dict({"quality": "balanced", "scale": 0.5, "feather": 2.0}, **(sb.get("matte") or {}))
     inputs: List[List[str]] = []
     prepared: List[dict] = []
@@ -253,15 +305,18 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             vh = int(round(vw * H / float(W))) & ~1
             cy = int((vh - bh) * float(ov.get("focus", 0.30))) & ~1
             cx = ((vw - bw) // 2) & ~1
-            rec = {"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions")), "behind": False,
+            # 接管的画面在字幕下层：字幕照常显示在框里（面板区的卡片仍在字幕之上）
+            rec = {"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions", True)), "behind": False,
                    "layers": [], "items": [], "cutout": None, "th": th,
                    "engine": th.get("text_engine", "drawtext")}
-            star = th.get("bleed_bg") == "starfield"
+            paper = ov.get("bg") == "paper" or str(ov.get("bg", "")).startswith("#")
+            star = th.get("bleed_bg") == "starfield" and not paper
             if star:
                 inputs.append(["-stream_loop", "-1", "-t", "%.3f" % dur, "-i",
                                fx.starfield(W, H, fps, th.get("accent", "#E60012"), th.get("accent2", "#FF6A1A"))])
             else:
-                png, _m = draw.make_plate({"w": W, "h": H, "radius": 0, "fill": th["plate"], "alpha": 1.0,
+                fill = (ov["bg"] if str(ov.get("bg", "")).startswith("#") else composites.PAPER) if paper else th["plate"]
+                png, _m = draw.make_plate({"w": W, "h": H, "radius": 0, "fill": fill, "alpha": 1.0,
                                            "border": {"w": 0}, "shadow": {}}, os.path.join(work, "plates"))
                 inputs.append(["-loop", "1", "-t", "%.3f" % dur, "-i", os.path.relpath(png, work)])
             bg_layer = {"idx": idx, "x": "-%d" % (0 if star else _m), "y": "-%d" % (0 if star else _m),
@@ -284,6 +339,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             if ov.get("text") or ov.get("kicker"):
                 tov = {"type": "title", "t": [t0, t1], "text": ov.get("text", ""), "kicker": ov.get("kicker"),
                        "sub": ov.get("sub"), "pos": "top", "anim": ov.get("anim", "rise")}
+                if paper:   # 纸面：标题改深字
+                    tov["colors"] = dict(composites.ON_PAPER)
                 TL = cards.layout(tov, th, W, H, fps)
                 rec["items"] = TL["items"]   # 只要文字，不要底板
                 if TL.get("shapes"):         # 标题上方的强调色短线：透明图层，画在框之上
@@ -294,7 +351,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     rec["post_layers"] = [{"idx": idx, "x": "-%d" % sm, "y": "-%d" % sm, "t0": t0, "t1": t1,
                                            "scale": None, "di": DEF_DI, "do": DEF_DO, "fade": True}]
                     idx += 1
-            fr["blur_bg"] = True
+            fr["blur_bg"] = not paper
             fr["bg_layers"] = [bg_layer] if star else []   # 星空盖在模糊画面之上（半透明）
             prepared.append(rec)
             continue
@@ -307,6 +364,47 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             continue
         rec = {"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions")),
                "behind": bool(ov.get("behind_subject")), "layers": [], "items": [], "cutout": None}
+        if typ in ("proof_img", "ring", "confetti", "glow"):
+            rec = {"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions")), "behind": False,
+                   "layers": [], "items": [], "cutout": None}
+            th = theme.theme(ov.get("style") or sb.get("style"), sb.get("_base"), sb.get("brand"))
+            if typ == "proof_img":   # 白框截图（合成一次、缓存）：淡入＋轻轻上浮
+                bd = max(3, int(round(W * float(ov["bf"]))))
+                png, m = framed_image(os.path.normpath(os.path.join(sb.get("_base", ""), ov["file"])),
+                                      int(W * float(ov["wf"])) & ~1, int(H * float(ov["hf"])) & ~1, bd,
+                                      th["radius"], work)
+                inputs.append(["-loop", "1", "-t", "%.3f" % dur, "-i", os.path.relpath(png, work)])
+                y0 = int(H * float(ov["yf"])) - m
+                rise = int(round(H * 0.018))
+                rec["layers"].append({"idx": idx, "x": "%d" % (int(W * float(ov["xf"])) - m),
+                                      "y": "%d+(%d)*(1-%s)" % (y0, rise, ease(t0, DEF_DI)), "t0": t0, "t1": t1,
+                                      "scale": None, "di": DEF_DI, "do": DEF_DO, "fade": True})
+            elif typ == "ring":      # 倒数圆环：每秒从满圈缩到空
+                S = int(round(W * float(ov.get("size", 0.34)))) & ~1
+                inputs.append(["-f", "lavfi", "-t", "%.3f" % dur, "-i", ring_src(S, fps, th["accent"])])
+                rec["layers"].append({"idx": idx, "x": "%d" % int(W * float(ov["cx"]) - S / 2),
+                                      "y": "%d" % int(H * float(ov["cy"]) - S / 2), "t0": t0, "t1": t1,
+                                      "scale": None, "di": 0.2, "do": 0.2, "fade": True})
+            elif typ == "confetti":  # 拉炮彩带：逐帧生成的粒子
+                cols = ov.get("colors_list") or [th["accent"], th.get("value") or "#35C46A", "#FFFFFF", "#F5C542",
+                                                 "#FF5C7A", "#4CC3FF"]
+                pat, nfr = fx.confetti(W // 2, H // 2, fps, cols, float(ov.get("dur", min(2.6, dur))),
+                                       float(ov.get("x", 0.5)), float(ov.get("y", 0.62)))
+                inputs.append(["-framerate", str(fps), "-i", pat])
+                rec["layers"].append({"idx": idx, "x": "0", "y": "0", "t0": t0, "t1": min(t1, t0 + nfr / float(fps)),
+                                      "scale": W, "di": 0.0, "do": 0.0, "fade": False})
+            else:                    # 关注框：强调色发光外框，一呼一吸
+                bx, by, bw, bh = [float(v) for v in ov.get("box", [0.1, 0.55, 0.8, 0.11])]
+                col = ov.get("color") or th["accent"]
+                png, m = glow_png(int(W * bw), int(H * bh), max(4, int(W * 0.007)), col, int(W * 0.024), work)
+                inputs.append(["-loop", "1", "-t", "%.3f" % dur, "-i", os.path.relpath(png, work)])
+                rec["layers"].append({"idx": idx, "x": "%d" % (int(W * bx) - m), "y": "%d" % (int(H * by) - m),
+                                      "t0": t0, "t1": t1, "scale": None, "di": 0.25, "do": 0.25, "fade": True,
+                                      "pre": "geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
+                                             "a='alpha(X,Y)*(0.62+0.38*sin(2*PI*T/%.2f))'" % float(ov.get("pulse", 1.1))})
+            idx += 1
+            prepared.append(rec)
+            continue
         if typ in ("image", "clip"):
             f = os.path.normpath(os.path.join(sb.get("_base", ""), ov["file"]))
             if not os.path.isfile(f):
@@ -602,6 +700,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 n[0] += 1
                 lab = "ov%d" % n[0]
                 pre = "[%d:v]format=rgba" % lay["idx"]
+                if lay.get("pre"):
+                    pre += "," + lay["pre"]
                 if lay.get("opacity", 1.0) < 0.999:   # 半透明（otg 星空：看得到底下的画面）
                     pre += ",colorchannelmixer=aa=%.3f" % lay["opacity"]
                 if lay["scale"]:

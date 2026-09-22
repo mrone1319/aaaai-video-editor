@@ -46,7 +46,7 @@ def _limit(mix: str, out: str, gain: float, limit_db: float, fade: float, total:
 
 
 def master(source: str, voice_graph: str, total: float, work: str, target: float = -14.0,
-           music: Optional[dict] = None, fade: float = 0.0):
+           music: Optional[dict] = None, fade: float = 0.0, sfx: Optional[list] = None, sfx_gain: float = -6.0):
     ff = env.ffmpeg()
     voice = os.path.join(work, "voice.wav")
     env.run([ff, "-y", "-v", "error", "-i", source, "-filter_complex",
@@ -71,6 +71,15 @@ def master(source: str, voice_graph: str, total: float, work: str, target: float
                  "-filter_complex", g, "-map", "[m]", "-t", "%.3f" % total, "-c:a", "pcm_s24le", mix])
     else:
         env.run([ff, "-y", "-v", "error", "-i", voice, "-af", "volume=%.3fdB" % gv, "-c:a", "pcm_s24le", mix])
+
+    if sfx:   # 音效：在响度锁定之前混进去，成片响度仍准确落在目标
+        from . import sfx as sfx_mod
+        mixed = os.path.join(work, "mix_sfx.wav")
+        args, g = sfx_mod.mix_graph(1, sfx, sfx_gain, "[0:a]", "[m]")
+        env.run([ff, "-y", "-v", "error", "-i", mix] + args + ["-filter_complex", g, "-map", "[m]",
+                                                               "-c:a", "pcm_s24le", mixed])
+        mix = mixed
+        rep["sfx"] = len(sfx)
 
     out_wav = os.path.join(work, "master.wav")
     audio = os.path.join(work, "audio.m4a")

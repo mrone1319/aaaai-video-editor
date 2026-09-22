@@ -155,12 +155,13 @@ def _callout(r, beats):
              "behind_subject": bool(r.get("behind"))}], [], None
 
 
-@recipe("takeover", "卡片接管：整屏底 + 画面收进圆角框 + 人物头冲出框上缘 + 顶部标题",
-        (), ("text", "kicker", "sub", "focus", "zoom", "top", "height", "popout"))
+@recipe("takeover", "卡片接管：画面收进圆角框 + 人物头冲出框上缘；上方是标题或面板区（证据截图／工作流／行动号召）"
+        "；bg=paper 纸面底；hold=true 停到片尾",
+        (), ("text", "kicker", "sub", "focus", "zoom", "top", "height", "popout", "bg", "hold", "sfx"))
 def _takeover(r, beats):
     a, b = _t(r)
     o = {"type": "frame", "t": [a, b]}
-    for k in ("text", "kicker", "sub", "focus", "zoom", "top", "height", "popout"):
+    for k in ("text", "kicker", "sub", "focus", "zoom", "top", "height", "popout", "bg", "hold", "sfx"):
         if r.get(k) is not None:
             o[k] = r[k]
     return [o], [], None

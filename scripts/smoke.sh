@@ -61,6 +61,27 @@ t phone       "$A" phone "$SB"
 t showcase    "$A" showcase --out "$S/showcase.png" --only ink neon
 t adopt       "$A" adopt "$S/p/out/final.mp4" --out "$S/adopted" --no-transcribe --no-captions
 t hook        "$A" hook "$SB" --text "第三步是加字幕和音乐"
+t sfx         "$A" sfx
+# 卡片收合＋组合卡片＋小组件＋音效（测试画面没有人，接管不做头冲出框）
+python3 - "$R" "$S" <<'PYX'
+import json, os, subprocess, sys
+R, S = sys.argv[1:]
+os.makedirs(S + "/c/work", exist_ok=True); os.makedirs(S + "/c/assets", exist_ok=True)
+subprocess.run(["ffmpeg" if not os.path.exists("/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg") else "/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg",
+                "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=#E8EEF5:s=800x500", "-frames:v", "1", S + "/c/assets/shot.png"], check=True)
+s = json.load(open(R + "/storyboard.json")); s["source"] = R + "/source.mp4"; s.pop("music", None)
+s["recipes"] = [{"use": "takeover", "t": [1.0, 5.0], "bg": "paper", "popout": False, "sfx": "whoosh"},
+                {"use": "takeover", "t": [9.0, 14.0], "bg": "paper", "popout": False, "hold": True}]
+s["overlays"] = [{"type": "proof", "t": [1.2, 5.0], "file": "assets/shot.png", "kicker": "示例", "pill": "9/22", "stamp": "+$1", "stamp_at": 2.0, "stamp_sfx": "coin"},
+                 {"type": "confetti", "t": [6.0, 8.0], "sfx": "confetti"},
+                 {"type": "countdown", "t": [6.0, 8.0], "from": 2},
+                 {"type": "glow", "t": [6.0, 8.5], "box": [0.1, 0.6, 0.8, 0.1]},
+                 {"type": "flow", "t": [9.2, 11.0], "kicker": "流程", "steps": [{"icon": "camera", "top": "拍", "big": "3 分钟", "at": 9.3}, {"icon": "money", "top": "赚", "big": "进账", "at": 10.0}]},
+                 {"type": "cta", "t": [11.0, 14.0], "hold": True, "question": "怎么**入门**", "keyword": "留言", "badge": "发给你", "sfx": "ding"}]
+json.dump(s, open(S + "/c/storyboard.json", "w"), ensure_ascii=False)
+PYX
+cp "$R/work/transcript.json" "$S/c/work/"
+t card-mode   "$A" preview "$S/c/storyboard.json"
 echo "== B-roll（不花钱的部分）与 MCP"
 t broll-status "$A" broll status
 t mcp python3 - "$A" <<'PY'

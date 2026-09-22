@@ -344,6 +344,14 @@ def cmd_showcase(a) -> int:
     return 0
 
 
+def cmd_sfx(a) -> int:
+    from . import sfx
+    print(sfx.describe())
+    print("\n用法：storyboard 写 \"sfx\": [{\"t\": 成片秒数, \"sound\": \"coin\"}]，或卡片上写 \"sfx\": \"pop\"（卡片出现时响，"
+          "\"sfx_at\" 改时间）；整体音量 \"sfx_level\": quiet／normal／loud")
+    return 0
+
+
 def cmd_hook(a) -> int:
     from . import edit
     if a.suggest:
@@ -515,6 +523,8 @@ def main(argv=None) -> int:
     pv.set_defaults(fn=cmd_render, only=None, proxy=True)
     t = sub.add_parser("bgm", help="列出常备配乐")
     t.set_defaults(fn=cmd_tools, tool="bgm")
+    t = sub.add_parser("sfx", help="列出音效（storyboard 的 sfx 或卡片上的 \"sfx\"）")
+    t.set_defaults(fn=cmd_sfx)
     t = sub.add_parser("listen", help="滑动窗口听写：第几秒在讲什么（不带提示词）")
     t.add_argument("media"); t.add_argument("a", type=float); t.add_argument("b", type=float)
     t.add_argument("--win", type=float, default=2.5); t.add_argument("--hop", type=float, default=0.5)

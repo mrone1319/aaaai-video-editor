@@ -157,3 +157,63 @@ def sparkle(size: int, fps: float, color: str = "#FFFFFF", dur: float = 0.9) -> 
                 buf[j + 3] = int(a * 255)
         write_rgba(pat % f, c, c, buf)
     return pat, n, c
+
+
+def confetti(W: int, H: int, fps: float, colors, dur: float = 2.6, ox: float = 0.5, oy: float = 0.62,
+             n: int = 150, seed: int = 11) -> Tuple[str, int]:
+    """拉炮彩带：从 (ox, oy) 往上喷出、受重力落下、边转边飘的小纸片，后段渐隐。
+    画布 W×H（通常是成片的一半，叠加时放大），返回 (帧序列模板, 帧数)。"""
+    key = hashlib.sha1(repr((W, H, fps, tuple(colors), dur, ox, oy, n, seed, 1)).encode()).hexdigest()[:12]
+    d = os.path.join(FX, "confetti_%s" % key)
+    nf = max(8, int(round(dur * fps)))
+    pat = os.path.join(d, "c_%03d.png")
+    if os.path.isfile(pat % (nf - 1)):
+        return pat, nf
+    os.makedirs(d, exist_ok=True)
+    rnd = random.Random(seed)
+    cols = [hex_rgb(c) for c in colors]
+    U = min(W, H * 0.5625)
+    parts = []
+    for _ in range(n):
+        ang = math.radians(rnd.uniform(-160, -20))           # 往上半圈喷
+        sp = U * rnd.uniform(1.1, 2.4)                        # 像素／秒
+        parts.append({"vx": math.cos(ang) * sp, "vy": math.sin(ang) * sp, "c": rnd.choice(cols),
+                      "w": U * rnd.uniform(0.012, 0.022), "h": U * rnd.uniform(0.006, 0.011),
+                      "rot": rnd.uniform(0, math.pi), "spin": rnd.uniform(-9, 9), "flip": rnd.uniform(4, 11),
+                      "drag": rnd.uniform(1.4, 2.4), "delay": rnd.uniform(0, 0.12)})
+    g = U * 2.2
+    x0, y0 = W * ox, H * oy
+    for f in range(nf):
+        t = f / float(fps)
+        buf = bytearray(W * H * 4)
+        fade = 1.0 if t < dur * 0.6 else max(0.0, 1.0 - (t - dur * 0.6) / (dur * 0.4))
+        for p in parts:
+            tt = t - p["delay"]
+            if tt <= 0:
+                continue
+            k = p["drag"]
+            e = (1 - math.exp(-k * tt)) / k                    # 空气阻力：速度指数衰减
+            x = x0 + p["vx"] * e
+            y = y0 + p["vy"] * e + 0.5 * g * tt * tt * 0.55
+            if not (-20 < x < W + 20 and -20 < y < H + 20):
+                continue
+            rot = p["rot"] + p["spin"] * tt
+            hw = p["w"] / 2.0
+            hh = p["h"] / 2.0 * abs(math.cos(p["flip"] * tt))  # 翻面：看起来在飘
+            cr, sr = math.cos(rot), math.sin(rot)
+            ext = int(max(hw, hh) + 2)
+            a8 = int(255 * fade)
+            for yy in range(int(y) - ext, int(y) + ext + 1):
+                if not 0 <= yy < H:
+                    continue
+                dy_ = yy + 0.5 - y
+                for xx in range(int(x) - ext, int(x) + ext + 1):
+                    if not 0 <= xx < W:
+                        continue
+                    dx_ = xx + 0.5 - x
+                    u, v = dx_ * cr + dy_ * sr, -dx_ * sr + dy_ * cr
+                    if abs(u) <= hw and abs(v) <= hh + 0.5:
+                        j = (yy * W + xx) * 4
+                        buf[j], buf[j + 1], buf[j + 2], buf[j + 3] = p["c"][0], p["c"][1], p["c"][2], a8
+        write_rgba(pat % f, W, H, buf)
+    return pat, nf

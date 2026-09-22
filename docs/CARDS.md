@@ -145,3 +145,16 @@ B-roll 时段内不要用 `behind_subject`（人物会被重贴到 B-roll 上面
   还是压到就改放在下巴下面（遮罩改成上下渐淡，只包住字）。单张关掉写 `"avoid_face": false`，整支片关掉在 storyboard 顶层写。
   文字穿插（`behind_subject`）的卡片不动。
 - 印章（`stamp`）与标注（`callout`）一律画在其他卡片上面，不会被标题的遮罩盖住。
+
+## 小组件与音效
+
+```jsonc
+{"type":"confetti",  "t":[30,32.6], "sfx":"confetti"}                    // 拉炮彩带（可写 x、y 喷出点比例）
+{"type":"countdown", "t":[8.6,11.6], "from":3}                          // 圆环倒数＋大数字，每秒 tick（"sfx": "" 关掉）；at_xy 改位置
+{"type":"glow",      "t":[13.6,17], "box":[0.035,0.695,0.60,0.098]}     // 关注框：[左, 上, 宽, 高] 比例，一呼一吸（pulse 秒数）
+```
+
+- 组合卡片 `proof`（证据截图）、`flow`（工作流步骤）、`cta`（行动号召）的写法见 `docs/RECIPES.md`「卡片收合三连发」。
+- 音效：任何卡片可写 `"sfx": "<名称>"`（卡片出现时响，`sfx_at` 改时间、`sfx_db` 调单个音量）；
+  或 storyboard 顶层 `"sfx": [{"t": 秒, "sound": "coin", "db": 0}]`；整体音量 `"sfx_level": "quiet"／"normal"／"loud"`。
+  `aaaai-editor sfx` 列出全部音效（金币、啵、叮、咻、喀、滴答、拉炮），都是程序合成的，没有版权问题。
