@@ -86,14 +86,8 @@ def hw_encoder() -> List[str]:
     return ["-c:v", "libx264", "-preset", "medium", "-crf", "17"]
 
 
-def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
-                framing: Optional[dict] = None, hdr: bool = False, seek_base: Optional[int] = None) -> str:
-    """裁切拼接 + 统一画幅，产出 [base]。deep=True 时走 yuv444，卡片边缘不被色度下采样。
-
-    nframes：分段渲染时把这一段锁成确定帧数。各段单独做 fps 重采样会各自取整，
-    不锁帧数就会每个接缝少一帧，段数一多就累积成音画不同步。
-    """
-    n = len(cuts)
+def frame_chain(w: int, h: int, framing: Optional[dict] = None, hdr: bool = False):
+    """原片一帧 → 成片画幅的处理（HDR 转 SDR＋缩放裁切＋全局推近）。回传 (pre, fit)，渲染与封面共用。"""
     z = float((framing or {}).get("zoom", 1.0))
     if z > 1.0001:   # 全局推近（机位坐得远）：并进第一次编码，不多压一代
         cx, cy = float(framing.get("cx", 0.5)), float(framing.get("cy", 0.4))
@@ -104,6 +98,18 @@ def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
     # 先缩到成片尺寸再分给各段：素材常比成片大（手机 4K），在原尺寸上分 n 路裁切会慢好几倍
     pre = ("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,"
            "zscale=t=bt709:m=bt709:r=tv,format=yuv420p," if hdr else "")   # iPhone HLG／HDR10 → SDR bt709
+    return pre, fit
+
+
+def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
+                framing: Optional[dict] = None, hdr: bool = False, seek_base: Optional[int] = None) -> str:
+    """裁切拼接 + 统一画幅，产出 [base]。deep=True 时走 yuv444，卡片边缘不被色度下采样。
+
+    nframes：分段渲染时把这一段锁成确定帧数。各段单独做 fps 重采样会各自取整，
+    不锁帧数就会每个接缝少一帧，段数一多就累积成音画不同步。
+    """
+    n = len(cuts)
+    pre, fit = frame_chain(w, h, framing, hdr)
     if seek_base is None:
         parts = ["[0:v]%s%s,split=%d%s" % (pre, fit, n, "".join("[s%d]" % i for i in range(n)))]
     else:   # 每段一个已跳转的输入（见 _seek_inputs）：时间从 0 起算

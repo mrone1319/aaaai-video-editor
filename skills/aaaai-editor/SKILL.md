@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.21"
+  version: "1.0.22"
 ---
 
 # aaaai-editor 影片总监
@@ -220,11 +220,18 @@ check-sync 两关：逐句能量检查（出字时有人声、没早出、剪点
 ```bash
 "$A" render "$P/storyboard.json"                 # → $P/out/final.mp4（>90 秒自动分段）
 "$A" proof "$P/storyboard.json" --final          # 看成品的帧（卡片要看成品，不只看预览）
-"$A" cover "$P/storyboard.json" --at <秒> --text "<6–8 字钩子>" [--sub ...] [--handle @账号]   # 账号默认读设置 handle；横版片出 1920×1080
+"$A" cover-frames "$P/storyboard.json"           # 封面候选帧 → work/cover_candidates.png（编号 1–8，原片干净帧、没有字幕）
+"$A" cover "$P/storyboard.json" --pick <编号> --kicker "<小标>" --text "<大标题>" --sub "<第三行>"   # 横版片出 1920×1080
 "$A" phone "$P/storyboard.json"                  # 用户要在手机上看才做（≤30MB，不是交付物）
 ```
 render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP，**同一系列各集应一致**（观众听得出各集音量不统一）。
-封面看 `work/cover_check.png`：关键文字在四周各留 15% 安全区（主页裁切不掉字），不能压脸，提示压脸就改 `--y`。
+**封面流程（每一种风格都照这个做）**：
+1. 先跑 `cover-frames`，把 `work/cover_candidates.png` 发给用户，**推荐 1–2 张看镜头、表情有精神的**（低头、闭眼、嘴型怪的不推荐），让用户挑编号；用户没意见才用你推荐的。背景一律取原片干净帧，不能用 final.mp4（会带字幕和卡片）。
+2. 提三段文字给用户确认：小标（`--kicker`，「主题 · 分类」式，≤12 字）、大标题（`--text`，6–10 字钩子）、第三行（`--sub`，补一句利益点，≤16 字）。
+3. 大标题断行：短的放一行，**不要硬断**；太长放不下时，你在自然停顿处插 `|` 指定断点（例：`我的剪辑|被AI取代了`），不要断在「被／把／的／了」这种字旁边。没给 `|` 时引擎按长度自动决定。
+4. 账号名读设置 `handle`（每个用户自己的，不要写死别人的）；设置是空的，命令会提醒——问用户要不要 `config --set handle=@账号`，不要自己编。
+5. 版式默认 `signature`（左对齐：小标→大标题→第三行→账号，下方暗影从下巴以下开始），标题颜色用风格强调色；`--layout center` 是置中版，`--color` 可改标题色。上次的选择会记在 storyboard 的 `cover`，改一个字只要重下改动的参数。
+6. 看 `work/cover_check.png`：文字在四周 15% 安全区内（1080×1350 裁切也看得到），不能压脸。
 卡片要抽**成品**的帧验收（每张看中段和收尾前 0.2 秒），不要只看预览或静态图。
 
 ### 8. 交付与交接

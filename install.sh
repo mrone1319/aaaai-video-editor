@@ -153,10 +153,11 @@ ok "设置档 $HOME_DIR/config.json（已存在的不会覆盖）"
 step "3. 开源字体（SIL OFL）"
 fetch_font() {  # $1 目标文件名 $2 URL $3 已安装的系统位置
   if [ -f "$HOME_DIR/fonts/$1" ] || [ -f "$3" ]; then ok "$1"; return; fi
-  curl -fsSL "$2" -o "$HOME_DIR/fonts/$1" && ok "$1（已下载）" || warn "$1 下载失败（OTG 风格标题／数字会退回系统字体）"
+  curl -fsSL "$2" -o "$HOME_DIR/fonts/$1" && ok "$1（已下载）" || warn "$1 下载失败（会退回系统字体，重跑安装可补下载）"
 }
 fetch_font "Orbitron[wght].ttf" "https://github.com/google/fonts/raw/main/ofl/orbitron/Orbitron%5Bwght%5D.ttf" "$HOME/Library/Fonts/Orbitron-VariableFont_wght.ttf"
 fetch_font "IBMPlexMono-Bold.ttf" "https://github.com/google/fonts/raw/main/ofl/ibmplexmono/IBMPlexMono-Bold.ttf" "$HOME/Library/Fonts/IBMPlexMono-Bold.ttf"
+fetch_font "NotoSansSC[wght].ttf" "https://github.com/google/fonts/raw/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf" "$HOME/Library/Fonts/NotoSansSC-VariableFont_wght.ttf"   # 封面特粗标题（约 18MB）
 
 # ---------- 4. whisper 模型 ----------
 step "4. 语音识别模型"

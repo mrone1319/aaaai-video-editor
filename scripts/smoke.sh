@@ -56,7 +56,9 @@ t check-sync  "$A" check-sync "$SB"   # 字幕轨已由 captions 对齐过，应
 t music-ab    "$A" music-ab "$SB" --at 1 --dur 5
 t denoise-ab  "$A" denoise-ab "$SB" --at 1 --dur 5
 t framing     "$A" framing "$SB" --at 3
-t cover       "$A" cover "$SB" --at 3 --text "冒烟测试"
+t cover-frames "$A" cover-frames "$SB" --n 4
+t cover       "$A" cover "$SB" --pick 2 --kicker "测试 · 封面" --text "冒烟测试" --sub "第三行"
+t cover-2line "$A" cover "$SB" --at 3 --text "这是一个比较长的封面标题测试" --layout center
 t phone       "$A" phone "$SB"
 t showcase    "$A" showcase --out "$S/showcase.png" --only ink neon
 t adopt       "$A" adopt "$S/p/out/final.mp4" --out "$S/adopted" --no-transcribe --no-captions

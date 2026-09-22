@@ -260,7 +260,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.0.21</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.0.22</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
@@ -415,8 +415,8 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <div class="step"><div class="dot">08</div><div class="body">
       <h3>出成片与封面<span class="time">几分钟（看片长）</span></h3>
       <div class="lanes">
-        <div class="lane"><div class="l">它会做</div><ul><li>渲染正式成片：响度 −14 LUFS、真峰值不超过 −1 dB。</li><li>抽成品的帧再验收一次、字幕对时体检。</li><li>做封面（竖版 1080×1920 与 1080×1350；横版片出 1920×1080），检查文字在安全区、不压脸。</li><li>成片和封面复制一份到「影片 › aaaai-editor › 成品」。</li></ul></div>
-        <div class="lane you"><div class="l">你要做</div><ul><li>给封面一句 6–8 个字的钩子，或让它建议。</li><li>用第 12 章的清单看一遍。</li></ul></div>
+        <div class="lane"><div class="l">它会做</div><ul><li>渲染正式成片：响度 −14 LUFS、真峰值不超过 −1 dB。</li><li>抽成品的帧再验收一次、字幕对时体检。</li><li>先给你一张封面候选帧表（从原片挑干净画面，没有字幕），推荐看镜头的几张让你挑。</li><li>做封面（竖版 1080×1920 与 1080×1350；横版片出 1920×1080）：小标、大标题、第三行、你的账号名，下方暗影衬字；检查文字在安全区、不压脸。</li><li>成片和封面复制一份到「影片 › aaaai-editor › 成品」。</li></ul></div>
+        <div class="lane you"><div class="l">你要做</div><ul><li>挑一张背景帧的编号。</li><li>给封面一句 6–8 个字的钩子，或让它建议小标、大标题、第三行。</li><li>用第 12 章的清单看一遍。</li></ul></div>
       </div>
     </div></div>
 
@@ -798,7 +798,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">社群风格</b><span><code>mrone</code> 与 <code>otg</code> 是两个频道／社群的品牌风格：你可以用，但名称、配色和品牌元素归原权利人，不要用它们做冒充该品牌、或让人误以为是官方的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.0.21 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
+    <span>aaaai-editor v1.0.22 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
 </section>
@@ -958,6 +958,9 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     ["剪太碎／太拖","停顿留长一点；这段整段剪掉"],
     ["开头不够抓人","换一句当开头预告；推荐几句给我"],
     ["结尾太突然","结尾加片尾卡；最后淡出慢一点"],
+    ["封面换背景","封面换第 5 张；给我看封面候选"],
+    ["封面标题断行","标题放一行；标题在「剪辑」后面断行"],
+    ["封面文字","小标改成「一人公司 · 效率」；第三行改成 …；标题换白色；文字置中"],
     ["换段落想有节奏感","进下一段的时候加甩镜转场"],
     ["人太小、机位太远","整支推近一点（它会出对比图让你选）"],
     ["手机上先看看","出一个手机预览版（30MB 以内，不是成品）"],

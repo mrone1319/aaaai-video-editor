@@ -161,18 +161,21 @@ def cmd_tools(a) -> int:
     elif k == "framing":
         print("🖼 %s（1.00x 是原构图；选定后写进 storyboard 的 framing）"
               % T.framing_sheet(a.storyboard, a.at, [float(x) for x in a.levels.split(",")], a.cy))
+    elif k == "cover-frames":
+        from . import cover as C
+        sheet, items = C.candidates(a.storyboard, a.n)
+        print("🖼 候选封面总表：%s" % sheet)
+        print("   " + "  ".join("%d＝%.1f 秒" % (x["n"], x["t"]) for x in items))
+        print("发给用户挑一张，再执行 cover --pick <编号> --text「大标题」[--kicker …] [--sub …]")
     elif k == "cover":
-        files, warn = T.cover(a.storyboard, a.at, a.text, a.sub or "", a.handle, a.y)
-        from . import config
+        from . import cover as C, config
+        files, warns = C.make(a.storyboard, a.at, a.pick, a.text, a.kicker, a.sub, a.handle, a.layout, a.color)
         ex = config.get("exports_dir")
         for f in files:
             print(("📦 成品：%s" if ex and f.startswith(ex) else "🖼 %s") % f)
-        if warn:
-            print("⚠️ " + warn)
-        elif not any("1080x1350" in f for f in files):   # 横版
-            print("用 Read 看 cover_check.png（横版缩图）；挑没有字幕／卡片的一帧效果最好。")
-        else:
-            print("文字块没有压到脸。用 Read 看 cover_check.png（左：Reels 全画面，右：主页 4:5 裁切）。")
+        for w in warns:
+            print("⚠️ " + w)
+        print("用 Read 看 work/cover_check.png（竖版：左 Reels 全画面、右主页 4:5 裁切）。背景取自原片，没有字幕和卡片。")
     return 0
 
 
@@ -539,10 +542,18 @@ def main(argv=None) -> int:
     t.add_argument("storyboard"); t.add_argument("--at", type=float, default=3.0)
     t.add_argument("--levels", default="1.0,1.15,1.3,1.45"); t.add_argument("--cy", type=float, default=0.4)
     t.set_defaults(fn=cmd_tools, tool="framing")
-    t = sub.add_parser("cover", help="封面：招牌金大字、15%% 安全区，出 1080×1920 与 1080×1350")
-    t.add_argument("storyboard"); t.add_argument("--at", type=float, required=True)
-    t.add_argument("--text", required=True); t.add_argument("--sub"); t.add_argument("--handle", help="账号名；不写就用设置里的 handle，没设就不印")
-    t.add_argument("--y", type=float, default=0.55)
+    t = sub.add_parser("cover-frames", help="挑候选封面画面（从原片取、没有字幕），拼成编号总表给用户选")
+    t.add_argument("storyboard"); t.add_argument("--n", type=int, default=8)
+    t.set_defaults(fn=cmd_tools, tool="cover-frames")
+    t = sub.add_parser("cover", help="封面：招牌版（小标签／大标题／说明／账号名＋暗黑渐层），出 1080×1920 与 1080×1350")
+    t.add_argument("storyboard")
+    t.add_argument("--pick", type=int, help="用 cover-frames 的第几张"); t.add_argument("--at", type=float, help="或直接写成片秒数")
+    t.add_argument("--text", help="大标题；用 | 可自己指定断行（不写就按长度自动判断）")
+    t.add_argument("--kicker", help="大标题上方的小标签，例：一人公司 · 支付安全")
+    t.add_argument("--sub", help="第三行说明")
+    t.add_argument("--handle", help="账号名；不写就用设定里的 handle，没设定就不印；写空字串不印")
+    t.add_argument("--layout", choices=["signature", "center"], help="signature＝招牌版（默认）；center＝居中简洁版")
+    t.add_argument("--color", help="大标题颜色（默认用风格的强调色）")
     t.set_defaults(fn=cmd_tools, tool="cover")
     th = sub.add_parser("themes", help="列出风格与字体（给 storyboard 可一并列出项目自定义风格）")
     th.add_argument("storyboard", nargs="?")

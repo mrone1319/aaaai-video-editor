@@ -87,7 +87,8 @@ aaaai-editor tidy storyboard.json [--apply all|1,3]  # 找口头禅（嗯／呃�
 aaaai-editor hook storyboard.json --suggest           # 列出最适合当开头的几句
 aaaai-editor hook storyboard.json --text "…"         # 把片中一句剪到开头当预告（--mode move 为搬移）
 aaaai-editor framing storyboard.json --at 3          # 推近倍率对比图（选定写 framing）
-aaaai-editor cover storyboard.json --at 5 --text "别怕 AI"   # 封面：竖版 1080×1920＋1080×1350；横版 1920×1080
+aaaai-editor cover-frames storyboard.json                    # 封面候选帧（原片干净帧，编号 1–8）
+aaaai-editor cover storyboard.json --pick 3 --kicker "一人公司 · AI" --text "别怕|AI" --sub "三步入门"   # 封面：竖版 1080×1920＋1080×1350；横版 1920×1080
 aaaai-editor phone storyboard.json                   # 手机预览版（≤30MB）
 aaaai-editor listen <素材> <起> <迄>                  # 滑动窗口听写（不带提示词）
 aaaai-editor probe-cut <素材> end|start …            # 逐点试听剪点

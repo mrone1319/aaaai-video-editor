@@ -20,11 +20,12 @@ aaaai-editor 由 MR ONE 与 Claude（Anthropic）于 2026 年 9 月**从零编�
 | Node.js（Homebrew） | HyperFrames 执行环境 | MIT |
 | Playwright + Chromium | 动画场景渲染（motion-graphic-video-editor） | Apache-2.0 / BSD |
 | Orbitron、IBM Plex Mono（Google Fonts） | OTG 风格标题、数字 | SIL Open Font License 1.1 |
+| Noto Sans SC（Google Fonts，可变字体约 18MB） | 封面大标题（900）与内文（700） | SIL Open Font License 1.1 |
 | OpenCC、fontTools、NumPy、SciPy（pip，可选） | 繁→简、字体固化、配乐合成 | Apache-2.0 / MIT / BSD |
 | Apple Vision / CoreVideo | 人像分割（自写的 Swift 助手，源码在 `aaaai_editor/matte.py`） | macOS 系统框架 |
 
 另使用 macOS 自带字体 Hiragino Sans GB、PingFang SC、Songti SC、Avenir Next（依 macOS 授权，只在本机渲染，不散布字体文件）。
-`OrbitronBlack` 是安装后在本机由 Orbitron 固化出的 900 字重静态实例，不随套件散布。
+`OrbitronBlack`、`NotoSansSCBlack`／`NotoSansSCBold` 是安装后在本机由原字体固化出的静态实例，不随套件散布。
 
 ## 设计来源
 

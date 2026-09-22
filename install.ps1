@@ -135,10 +135,11 @@ function Fetch-Font($name, $url) {
   $dst = Join-Path $HOME_DIR "fonts\$name"
   if (Test-Path $dst) { Ok $name; return }
   & curl.exe -fsSL $url -o $dst
-  if ($LASTEXITCODE -eq 0) { Ok "$name（已下载）" } else { Remove-Item $dst -ErrorAction SilentlyContinue; Warn "$name 下载失败（OTG 标题／数字会退回系统字体）" }
+  if ($LASTEXITCODE -eq 0) { Ok "$name（已下载）" } else { Remove-Item $dst -ErrorAction SilentlyContinue; Warn "$name 下载失败（会退回系统字体，重跑安装可补下载）" }
 }
 Fetch-Font "Orbitron[wght].ttf" "https://github.com/google/fonts/raw/main/ofl/orbitron/Orbitron%5Bwght%5D.ttf"
 Fetch-Font "IBMPlexMono-Bold.ttf" "https://github.com/google/fonts/raw/main/ofl/ibmplexmono/IBMPlexMono-Bold.ttf"
+Fetch-Font "NotoSansSC[wght].ttf" "https://github.com/google/fonts/raw/main/ofl/notosanssc/NotoSansSC%5Bwght%5D.ttf"   # 封面特粗标题（约 18MB）
 
 # ---------- 4. whisper 模型 ----------
 Step "4. 语音识别模型"

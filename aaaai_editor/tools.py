@@ -12,7 +12,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from . import env, render, zh
 from .timeline import Timeline
@@ -186,98 +186,3 @@ def framing_sheet(sb_path: str, at: float, levels: List[float], cy: float = 0.4)
 def _font() -> str:
     from . import theme
     return theme.cjk_font()
-
-
-def _cover_gradient(frame_path: str, W: int, H: int, y: float) -> None:
-    """在文字区上方一点到画面底部压一层黑色渐变（原地覆盖 frame_path），跟卡片的
-    「画面下沿渐变遮罩」是同一套设计语言：托住金字/白字的可读性，也是旧封面那种
-    「有暗影、有设计感」的来源——纯拍摄底片直接烧字会显得平、跟背景混在一起。"""
-    from PIL import Image
-    import numpy as np
-    base = Image.open(frame_path).convert("RGBA")
-    grad_top = max(0.0, y - 0.08)   # 从文字块上方一点开始起渐变，不是整张压暗
-    yy = np.linspace(0.0, 1.0, H, dtype=np.float32)
-    fade = np.clip((yy - grad_top) / max(1e-6, 1.0 - grad_top), 0.0, 1.0) ** 1.2
-    alpha = (fade * 178).astype(np.uint8)               # 178/255 ≈ 70%，底部最深、往上渐透明
-    grad = np.zeros((H, W, 4), dtype=np.uint8)
-    grad[..., 3] = alpha[:, None]
-    out = Image.alpha_composite(base, Image.fromarray(grad, mode="RGBA"))
-    out.convert("RGB").save(frame_path)
-
-
-def cover(sb_path: str, at: float, text: str, sub: str = "", handle: Optional[str] = None,
-          y: float = 0.55, color: str = "#F4C430") -> Tuple[List[str], str]:
-    """封面：成片一帧 + 招牌金大字，关键文字落在四周各留 15% 的安全区（IG 主页 3:4／1:1／4:5 裁切都不掉字）。
-    输出 1080×1920 与 1080×1350，并检查文字块有没有压到脸（用人像遮罩估脸的位置）。"""
-    from . import richtext
-    sb = render.load_storyboard(sb_path)
-    src = sb["output"]["path"]
-    if not os.path.isfile(src):
-        raise env.ToolError("找不到成片 %s（先 render）" % src)
-    ow, oh = int(sb["output"]["width"]), int(sb["output"]["height"])
-    landscape = ow > oh
-    W, H = (1920, 1080) if landscape else (1080, 1920)   # 横版片出 YouTube 缩图尺寸；竖版出 Reels／Shorts 尺寸
-    d = os.path.join(sb["_base"], "out")
-    work = os.path.join(sb["_base"], "work")
-    os.makedirs(work, exist_ok=True)
-    os.makedirs(d, exist_ok=True)
-    frame = os.path.join(work, "cover_frame.png")
-    env.run([env.ffmpeg(), "-y", "-v", "error", "-ss", "%.3f" % at, "-i", src, "-frames:v", "1",
-             "-vf", "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d" % (W, H, W, H), frame])
-    _cover_gradient(frame, W, H, y)   # 文字区往下压暗，托住可读性、也是旧封面「暗影」的设计感来源
-    safe_w = W * 0.70
-    n = max(1, sum(1.0 if ord(c) > 0x2E80 else 0.55 for c in text))
-    size = min(W * 0.13, H * 0.16, safe_w / n)
-    fam = "PingFang SC"
-    win, asc, _cap = richtext.metrics(fam)
-    top = H * y
-    lines = [
-        "Dialogue: 0,0:00:00.00,0:00:05.00,C,,0,0,0,,{\\an8\\pos(%d,%.1f)\\fn%s\\fs%.1f\\b1\\c%s\\bord%.1f\\3c&H101010&"
-        "\\shad%.1f\\4c&H000000&\\4a&H60&}%s" % (W // 2, top - (asc - 0.85) * size, fam, size * win,
-                                                 richtext._c(color), size * 0.035, size * 0.05, text)]
-    yy = top + size * 1.30
-    if sub:
-        ss = size * 0.36
-        lines.append("Dialogue: 0,0:00:00.00,0:00:05.00,C,,0,0,0,,{\\an8\\pos(%d,%.1f)\\fn%s\\fs%.1f\\b1\\c&HFFFFFF&"
-                     "\\bord%.1f\\3c&H101010&}%s" % (W // 2, yy - (asc - 0.85) * ss, fam, ss * win, ss * 0.06, sub))
-        yy += ss * 1.6
-    from . import config
-    handle = config.load().get("handle", "") if handle is None else handle   # 账号名：aaaai-editor config --set handle=@你的账号
-    hs = min(W, H * 0.75) * 0.030 if handle else 0.0
-    if handle:
-        lines.append("Dialogue: 0,0:00:00.00,0:00:05.00,C,,0,0,0,,{\\an8\\pos(%d,%.1f)\\fnAvenir Next Bold\\fs%.1f"
-                     "\\fsp%.1f\\c&HFFFFFF&\\bord2\\3c&H101010&}%s" % (W // 2, yy, hs * 1.2, hs * 0.06, handle))
-    block = (top, yy + hs * 1.4)
-    ass = os.path.join(work, "cover.ass")
-    richtext.write(ass, W, H, lines)
-    full = os.path.join(d, "cover_%dx%d.png" % (W, H))
-    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", frame, "-vf", "subtitles=filename=cover.ass",
-             "-frames:v", "1", full], cwd=work)   # 相对文件名：路径里有引号／冒号也不会坏
-    if landscape:
-        check = os.path.join(work, "cover_check.png")
-        env.run([env.ffmpeg(), "-y", "-v", "error", "-i", full, "-vf", "scale=960:540", check])
-        from . import config
-        dst = config.export(full, sb["_base"], "-封面")
-        return [full, check] + ([dst] if dst else []), ""
-    crop = os.path.join(d, "cover_1080x1350.png")
-    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", full, "-vf", "crop=1080:1350:0:285", crop])
-    check = os.path.join(work, "cover_check.png")   # Reels 全画面 vs 主页裁切：两版并排给人看
-    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", full, "-i", crop, "-filter_complex",
-             "[0]scale=540:960[a];[1]scale=540:675,pad=540:960:0:142:black[b];[a][b]hstack", check])
-    warn = ""
-    try:   # 用人像遮罩估脸：人物遮罩最上面 35% 高度当作脸部区
-        from . import matte
-        raw = subprocess.run([env.ffmpeg(), "-v", "error", "-i", frame, "-vf", "scale=270:480", "-f", "rawvideo",
-                              "-pix_fmt", "bgra", "-"], capture_output=True).stdout
-        m = subprocess.run(matte.helper_cmd() + ["270", "480", "accurate"], input=raw, capture_output=True).stdout
-        rows = [y_ for y_ in range(480) if sum(1 for x in range(270) if m[y_ * 270 + x] > 128) > 12]
-        if rows:
-            f0, f1 = rows[0] * 4, (rows[0] + (rows[-1] - rows[0]) * 0.35) * 4
-            if block[0] < f1 and block[1] > f0:
-                warn = "文字块 y %.0f–%.0f 可能压到脸（脸约在 y %.0f–%.0f），试 --y %.2f" % (
-                    block[0], block[1], f0, f1, min(0.78, (f1 + 40) / H))
-    except Exception:
-        pass
-    from . import config
-    ex = [x for x in (config.export(full, sb["_base"], "-封面"), config.export(crop, sb["_base"], "-封面-4x5")) if x]
-    return [full, crop, check] + ex, warn
