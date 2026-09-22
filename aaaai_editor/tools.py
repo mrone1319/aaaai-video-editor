@@ -188,6 +188,23 @@ def _font() -> str:
     return theme.cjk_font()
 
 
+def _cover_gradient(frame_path: str, W: int, H: int, y: float) -> None:
+    """在文字区上方一点到画面底部压一层黑色渐变（原地覆盖 frame_path），跟卡片的
+    「画面下沿渐变遮罩」是同一套设计语言：托住金字/白字的可读性，也是旧封面那种
+    「有暗影、有设计感」的来源——纯拍摄底片直接烧字会显得平、跟背景混在一起。"""
+    from PIL import Image
+    import numpy as np
+    base = Image.open(frame_path).convert("RGBA")
+    grad_top = max(0.0, y - 0.08)   # 从文字块上方一点开始起渐变，不是整张压暗
+    yy = np.linspace(0.0, 1.0, H, dtype=np.float32)
+    fade = np.clip((yy - grad_top) / max(1e-6, 1.0 - grad_top), 0.0, 1.0) ** 1.2
+    alpha = (fade * 178).astype(np.uint8)               # 178/255 ≈ 70%，底部最深、往上渐透明
+    grad = np.zeros((H, W, 4), dtype=np.uint8)
+    grad[..., 3] = alpha[:, None]
+    out = Image.alpha_composite(base, Image.fromarray(grad, mode="RGBA"))
+    out.convert("RGB").save(frame_path)
+
+
 def cover(sb_path: str, at: float, text: str, sub: str = "", handle: Optional[str] = None,
           y: float = 0.55, color: str = "#F4C430") -> Tuple[List[str], str]:
     """封面：成片一帧 + 招牌金大字，关键文字落在四周各留 15% 的安全区（IG 主页 3:4／1:1／4:5 裁切都不掉字）。
@@ -207,6 +224,7 @@ def cover(sb_path: str, at: float, text: str, sub: str = "", handle: Optional[st
     frame = os.path.join(work, "cover_frame.png")
     env.run([env.ffmpeg(), "-y", "-v", "error", "-ss", "%.3f" % at, "-i", src, "-frames:v", "1",
              "-vf", "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d" % (W, H, W, H), frame])
+    _cover_gradient(frame, W, H, y)   # 文字区往下压暗，托住可读性、也是旧封面「暗影」的设计感来源
     safe_w = W * 0.70
     n = max(1, sum(1.0 if ord(c) > 0x2E80 else 0.55 for c in text))
     size = min(W * 0.13, H * 0.16, safe_w / n)
