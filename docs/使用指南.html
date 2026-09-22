@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>aaaai-editor 使用指南</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+:root{
+  --ground:#F6F7F9; --surface:#FFFFFF; --sunk:#EEF0F3; --ink:#15181D; --ink-2:#4A515C; --ink-3:#6B7380;
+  --line:#E1E4E9; --accent:#F0B23C; --accent-ink:#8F5D06; --accent-soft:#FDF1D8;
+  --cyan:#0B77A6; --cyan-soft:#E3F3FA; --green:#1C8C52; --green-soft:#E2F5EA; --red:#B4382B; --red-soft:#FBE7E4;
+  --screen:#20252D; --screen-2:#2C323C; --face:#59616D; --paper:#F4EFE7; --cap:#FFFFFF;
+  --shadow:0 1px 2px rgba(21,24,29,.06),0 6px 24px rgba(21,24,29,.06);
+  --sans:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SF Mono",Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1216; --surface:#161A20; --sunk:#1C2129; --ink:#E8EBEF; --ink-2:#A9B1BC; --ink-3:#848D99;
+    --line:#272D36; --accent:#F0B23C; --accent-ink:#F4C35E; --accent-soft:#2E2412;
+    --cyan:#4CC3F5; --cyan-soft:#10252F; --green:#46D98A; --green-soft:#10281B; --red:#F07B6B; --red-soft:#2E1714;
+    --screen:#0B0D10; --screen-2:#1B2028; --face:#3E4550; --paper:#E9E3D8; --cap:#FFFFFF;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.28);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1216; --surface:#161A20; --sunk:#1C2129; --ink:#E8EBEF; --ink-2:#A9B1BC; --ink-3:#848D99;
+  --line:#272D36; --accent:#F0B23C; --accent-ink:#F4C35E; --accent-soft:#2E2412;
+  --cyan:#4CC3F5; --cyan-soft:#10252F; --green:#46D98A; --green-soft:#10281B; --red:#F07B6B; --red-soft:#2E1714;
+  --screen:#0B0D10; --screen-2:#1B2028; --face:#3E4550; --paper:#E9E3D8; --cap:#FFFFFF;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.28);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16.5px;line-height:1.75;
+  -webkit-font-smoothing:antialiased;padding:0 20px}
+a{color:var(--cyan);text-underline-offset:3px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,kbd,.mono{font-family:var(--mono);font-size:.9em}
+:not(pre)>code{background:var(--sunk);border:1px solid var(--line);padding:.05em .38em;border-radius:5px;white-space:nowrap}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.3;margin:0}
+p{margin:0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:56px;padding-block:40px 96px}
+
+/* ---- 目录 ---- */
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;max-height:calc(100vh - 48px);overflow:auto;padding-right:6px}
+.toc .brand{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase;margin-bottom:14px}
+.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.toc a{display:flex;gap:10px;align-items:baseline;padding:6px 10px;border-radius:8px;color:var(--ink-2);text-decoration:none;font-size:14.5px;line-height:1.45}
+.toc a span{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);min-width:18px}
+.toc a:hover{background:var(--sunk);color:var(--ink)}
+.toc a.on{background:var(--accent-soft);color:var(--ink)}
+.toc a.on span{color:var(--accent-ink)}
+.theme-btn{margin-top:18px;font:500 13px var(--sans);color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer}
+
+main{min-width:0;display:flex;flex-direction:column;gap:88px}
+section{scroll-margin-top:24px;display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink)}
+h2{font-size:31px;font-weight:900;letter-spacing:-.01em}
+h3{font-size:20px;font-weight:700}
+.lede{font-size:18px;color:var(--ink-2);max-width:40em}
+.prose{max-width:42em;color:var(--ink-2);display:flex;flex-direction:column;gap:12px}
+.prose strong{color:var(--ink)}
+
+/* ---- 开头 ---- */
+.hero{display:flex;flex-direction:column;gap:26px;padding-top:6px}
+.hero .tag{display:flex;gap:10px;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:12.5px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;color:var(--ink-2);background:var(--surface)}
+.hero h1{font-size:clamp(34px,5.2vw,54px);font-weight:900;letter-spacing:-.02em;line-height:1.15}
+.hero h1 em{font-style:normal;background:linear-gradient(transparent 62%,var(--accent-soft) 62%);padding:0 .06em}
+.prompt-box{background:var(--screen);color:#E8EBEF;border-radius:16px;padding:20px 22px;font-family:var(--mono);font-size:15px;line-height:1.7;box-shadow:var(--shadow);max-width:720px}
+.prompt-box .who{color:#8A93A0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.prompt-box .cmd{color:var(--accent)}
+.prompt-box .caret{display:inline-block;width:9px;height:1.1em;background:var(--accent);vertical-align:-3px;margin-left:3px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.flow3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:720px}
+.flow3 div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.flow3 b{display:block;font-size:16px}
+.flow3 small{color:var(--ink-3);font-size:13.5px;line-height:1.55;display:block;margin-top:2px}
+.flow3 .n{font-family:var(--mono);font-size:12px;color:var(--accent-ink);font-weight:600}
+
+/* ---- 亮点 ---- */
+.feat{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.feat article{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:6px}
+.feat h3{font-size:16.5px}
+.feat p{font-size:14.5px;color:var(--ink-2);line-height:1.65}
+.feat .num{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+
+/* ---- 提示 ---- */
+.note{border-radius:12px;padding:14px 16px;font-size:15px;line-height:1.7;display:flex;gap:12px;max-width:44em}
+.note b.k{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;flex:none;padding-top:3px}
+.note.tip{background:var(--cyan-soft);color:var(--ink)} .note.tip b.k{color:var(--cyan)}
+.note.ok{background:var(--green-soft);color:var(--ink)} .note.ok b.k{color:var(--green)}
+.note.warn{background:var(--red-soft);color:var(--ink)} .note.warn b.k{color:var(--red)}
+
+/* ---- 准备 ---- */
+.need{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.need div{border-top:2px solid var(--ink);padding-top:10px}
+.need b{display:block;font-size:15.5px}
+.need span{font-size:14px;color:var(--ink-2);line-height:1.6;display:block;margin-top:2px}
+
+/* ---- 步骤 ---- */
+.steps{display:flex;flex-direction:column;gap:0;counter-reset:s}
+.step{display:grid;grid-template-columns:64px minmax(0,1fr);gap:0 18px;position:relative}
+.step:not(:last-child)::before{content:"";position:absolute;left:31px;top:46px;bottom:0;width:2px;background:var(--line)}
+.step .dot{width:64px;height:40px;border-radius:10px;background:var(--ink);color:var(--ground);font-family:var(--mono);font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
+.step .body{padding-bottom:40px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.step h3{padding-top:6px}
+.step .time{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);margin-left:8px;font-weight:500}
+.lanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.lane{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.lane .l{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase;margin-bottom:4px}
+.lane.you .l{color:var(--accent-ink)}
+.lane ul{margin:0;padding-left:1.1em;font-size:14.5px;color:var(--ink-2);line-height:1.65}
+.lane li+li{margin-top:3px}
+.say{font-family:var(--mono);font-size:14px;background:var(--sunk);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:9px 12px;color:var(--ink);overflow-x:auto}
+
+/* ---- 范本 ---- */
+.tpl{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.tpl-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tpl-head b{font-size:15px}
+.copy{font:500 13px var(--sans);background:var(--ink);color:var(--ground);border:0;border-radius:8px;padding:6px 12px;cursor:pointer}
+.copy.done{background:var(--green)}
+pre{margin:0;padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:14px;line-height:1.85;color:var(--ink);white-space:pre}
+pre .f{color:var(--accent-ink);font-weight:600}
+pre .c{color:var(--ink-3)}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.fields div{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.fields b{font-family:var(--mono);font-size:13.5px;color:var(--accent-ink)}
+.fields p{font-size:14px;color:var(--ink-2);line-height:1.6;margin-top:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font:500 14px var(--sans);padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.tabpanel[hidden]{display:none}
+.why{font-size:14.5px;color:var(--ink-2);padding:12px 16px 16px;border-top:1px dashed var(--line);line-height:1.7}
+
+/* ---- 图鉴 ---- */
+.gal-group{display:flex;flex-direction:column;gap:14px}
+.gal-group>h3{display:flex;align-items:baseline;gap:10px}
+.gal-group>h3 small{font-weight:400;font-size:14px;color:var(--ink-3)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.w{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;grid-template-columns:88px minmax(0,1fr);gap:14px;align-items:start}
+.w svg{width:88px;height:auto;display:block;border-radius:10px}
+.w h4{font-size:16px;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+.w h4 code{font-size:12px;font-weight:500;color:var(--ink-3);background:none;border:0;padding:0}
+.w dl{margin:6px 0 0;display:flex;flex-direction:column;gap:5px}
+.w dt{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase}
+.w dd{margin:0;font-size:13.8px;color:var(--ink-2);line-height:1.6}
+.w dd.s{color:var(--ink);font-size:13.5px}
+.w dd.s::before{content:"“";color:var(--accent-ink)} .w dd.s::after{content:"”";color:var(--accent-ink)}
+.badge{font-family:var(--mono);font-size:10.5px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--ink-3)}
+.badge.req{border-color:var(--cyan);color:var(--cyan)}
+.w.wide{grid-column:1/-1}
+
+/* ---- 表格 ---- */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:560px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.6}
+th{font-size:12px;font-family:var(--mono);letter-spacing:.06em;color:var(--ink-3);font-weight:600;background:var(--sunk);text-transform:uppercase}
+tr:last-child td{border-bottom:0}
+td .mono{font-size:13px;color:var(--accent-ink)}
+
+/* ---- 风格 ---- */
+.styles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.sty{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.sty .sw{height:62px;display:flex;align-items:flex-end;gap:6px;padding:10px 12px}
+.sty .sw i{width:18px;height:18px;border-radius:50%;display:block;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.sty .sw b{margin-left:auto;font-family:var(--mono);font-size:13px}
+.sty div.t{padding:10px 12px 12px;font-size:13.8px;color:var(--ink-2);line-height:1.55}
+.sty div.t code{font-size:13px}
+
+/* ---- 清单 ---- */
+.check{display:flex;flex-direction:column;gap:8px;max-width:44em}
+.check label{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 14px;cursor:pointer;font-size:15px;line-height:1.6}
+.check input{margin-top:5px;accent-color:var(--green);width:16px;height:16px;flex:none}
+.check label:has(input:checked){color:var(--ink-3)}
+.check label:has(input:checked) b{text-decoration:line-through}
+
+details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 16px}
+details+details{margin-top:8px}
+summary{cursor:pointer;padding:13px 0;font-weight:700;font-size:15.5px;list-style:none;display:flex;justify-content:space-between;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--mono);color:var(--ink-3)}
+details[open] summary::after{content:"−"}
+details .a{padding-bottom:14px;font-size:15px;color:var(--ink-2);line-height:1.75;display:flex;flex-direction:column;gap:8px}
+.faq{max-width:48em}
+
+.rules{counter-reset:r;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.rules div{counter-increment:r;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px 14px 52px;position:relative;font-size:14.8px;color:var(--ink-2);line-height:1.65}
+.rules div::before{content:counter(r);position:absolute;left:16px;top:13px;font-family:var(--mono);font-weight:600;color:var(--accent-ink);font-size:18px}
+.rules b{color:var(--ink);display:block;font-size:15.5px}
+footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padding-top:20px;display:flex;flex-direction:column;gap:4px}
+
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr;gap:28px;padding-block:20px 72px}
+  nav.toc{position:static;max-height:none;overflow:visible;padding:0}
+  .toc ol{flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:6px}
+  .toc a{white-space:nowrap;border:1px solid var(--line);background:var(--surface)}
+  .theme-btn{display:none}
+  main{gap:64px}
+  h2{font-size:26px}
+}
+@media (max-width:560px){
+  body{padding:0 16px;font-size:16px}
+  .flow3{grid-template-columns:1fr}
+  .step{grid-template-columns:44px minmax(0,1fr);gap:0 12px}
+  .step .dot{width:44px;height:34px;font-size:11.5px}
+  .step:not(:last-child)::before{left:21px}
+  .w{grid-template-columns:72px minmax(0,1fr)}
+  .w svg{width:72px}
+  pre{font-size:13px;padding:14px}
+}
+@media print{
+  body{background:#fff;padding:0;font-size:12.5pt}
+  .wrap{display:block;padding:0}
+  nav.toc,.theme-btn,.copy,.tabs{display:none}
+  .tabpanel[hidden]{display:block}
+  section{break-inside:auto} .w,.step,.tpl,.feat article,.rules div,details{break-inside:avoid}
+  details{border:0;padding:0} details .a{display:flex}
+  main{gap:36px}
+  .prompt-box{box-shadow:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="目录">
+  <div class="brand">aaaai-editor · 指南</div>
+  <ol>
+    <li><a href="#start"><span>00</span>先看这里</a></li>
+    <li><a href="#features"><span>01</span>它能帮你做什么</a></li>
+    <li><a href="#prepare"><span>02</span>开始之前</a></li>
+    <li><a href="#walk"><span>03</span>第一次剪片</a></li>
+    <li><a href="#template"><span>04</span>提示词格式范本</a></li>
+    <li><a href="#gallery"><span>05</span>小组件图鉴</a></li>
+    <li><a href="#styles"><span>06</span>风格一览</a></li>
+    <li><a href="#sound"><span>07</span>配乐与音效</a></li>
+    <li><a href="#edit"><span>08</span>想改哪里怎么说</a></li>
+    <li><a href="#files"><span>09</span>文件在哪里</a></li>
+    <li><a href="#qa"><span>10</span>发布前验收</a></li>
+    <li><a href="#faq"><span>11</span>常见问题</a></li>
+    <li><a href="#habits"><span>12</span>让成片稳定的习惯</a></li>
+  </ol>
+  <button class="theme-btn" id="themeBtn" type="button">切换深浅色</button>
+</nav>
+
+<main>
+<!-- 00 -->
+<section id="start" class="hero">
+  <div class="tag"><span class="chip">v1.0.16</span><span class="chip">macOS</span><span class="chip">在 Claude Code 里使用</span></div>
+  <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
+  <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
+  <div class="prompt-box" aria-label="示例：只要一句话">
+    <div class="who">你在 Claude Code 里输入</div>
+    <span class="cmd">/aaaai-editor</span> 帮我剪 ~/Movies/raw/0921.mp4，做成 60 秒竖版，中英双语字幕，开头用最有力的一句当预告<span class="caret" aria-hidden="true"></span>
+  </div>
+  <div class="flow3">
+    <div><span class="n">第 1 步</span><b>丢素材、说需求</b><small>一句话也行，或照「提示词格式范本」填一份。</small></div>
+    <div><span class="n">第 2 步</span><b>回答几个问题</b><small>风格、配乐、字幕；它会先给你看对照图。</small></div>
+    <div><span class="n">第 3 步</span><b>看预览、说哪里要改</b><small>满意了才出正式成片和封面。</small></div>
+  </div>
+</section>
+
+<!-- 01 -->
+<section id="features">
+  <div class="eyebrow">01 · 功能亮点</div>
+  <h2>它能帮你做什么</h2>
+  <p class="lede">重点不是「功能多」，而是每一步都替你把关：剪点等尾音收完、字幕贴到真实人声、卡片不挡脸、响度落在平台标准。</p>
+  <div class="feat">
+    <article><h3>自动粗剪，不切到字</h3><p>按停顿剪掉空白，剪点等尾音收完、段头留在起音前。讲到一半重来、「嗯／呃」会列给你看，你点头才删。</p></article>
+    <article><h3>字幕贴到真实人声</h3><p>逐句对齐说话的那一刻；中文、中英双语、原语言＋中文翻译都行。关键词高亮；人坐得低时字幕自动移到下巴下面，不压脸。</p></article>
+    <article><h3>开头 3 秒抓住人</h3><p>把片中最有力的一句剪一份放到开头当预告。不知道选哪句，它会按数字、反差、问句打分推荐 3 句。</p></article>
+    <article><h3>20 多种卡片，会避脸</h3><p>片头标题、数据跳数、清单、金句、对比、头像牌、章节……落定后轻轻呼吸、关键卡片闪一下。人坐得高时卡片自动让开眼睛。</p></article>
+    <article><h3>卡片收合：秀证据整套版式</h3><p>画面收进卡片、人物头冲出框，上方放证据截图、工作流步骤、行动号召，结尾停在「留言关键词」。适合收益证明、成果展示。</p></article>
+    <article><h3>声音一次搞定</h3><p>降噪（先给你听三档）、配乐遇到人声自动压低、7 种音效（金币、啵、咻……）、成片响度锁定 −14 LUFS（各平台通用标准）。</p></article>
+    <article><h3>B-roll 三种来源</h3><p>用你自己的素材最好；也能找免费素材（Pexels），或用 AI 生成——生成前一定先报价、你同意才花钱，每个项目默认上限 $2。</p></article>
+    <article><h3>出片前自己先验收</h3><p>按卡片时间自动抽帧检查、字幕对时体检、封面 15% 安全区检查。没看过实际画面，它不会说「完成了」。</p></article>
+    <article><h3>快，而且安全</h3><p>只解码用得到的片段，60 秒的片预览约半分钟。原始素材永远不删、不改、不移动；API 密钥存在 Mac 钥匙串，只发给官方网址。</p></article>
+  </div>
+</section>
+
+<!-- 02 -->
+<section id="prepare">
+  <div class="eyebrow">02 · 准备</div>
+  <h2>开始之前</h2>
+  <div class="need">
+    <div><b>一台 Mac</b><span>macOS；人像去背（文字穿插、卡片接管）用的是 Mac 自带的 Apple Vision，免费、不联网。</span></div>
+    <div><b>Claude Code</b><span>桌面版或终端版都行；也支持 ChatGPT Codex。</span></div>
+    <div><b>装好 aaaai-editor</b><span>zip 安装包里双击「双击安装.command」，或装 Claude Code 插件。第一次约下载 3GB（语音模型、ffmpeg 等）。</span></div>
+    <div><b>一支素材</b><span>手机竖拍最理想：人坐画面中间、上半身完整、声音清楚、背景安静。</span></div>
+  </div>
+  <div class="note tip"><b class="k">TIP</b><span>装完第一次，可以直接跟 Claude 说「帮我检查 aaaai-editor 装好没有」，它会跑一次体检，全部 ✅ 就能开工。详细安装步骤、会装哪些东西、哪些要花钱，见套件里的 <code>docs/00-快速安装.md</code>。</span></div>
+  <div class="note ok"><b class="k">不用花钱</b><span>剪片、字幕、卡片、配乐、音效、响度、封面全部免费。唯一可能花钱的是「AI 生成 B-roll」，而且每次都会先报价问你。</span></div>
+</section>
+
+<!-- 03 -->
+<section id="walk">
+  <div class="eyebrow">03 · 手把手</div>
+  <h2>第一次剪片，完整走一遍</h2>
+  <p class="lede">以一支 2 分钟的手机口播为例。每一步都写了「你要做什么」和「它会做什么」，照着走就不会迷路。</p>
+  <div class="steps">
+
+    <div class="step"><div class="dot">01</div><div class="body">
+      <h3>准备素材<span class="time">约 1 分钟</span></h3>
+      <div class="lanes">
+        <div class="lane you"><div class="l">你要做</div><ul><li>把影片放在任何你找得到的地方（例如「影片」文件夹）。</li><li>要用的照片、截图、logo、自己拍的 B-roll，先放在同一个文件夹，等下告诉它位置。</li></ul></div>
+        <div class="lane"><div class="l">它会做</div><ul><li>在「影片 › aaaai-editor」里建一个新项目；原始素材只读取、不移动、不修改。</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">02</div><div class="body">
+      <h3>开口说需求<span class="time">30 秒</span></h3>
+      <p class="prose">在 Claude Code 输入 <code>/aaaai-editor</code>，后面接一句话。想讲得更完整，就用下一章的「提示词格式范本」。</p>
+      <div class="say">/aaaai-editor 帮我剪 ~/Movies/raw/0921.mp4，做成竖版短视频，中英双语字幕</div>
+    </div></div>
+
+    <div class="step"><div class="dot">03</div><div class="body">
+      <h3>回答开工三问<span class="time">1 分钟</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">它会问</div><ul><li><b>风格</b>：先发一张风格对照图给你看。</li><li><b>配乐</b>：从 7 首原创常备配乐里挑 1–2 首推荐，或用你自己的音乐、或不要配乐。</li><li><b>字幕</b>：中文／中英双语／不要（英文片就是原语言／加中文翻译）。</li><li>素材是横拍的，会多问一句：保持横版，还是裁成竖版。</li></ul></div>
+        <div class="lane you"><div class="l">你要做</div><ul><li>选一个就好；拿不准就选它标「推荐」的那个。</li><li>下次说「照旧」，会沿用上一支的设置。</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">04</div><div class="body">
+      <h3>核对字幕<span class="time">3–5 分钟 · 最重要的一步</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">它会做</div><ul><li>把语音转成文字，自动修常见错字，每句贴到真实人声。</li><li>拿不准的人名、品牌名、币名，会剪出那一小段请你听。</li><li>给你一支约一分钟的「字幕预览」看对时。</li></ul></div>
+        <div class="lane you"><div class="l">你要做</div><ul><li>纠正错字（尤其专有名词）。</li><li>双语的话，看英文是否自然。</li><li>告诉它哪些词要高亮，例如品牌名、关键数字。</li></ul></div>
+      </div>
+      <div class="note tip"><b class="k">TIP</b><span>字幕越早定稿越省事：后面的卡片时间都是照字幕排的。</span></div>
+    </div></div>
+
+    <div class="step"><div class="dot">05</div><div class="body">
+      <h3>剪干净、定开头<span class="time">2 分钟</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">它会做</div><ul><li>列出「嗯／呃」和讲到一半重讲的地方（只列不删）。</li><li>推荐 3 句适合放开头的话。</li></ul></div>
+        <div class="lane you"><div class="l">你要做</div><ul><li>说「全部删」或「删 1、3」。</li><li>选一句当开头预告，或说「开头不用预告」。</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">06</div><div class="body">
+      <h3>排卡片、看预览<span class="time">5–10 分钟 · 可以来回几次</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">它会做</div><ul><li>先用一句话写下「观众看完要记住什么」，再按内容排卡片（一个意思一张卡）。</li><li>出一支半分辨率的预览，自动抽帧检查有没有压脸、撑出卡片。</li><li>把预览文件发给你，并在 Finder 里点出来。</li></ul></div>
+        <div class="lane you"><div class="l">你要做</div><ul><li>看完直接说哪里要改：「第 20 秒那张卡太久」「清单换成编号行卡」「这里加头像牌」。</li><li>满意再往下走。</li></ul></div>
+      </div>
+      <div class="note warn"><b class="k">注意</b><span>预览版 <code>final_preview.mp4</code> 只用来看版面，画质是一半，<b>不是成品</b>。</span></div>
+    </div></div>
+
+    <div class="step"><div class="dot">07</div><div class="body">
+      <h3>听声音<span class="time">2 分钟</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">它会给你听</div><ul><li><b>配乐 A/B</b>：同一段、三种音量的 MP3。</li><li><b>降噪 A/B</b>（有冷气、风扇声时）：原声／标准／加强。默认已开标准档。</li><li><b>音效</b>：只有你要的时候才加，预览时会请你听。</li></ul></div>
+        <div class="lane you"><div class="l">你要做</div><ul><li>选一支：「配乐第二个」「降噪用加强」。</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">08</div><div class="body">
+      <h3>出成片与封面<span class="time">几分钟（看片长）</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">它会做</div><ul><li>渲染正式成片：响度 −14 LUFS、真峰值不超过 −1 dB。</li><li>抽成品的帧再验收一次、字幕对时体检。</li><li>做封面（竖版 1080×1920 与 1080×1350；横版片出 1920×1080），检查文字在安全区、不压脸。</li><li>成片和封面复制一份到「影片 › aaaai-editor › 成品」。</li></ul></div>
+        <div class="lane you"><div class="l">你要做</div><ul><li>给封面一句 6–8 个字的钩子，或让它建议。</li><li>用第 10 章的清单看一遍。</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">09</div><div class="body">
+      <h3>发布（可选）<span class="time">看平台</span></h3>
+      <p class="prose">它会问你要不要交给「内容生产线」：按你指定的平台写文案、出图、打包。发布本身要你亲手按——平台不允许 AI 自己发帖。</p>
+    </div></div>
+
+  </div>
+</section>
+
+<!-- 04 -->
+<section id="template">
+  <div class="eyebrow">04 · 照着填就好</div>
+  <h2>提示词格式范本</h2>
+  <p class="lede">不用背指令。复制下面这份，把方括号后面换成你的需求；<b>用不到的行直接删掉</b>，没写的它会问你或用合适的默认。</p>
+
+  <div class="tpl">
+    <div class="tpl-head"><b>通用范本</b><button class="copy" type="button" data-copy="tplMain">复制范本</button></div>
+<pre id="tplMain"><span class="f">/aaaai-editor</span>
+<span class="f">【素材】</span>~/Movies/raw/0921.mp4            <span class="c">← 可以写多个；照片、截图放哪里也写上</span>
+<span class="f">【片型】</span>口播知识分享，发抖音和小红书          <span class="c">← 口播／访谈／活动现场；发在哪个平台</span>
+<span class="f">【核心】</span>AI 入门最贵的是绕路的时间            <span class="c">← 观众看完要记住的一句话</span>
+<span class="f">【片长】</span>60 秒以内
+<span class="f">【风格】</span>你推荐                             <span class="c">← 或写风格名：ink、neon、paper…</span>
+<span class="f">【字幕】</span>中英双语；高亮：品牌名、所有数字
+<span class="f">【开头】</span>推荐 3 句让我选                      <span class="c">← 或：用「……」那句当预告</span>
+<span class="f">【剪辑】</span>剪掉停顿、口头禅、讲错重讲的（先列给我看）
+<span class="f">【卡片】</span>说到「三个弯」时做编号清单；自我介绍加头像牌（照片 assets/me.jpg）
+<span class="f">【秀证据】</span>讲到收入时用卡片收合，截图在 ~/Desktop/proof/，金额盖印章
+<span class="f">【声音】</span>配乐小声一点；有风扇声先给我听降噪；数字出来加金币声
+<span class="f">【结尾】</span>停在留言卡：留言「入门」我发链接
+<span class="f">【画幅】</span>竖版 9:16
+<span class="f">【封面】</span>封面字：AI 入门别绕路
+<span class="f">【其他】</span>专有名词：MR ONE、Claude Code</pre>
+  </div>
+
+  <h3>每一行怎么填</h3>
+  <div class="fields">
+    <div><b>【素材】</b><p>影片路径（在 Finder 里把文件拖进 Claude Code 就会出现路径）。多支素材、照片、截图、logo、自己的 B-roll 都写上。</p></div>
+    <div><b>【片型】</b><p>口播、访谈、活动现场，以及要发的平台。平台决定画幅、节奏和封面尺寸。</p></div>
+    <div><b>【核心】</b><p>观众看完要记住的一句话。卡片、开头、封面都会围绕它，写了成片会更集中。</p></div>
+    <div><b>【风格】</b><p>写风格名，或「你推荐」。风格决定卡片与字幕的配色字体（第 6 章）。</p></div>
+    <div><b>【字幕】</b><p>中文／中英双语／原语言＋中文／不要；要高亮的词；字幕要不要大一点、高一点。</p></div>
+    <div><b>【开头】</b><p>指定哪一句当开头预告，或让它推荐。「开头加片头标题：……」也写这里。</p></div>
+    <div><b>【剪辑】</b><p>剪停顿（默认会做）、口头禅与 NG；想保留的段落、想删的段落。</p></div>
+    <div><b>【卡片】</b><p>用「讲到……的时候」描述时间点就好，不用精确秒数。常用说法见第 5 章每个组件的「这样说」。</p></div>
+    <div><b>【秀证据】</b><p>有收入、后台、订单、评价截图时写。截图要是真的，它不会替你编数据。</p></div>
+    <div><b>【声音】</b><p>配乐选哪首、大小声；降噪；要不要音效、要哪几种。</p></div>
+    <div><b>【结尾】</b><p>片尾标题、行动号召（留言关键词、关注、私信），要不要停在卡片上到结束。</p></div>
+    <div><b>【其他】</b><p>片长上限、必须保留的句子、容易听错的专有名词、账号名（封面右下角）。</p></div>
+  </div>
+
+  <h3>三个填好的例子</h3>
+  <div class="tabs" role="tablist" aria-label="范例">
+    <button type="button" role="tab" id="tab-a" aria-controls="ex-a" aria-selected="true">知识口播</button>
+    <button type="button" role="tab" id="tab-b" aria-controls="ex-b" aria-selected="false">收益证明</button>
+    <button type="button" role="tab" id="tab-c" aria-controls="ex-c" aria-selected="false">活动现场／访谈</button>
+    <button type="button" role="tab" id="tab-d" aria-controls="ex-d" aria-selected="false">一句话懒人版</button>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-a" role="tabpanel" aria-labelledby="tab-a">
+    <div class="tpl-head"><b>知识口播 · 60 秒竖版</b><button class="copy" type="button" data-copy="pa">复制</button></div>
+<pre id="pa"><span class="f">/aaaai-editor</span>
+<span class="f">【素材】</span>~/Movies/raw/ai-3-mistakes.mp4
+<span class="f">【片型】</span>口播知识分享，发抖音、视频号
+<span class="f">【核心】</span>新手学 AI 最常绕的三个弯
+<span class="f">【片长】</span>60 秒以内
+<span class="f">【风格】</span>ink
+<span class="f">【字幕】</span>中英双语；高亮每个「弯」的关键词
+<span class="f">【开头】</span>推荐 3 句让我选
+<span class="f">【剪辑】</span>剪停顿、口头禅，讲错重讲的列给我看
+<span class="f">【卡片】</span>开头加片头标题「入门的三个弯」；讲到第一、二、三个弯时各出一张编号行卡；
+      最后那句金句做金句卡；自我介绍时加人名条
+<span class="f">【声音】</span>配乐 focus-quiet；不要音效
+<span class="f">【结尾】</span>片尾：关注我，下期讲怎么选工具
+<span class="f">【封面】</span>你帮我想 3 个 8 字以内的</pre>
+    <p class="why">为什么这样写：知识类重在「结构清楚」，所以用编号行卡把三个重点钉住；不加音效让内容更沉稳。</p>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-b" role="tabpanel" aria-labelledby="tab-b" hidden>
+    <div class="tpl-head"><b>收益证明 · 卡片收合三连发</b><button class="copy" type="button" data-copy="pb">复制</button></div>
+<pre id="pb"><span class="f">/aaaai-editor</span>
+<span class="f">【素材】</span>~/Movies/raw/week-income.mp4；截图在 ~/Desktop/proof/（后台.png、订单1.png、订单2.png）
+<span class="f">【片型】</span>成果分享，发小红书和 IG Reels
+<span class="f">【核心】</span>随手拍 3 分钟，AI 剪完一周进账
+<span class="f">【风格】</span>你推荐
+<span class="f">【字幕】</span>中文；金额高亮
+<span class="f">【开头】</span>用「这一周我什么都没剪」那句当预告
+<span class="f">【秀证据】</span>讲到收入的时候用卡片收合、纸面背景：
+      第一段放后台截图，说出金额那一刻盖「+$1,593」印章加金币声；
+      第二段两张订单截图并排，接着出工作流：随手拍 → AI 自动剪辑 → 每周进账
+<span class="f">【声音】</span>配乐 upbeat-energetic 小声；卡片弹出加「啵」
+<span class="f">【结尾】</span>停在行动号召卡：「想要同款工作流？」留言「剪片」我发给你，一直停到片尾
+<span class="f">【封面】</span>一周进账，我没剪片</pre>
+    <p class="why">为什么这样写：秀证据的片最怕「空口说」，卡片收合把截图放在人的正上方，印章对准说出数字的那一刻，可信度最高。截图必须是真的。</p>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-c" role="tabpanel" aria-labelledby="tab-c" hidden>
+    <div class="tpl-head"><b>活动现场／嘉宾访谈</b><button class="copy" type="button" data-copy="pc">复制</button></div>
+<pre id="pc"><span class="f">/aaaai-editor</span>
+<span class="f">【素材】</span>~/Movies/summit/stage.mp4（横拍）；嘉宾照片 ~/Movies/summit/guest.jpg
+<span class="f">【片型】</span>活动精华，发 YouTube Shorts 和 LinkedIn
+<span class="f">【片长】</span>90 秒以内，只留嘉宾讲最精彩的三段
+<span class="f">【风格】</span>trust
+<span class="f">【字幕】</span>原语言（英文）＋中文翻译
+<span class="f">【剪辑】</span>现场有观众回应，降噪用标准档就好，别把观众声音压掉
+<span class="f">【卡片】</span>嘉宾第一次出现时加头像牌（姓名、职位）；讲到数字时做数据跳数；
+      三段之间用章节断章隔开
+<span class="f">【画幅】</span>裁成竖版 9:16，人放中间
+<span class="f">【结尾】</span>片尾：完整演讲在主页</pre>
+    <p class="why">为什么这样写：活动片常是横拍，要先说清楚裁成竖版；有观众回应时用标准降噪，加强档会连观众声一起压掉。</p>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-d" role="tabpanel" aria-labelledby="tab-d" hidden>
+    <div class="tpl-head"><b>一句话懒人版</b><button class="copy" type="button" data-copy="pd">复制</button></div>
+<pre id="pd"><span class="f">/aaaai-editor</span> 帮我剪 ~/Movies/raw/0921.mp4，照旧</pre>
+    <p class="why">「照旧」＝沿用你上一支的风格、配乐、字幕设置；其他细节它会在过程中问你。第一次用就把「照旧」换成「做成 60 秒竖版，中文字幕」。</p>
+  </div>
+
+  <div class="note tip"><b class="k">TIP</b><span>时间点用「讲到……的时候」「最后那句」描述就好，它会用字幕时间表对准；要精确时再写秒数（成片的秒数，不是原始素材的）。</span></div>
+</section>
+
+<!-- 05 -->
+<section id="gallery">
+  <div class="eyebrow">05 · 图鉴</div>
+  <h2>小组件图鉴</h2>
+  <p class="lede">左边的小画面是 9:16 竖屏示意：<span class="mono">灰色人像</span>是你、白色横线是字幕（约在画面 70% 处）、黄色是强调色。「这样说」可以直接抄进提示词。</p>
+  <div id="galleryRoot" style="display:flex;flex-direction:column;gap:40px"></div>
+</section>
+
+<!-- 06 -->
+<section id="styles">
+  <div class="eyebrow">06 · 风格</div>
+  <h2>风格一览</h2>
+  <p class="lede">风格决定卡片和字幕的配色、字体与质感。开工时它会发一张对照图给你看，说风格名就能换，换风格不用重做别的步骤。</p>
+  <div class="styles" id="styleRoot"></div>
+  <div class="note tip"><b class="k">TIP</b><span>字幕的关键词颜色会跟着风格的强调色走；想自己指定颜色，说「字幕高亮用 #FF5C7A」。有自己的品牌色也可以做成自定义风格。</span></div>
+</section>
+
+<!-- 07 -->
+<section id="sound">
+  <div class="eyebrow">07 · 声音</div>
+  <h2>配乐与音效</h2>
+  <div class="prose"><p>全部是原创，<b>没有版权问题</b>。配乐遇到人声会自动压低；音效在响度锁定之前混进去，成片响度照样准确。音效默认不加——一分钟 3～6 个就够，多了会吵。</p></div>
+  <h3>7 首常备配乐</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>名称</th><th>速度</th><th>感觉</th><th>适合</th></tr></thead>
+    <tbody id="bgmRoot"></tbody>
+  </table></div>
+  <h3>7 种音效</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>名称</th><th>听起来</th><th>用在</th><th>这样说</th></tr></thead>
+    <tbody id="sfxRoot"></tbody>
+  </table></div>
+</section>
+
+<!-- 08 -->
+<section id="edit">
+  <div class="eyebrow">08 · 改片</div>
+  <h2>想改哪里，这样说</h2>
+  <p class="lede">改什么都不用重来：转录、人像遮罩、卡片图都有缓存，改完重出预览通常半分钟到一分钟。</p>
+  <div class="tbl"><table>
+    <thead><tr><th>你想要</th><th>这样说</th></tr></thead>
+    <tbody id="editRoot"></tbody>
+  </table></div>
+</section>
+
+<!-- 09 -->
+<section id="files">
+  <div class="eyebrow">09 · 位置</div>
+  <h2>文件在哪里</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>东西</th><th>位置</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><b>成品（最好找）</b></td><td><code>影片 › aaaai-editor › 成品</code></td><td>每次正式渲染和做封面后自动复制一份，以项目名命名。Finder 侧栏「影片」就找得到。</td></tr>
+      <tr><td>项目文件夹</td><td><code>影片 › aaaai-editor › 日期-主题</code></td><td>一支片一个文件夹。</td></tr>
+      <tr><td>正式成片</td><td><code>项目 › out › final.mp4</code></td><td>唯一的交付版本（母带）。</td></tr>
+      <tr><td>预览版</td><td><code>项目 › out › final_preview.mp4</code></td><td>半分辨率，只看版面，不是成品。</td></tr>
+      <tr><td>封面</td><td><code>项目 › out › cover_*.png</code></td><td>竖版两种尺寸；横版片另出 16:9。</td></tr>
+      <tr><td>项目要用的图</td><td><code>项目 › assets</code></td><td>照片、截图、logo、自己的 B-roll；也可以放在别处，告诉它路径即可。</td></tr>
+      <tr><td>剪辑决策</td><td><code>项目 › storyboard.json</code></td><td>所有决定都记在这里（剪点、卡片、配乐），随时可以回头改、重出。</td></tr>
+      <tr><td>字幕轨</td><td><code>项目 › work › captions.json</code></td><td>手改过的字幕；删掉就回到自动字幕。</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note ok"><b class="k">放心</b><span>你的原始素材永远不会被删除、移动或覆盖；成品放哪里可以改，跟它说「成品改放到 ~/Desktop/成片」就好。</span></div>
+</section>
+
+<!-- 10 -->
+<section id="qa">
+  <div class="eyebrow">10 · 验收</div>
+  <h2>发布前看一遍</h2>
+  <p class="lede">它出片前已经自己检查过，但发布是你的名字——用两分钟再看一次。勾选只存在你这台电脑的浏览器里。</p>
+  <div class="check" id="checkRoot"></div>
+</section>
+
+<!-- 11 -->
+<section id="faq">
+  <div class="eyebrow">11 · 常见问题</div>
+  <h2>常见问题</h2>
+  <div class="faq" id="faqRoot"></div>
+</section>
+
+<!-- 12 -->
+<section id="habits">
+  <div class="eyebrow">12 · 好习惯</div>
+  <h2>让成片稳定的习惯</h2>
+  <div class="rules">
+    <div><b>先定字幕，再排卡片</b>卡片时间照字幕排；字幕后改，卡片可能要跟着挪。</div>
+    <div><b>一个意思一张卡</b>卡片宁少勿多。每 8–15 秒最多一张主卡，30 秒以下的短片：开头＋一张主卡＋结尾。</div>
+    <div><b>拍的时候就留好位置</b>人坐画面中间、头顶留一点空间，卡片、文字穿插、卡片接管都会更好看。</div>
+    <div><b>专有名词先告诉它</b>品牌名、人名、币名写在【其他】，能少掉大部分错字。</div>
+    <div><b>预览不是成品</b>正式成片是 <code>final.mp4</code>，要说「出成片」才会有；预览只看版面。</div>
+    <div><b>同一系列照旧</b>说「照旧」沿用上一支设置，各集的风格、音量才会一致。</div>
+    <div><b>证据用真的</b>收益、后台、订单截图必须是真实的；它只负责排版，不替你编数字。</div>
+    <div><b>花钱的事它会先问</b>AI 生成 B-roll 每次都先报价；看到报价再决定，不同意就不会花。</div>
+  </div>
+  <footer>
+    <span>aaaai-editor v1.0.16 · © MR ONE。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
+    <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
+  </footer>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  /* ---------- 9:16 示意图 ---------- */
+  var W = 90, H = 160;
+  function el(tag, a, inner){ var s = "<" + tag; for (var k in a) s += " " + k + '="' + a[k] + '"'; return s + (inner != null ? ">" + inner + "</" + tag + ">" : "/>"); }
+  function person(o){ o = o || {}; var cx = o.cx || 45, cy = o.cy || 64, r = o.r || 13, fill = o.fill || "var(--face)";
+    return el("circle",{cx:cx,cy:cy,r:r,fill:fill}) +
+      el("path",{d:"M"+(cx-30)+" "+(cy+54)+" Q"+(cx-28)+" "+(cy+18)+" "+cx+" "+(cy+17)+" Q"+(cx+28)+" "+(cy+18)+" "+(cx+30)+" "+(cy+54)+" Z",fill:fill}); }
+  function cap(y){ y = y || 110; return el("rect",{x:26,y:y,width:38,height:3,rx:1.5,fill:"var(--cap)",opacity:.95}) + el("rect",{x:31,y:y+5,width:28,height:2,rx:1,fill:"var(--cap)",opacity:.6}); }
+  function line(x,y,w,h,c,o){ return el("rect",{x:x,y:y,width:w,height:h||3,rx:(h||3)/2,fill:c||"#fff",opacity:o==null?1:o}); }
+  function scrimTop(h){ return el("rect",{x:0,y:0,width:W,height:h||62,fill:"url(#gTop)"}); }
+  function pill(x,y,w,h,c){ return el("rect",{x:x,y:y,width:w,height:h||7,rx:(h||7)/2,fill:c||"var(--accent)"}); }
+  var defs = '<defs><linearGradient id="gTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".78"/><stop offset=".6" stop-color="#000" stop-opacity=".45"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>' +
+             '<linearGradient id="gBot" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".8"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient></defs>';
+  function frame(inner, bg){ return '<svg viewBox="0 0 90 160" role="img" aria-hidden="true">' + defs + el("rect",{x:0,y:0,width:W,height:H,fill:bg||"var(--screen)"}) + inner + "</svg>"; }
+  function takeoverBase(extra){  /* 纸面背景＋框（34%～84%）＋框内人像＋头冲出框 */
+    var t = 54, b = 134;
+    return el("rect",{x:0,y:0,width:W,height:H,fill:"var(--paper)"}) +
+      el("rect",{x:5,y:t,width:80,height:b-t,rx:6,fill:"var(--screen-2)"}) +
+      person({cy:76,fill:"var(--face)"}) + el("rect",{x:5,y:b,width:80,height:H-b,fill:"var(--paper)"}) + cap(112) + (extra||""); }
+  var S = {
+    hookcut: function(){ return frame(person() + cap() + pill(6,8,22,7,"var(--accent)") + line(9,10.5,16,2,"#1E1B16") ); },
+    title: function(){ return frame(person() + scrimTop(66) + line(6,10,10,2,"var(--accent)") + line(6,16,14,2,"#fff",.7) + line(6,22,46,5) + line(52,22,20,5,"var(--accent)") + line(6,31,30,2.4,"#fff",.75) + cap()); },
+    stat: function(){ return frame(person() + scrimTop(70) + line(6,10,10,2,"var(--accent)") + line(6,15,14,2,"#fff",.7) + el("text",{x:6,y:40,"font-size":22,"font-weight":900,fill:"var(--accent)","font-family":"var(--mono)"},"3.2万") + line(6,45,32,2.4,"#fff",.75) + cap()); },
+    bullets: function(){ var s = person() + scrimTop(78) + line(6,10,10,2,"var(--accent)"); for (var i=0;i<3;i++){ s += el("circle",{cx:8,cy:19+i*9,r:1.6,fill:"var(--accent)"}) + line(12,17.8+i*9,40-i*6,2.6); } return frame(s + cap()); },
+    rows: function(){ var s = person() + scrimTop(84) + line(6,10,10,2,"var(--accent)"); for (var i=0;i<3;i++){ s += el("rect",{x:6,y:16+i*11,width:78,height:9,rx:2,fill:"#000",opacity:.45}) + el("rect",{x:7.5,y:17.5+i*11,width:6,height:6,rx:1.2,fill:"var(--accent)"}) + line(16,19+i*11,36-i*5,2.4); } return frame(s + cap()); },
+    quote: function(){ return frame(person() + scrimTop(62) + line(6,10,10,2,"var(--accent)") + el("text",{x:5,y:25,"font-size":12,fill:"var(--accent)","font-weight":900},"“") + line(12,18,56,4) + line(12,25,38,4) + line(12,33,16,2,"#fff",.6) + cap()); },
+    compare: function(){ return frame(person() + scrimTop(84) + line(6,10,10,2,"var(--accent)") + line(6,16,20,2.4,"#fff",.55) + el("text",{x:6,y:26,"font-size":6,fill:"#fff",opacity:.5},"✕") + line(12,22,30,2.6,"#fff",.5) + line(6,33,22,2.4,"var(--accent)") + el("text",{x:6,y:43,"font-size":6,fill:"#46D98A"},"✓") + line(12,39,36,2.6) + cap()); },
+    chapter: function(){ return frame(person() + el("rect",{x:0,y:0,width:W,height:H,fill:"#000",opacity:.72}) + el("text",{x:8,y:84,"font-size":30,"font-weight":900,fill:"var(--accent)","font-family":"var(--mono)"},"02") + line(8,92,48,4.5) + line(8,100,30,2.4,"#fff",.6) + cap()); },
+    icons: function(){ var s = person() + scrimTop(64) + line(6,10,10,2,"var(--accent)") + line(6,15,30,3.4); for (var i=0;i<4;i++){ s += el("rect",{x:6+i*20,y:24,width:14,height:14,rx:3,fill:"var(--accent)",opacity:.9}) + line(6+i*20,41,14,2,"#fff",.7); } return frame(s + cap()); },
+    stamp: function(){ return frame(person() + pill(56,12,28,9) + line(60,15.5,20,2,"#1E1B16") + cap()); },
+    lower: function(){ return frame(person() + el("rect",{x:0,y:96,width:W,height:64,fill:"url(#gBot)"}) + el("rect",{x:6,y:122,width:1.6,height:14,fill:"var(--accent)"}) + line(10,124,30,4) + line(10,131,24,2.4,"var(--accent)") + cap(106)); },
+    avatar: function(){ return frame(person() + el("rect",{x:0,y:96,width:W,height:64,fill:"url(#gBot)"}) + el("circle",{cx:14,cy:130,r:8,fill:"var(--face)",stroke:"var(--accent)","stroke-width":1.6}) + line(26,125,30,4) + line(26,132,24,2.4,"var(--accent)") + cap(106)); },
+    glow: function(){ return frame(person() + el("rect",{x:0,y:96,width:W,height:64,fill:"url(#gBot)"}) + el("circle",{cx:14,cy:130,r:8,fill:"var(--face)",stroke:"var(--accent)","stroke-width":1.4}) + line(26,125,30,4) + line(26,132,24,2.4,"var(--accent)") +
+      el("rect",{x:3,y:119,width:60,height:22,rx:6,fill:"none",stroke:"var(--accent)","stroke-width":1.4}) + el("rect",{x:1.5,y:117.5,width:63,height:25,rx:7,fill:"none",stroke:"var(--accent)","stroke-width":2.4,opacity:.3}) + cap(106)); },
+    takeover: function(){ return frame(takeoverBase(line(10,12,10,2,"var(--accent)") + line(10,20,58,5,"#1E1B16") + line(10,29,34,2.6,"#5B554C"))); },
+    proof: function(){ return frame(takeoverBase(line(28,8,34,2,"#5B554C") + el("rect",{x:17,y:13,width:56,height:34,rx:3,fill:"#fff",stroke:"#E3DED5","stroke-width":.6}) + el("rect",{x:19,y:15,width:52,height:5,fill:"#1F6FEB"}) + line(21,24,14,4,"#1F2328") + [0,1,2,3].map(function(i){return el("rect",{x:40+i*7,y:42-i*4,width:5,height:4+i*4,fill:"#3D8BFD"});}).join("") +
+      pill(34,44,22,6,"#F5C542") + pill(60,10,24,8,"var(--accent)") + line(63,13,18,2,"#1E1B16"))); },
+    flow: function(){ var s = line(30,9,30,2.4,"#5B554C"); for (var i=0;i<3;i++){ var x = 6+i*27; s += el("rect",{x:x,y:15,width:24,height:24,rx:3,fill:i==2?"var(--accent)":"#fff",stroke:"#E3DED5","stroke-width":.6}) + el("circle",{cx:x+12,cy:22,r:2.6,fill:i==2?"#1E1B16":"var(--accent)"}) + line(x+6,28,12,1.6,i==2?"#1E1B16":"#8A8378") + line(x+4,32,16,2.6,"#1E1B16"); } return frame(takeoverBase(s)); },
+    cta: function(){ return frame(takeoverBase(el("rect",{x:6,y:9,width:78,height:22,rx:4,fill:"#fff",stroke:"#E3DED5","stroke-width":.6}) + line(35,13,20,2,"var(--accent)") + line(20,19,50,4.5,"#1E1B16") + pill(28,35,34,10) + line(34,39,22,2.4,"#1E1B16") + line(29,48,32,2,"#5B554C"))); },
+    outro: function(){ return frame(person() + el("rect",{x:0,y:0,width:W,height:H,fill:"#000",opacity:.78}) + line(39,62,12,2,"var(--accent)") + line(20,69,50,6) + pill(26,81,38,9) + line(31,84.5,28,2,"#1E1B16")); },
+    confetti: function(){ var s = person() + cap(), cols = ["var(--accent)","#46D98A","#fff","#FF5C7A","#4CC3F5"]; var pts = [[12,30],[22,18],[35,26],[50,14],[62,24],[74,16],[80,34],[16,48],[70,48],[42,40],[28,56],[58,58],[8,70],[82,66],[46,22]];
+      pts.forEach(function(p,i){ s += el("rect",{x:p[0],y:p[1],width:3.2,height:1.6,fill:cols[i%5],transform:"rotate("+(i*37%90)+" "+p[0]+" "+p[1]+")"}); }); return frame(s); },
+    countdown: function(){ return frame(person({cy:70}) + el("circle",{cx:45,cy:32,r:15,fill:"none",stroke:"var(--accent)","stroke-width":3.2,opacity:.25}) + el("path",{d:"M45 17 A15 15 0 1 1 30.8 36.9",fill:"none",stroke:"var(--accent)","stroke-width":3.2,"stroke-linecap":"round"}) + el("text",{x:45,y:38.5,"font-size":17,"font-weight":900,fill:"#fff","text-anchor":"middle","font-family":"var(--mono)"},"2") + cap()); },
+    sparkle: function(){ return frame(person() + scrimTop(66) + line(6,10,10,2,"var(--accent)") + line(6,18,46,5) + line(6,27,30,2.4,"#fff",.75) +
+      el("path",{d:"M64 16 L66 21 L71 23 L66 25 L64 30 L62 25 L57 23 L62 21 Z",fill:"#fff"}) + el("path",{d:"M76 30 L77 32.5 L79.5 33.5 L77 34.5 L76 37 L75 34.5 L72.5 33.5 L75 32.5 Z",fill:"var(--accent)"}) + cap()); },
+    zoom: function(){ return frame(person({r:15,cy:62}) + el("rect",{x:14,y:30,width:62,height:110,fill:"none",stroke:"var(--accent)","stroke-width":1.4,"stroke-dasharray":"3 2"}) + el("path",{d:"M6 12 L14 30 M84 12 L76 30",stroke:"var(--accent)","stroke-width":1}) + cap()); },
+    behind: function(){ return frame(el("text",{x:45,y:60,"font-size":26,"font-weight":900,fill:"var(--accent)","text-anchor":"middle"},"开讲") + person({cy:66}) + cap()); },
+    cutout: function(){ return frame(el("rect",{x:0,y:0,width:W,height:H,fill:"var(--accent)",opacity:.85}) + line(8,14,52,6,"#1E1B16") + person({cy:78,fill:"#3A414C"}) + cap(122)); },
+    broll: function(){ return frame(el("rect",{x:0,y:0,width:W,height:H,fill:"#3C5A6E"}) + el("path",{d:"M0 104 L24 76 L40 92 L58 66 L90 100 L90 160 L0 160 Z",fill:"#27414F"}) + el("circle",{cx:66,cy:34,r:8,fill:"#E9D8A6",opacity:.9}) + cap(62)); },
+    brollblur: function(){ return frame(el("rect",{x:0,y:0,width:W,height:H,fill:"#2E4452"}) + el("rect",{x:0,y:56,width:W,height:50,fill:"#4A6B80"}) + el("path",{d:"M0 96 L20 80 L36 90 L54 72 L90 94 L90 106 L0 106 Z",fill:"#27414F"}) + cap(118)); },
+    image: function(){ return frame(person() + el("circle",{cx:72,cy:18,r:10,fill:"#fff"}) + el("rect",{x:66,y:13,width:12,height:10,rx:2,fill:"#15181D"}) + cap()); },
+    clip: function(){ return frame(person() + el("path",{d:"M10 30 Q30 8 50 26 T84 20",fill:"none",stroke:"var(--accent)","stroke-width":2.4}) + el("circle",{cx:84,cy:20,r:3,fill:"var(--accent)"}) + line(10,38,40,4) + cap()); },
+    faceavoid: function(){ return frame(person({cy:104,r:12}) + el("rect",{x:26,y:146,width:38,height:3,rx:1.5,fill:"var(--cap)"}) + el("path",{d:"M45 114 L45 140",stroke:"var(--accent)","stroke-width":1,"stroke-dasharray":"2 2"}) + el("path",{d:"M42 137 L45 142 L48 137",fill:"none",stroke:"var(--accent)","stroke-width":1})); }
+  };
+
+  var G = [
+    {h:"开场与结尾", sub:"前 3 秒决定观众留不留；结尾决定他会不会行动", items:[
+      {k:"hookcut", n:"开头预告", c:"hook", look:"把片中最有力的一句剪一份放到最前面，原位置保留（也可以整句搬过去）。", when:"每支短视频都值得考虑，尤其是开头平淡的片。", say:"开头用「……」那句当预告；或：推荐 3 句适合当开头的", note:"它会按真实人声修准剪点，剪完再听写一次确认句子完整。"},
+      {k:"title", n:"片头标题", c:"hook", look:"画面上沿渐变遮罩＋小标签＋大标题，关键词用强调色，落地瞬间画面轻推近。", when:"新观众第一次看、需要一句话点题时。", say:"开头加片头标题「入门的**三个弯**」", note:"标题别超过两行；用 **两个星号** 包住的字会变强调色。"},
+      {k:"outro", n:"片尾", c:"outro", look:"画面压暗（人还看得到）＋居中大标题＋按钮式标签，片尾音画一起淡出。", when:"一般结尾：关注、下期预告。", say:"片尾：关注我，下期讲工具", note:"想要全黑说「片尾全黑」。"},
+      {k:"cta", n:"行动号召卡", c:"cta", look:"白卡上的问题（关键词强调）→「留言 XX」大药丸弹出 → 一行小字，可停到片尾。", when:"要观众留言、私信领资料时；常和卡片收合一起用。", say:"结尾停在留言卡：想要同款？留言「剪片」我发给你", note:"药丸对准你说出关键词的那一刻弹出。"}
+    ]},
+    {h:"讲重点", sub:"一个意思一张卡；每 8–15 秒最多一张主卡", items:[
+      {k:"stat", n:"数据跳数", c:"stat_hit", look:"大数字从起始值跳到终值（可加前后缀），落定瞬间轻推近。", when:"说出一个关键数字：粉丝、收入、天数、百分比。", say:"讲到 3.2 万粉那里做数据跳数", note:"数字用等宽字体，跳动时不会左右晃。"},
+      {k:"bullets", n:"清单", c:"steps", look:"上方一条条出现的要点，每条对准说到它的那一秒。", when:"列举 2–4 件事。", say:"讲三个步骤的时候做清单，每条对准说到的时候出现", note:"别超过 3–4 条、每条一行，太长会盖到脸。"},
+      {k:"rows", n:"编号行卡", c:"steps · rows", look:"每条一张小卡，左边强调色方块编号。比清单更有「第一、第二」的结构感。", when:"讲「第一个、第二个、第三个」。", say:"三个弯用编号行卡", note:"说明文字尽量短。"},
+      {k:"quote", n:"金句", c:"quote_pull", look:"引号＋一句话＋出处，淡入、全程缓慢推近。", when:"一句值得截图转发的话。", say:"「最贵的是绕路的时间」做金句卡", note:"一支片一两句就够。"},
+      {k:"compare", n:"对比", c:"compare", look:"上下两组：前一组淡色＋叉（以为／以前），后一组强调色＋勾（其实／现在），晚一拍出现。", when:"打破误解、前后对比。", say:"做对比：你以为最贵是订阅费，其实是绕路的时间", note:"竖屏上下排比左右并排好读。"},
+      {k:"chapter", n:"章节断章", c:"chapter", look:"整个画面压暗 1–2 秒＋大号章节数字＋标题，人仍看得见。", when:"片子真的分段时（长片、三段式）。", say:"每个段落之间加章节断章", note:"一支片最多 3–4 个。"},
+      {k:"icons", n:"图标宫格", c:"icons", look:"一排图标＋标签，适合列工具、平台、功能。", when:"讲「我用了这几个工具」。", say:"讲到用了哪些工具时做图标宫格：麦克风、相机、火箭", note:"41 个内置图标，说名称或意思都行。"},
+      {k:"stamp", n:"印章／标注", c:"callout", look:"小药丸标签（可带图标），弹出。", when:"强调一个小点：NEW、省 80%、限时。", say:"右上角加一个「省 80% 时间」的标注", note:"印章永远画在其他卡片上面，不会被盖住。"}
+    ]},
+    {h:"讲人，不挡人", sub:"让观众知道是谁在说，也不挡到你的脸", items:[
+      {k:"lower", n:"人名条", c:"speaker", look:"画面下沿：强调色竖线＋姓名＋职务。", when:"自我介绍、嘉宾第一次出现。", say:"自我介绍时加人名条：MR ONE，AI 工作流", note:"职务写短一点。"},
+      {k:"avatar", n:"头像牌", c:"avatar", look:"圆形照片（强调色外圈）＋姓名＋身份。比纯文字更好认人。", when:"讲到某个人、嘉宾、引用名人时。", say:"讲到 Alex 时加头像牌，照片 assets/alex.jpg", note:"照片放项目 assets/；可以指定取景中心。", need:"照片"},
+      {k:"glow", n:"关注框", c:"glow", look:"金色发光外框，一呼一吸，框住某个区域。", when:"提醒点关注、指某个按钮、框住头像牌。", say:"头像牌出来时加关注框框住它", note:"位置它会算好；想自己指定就说框住哪里。"},
+      {k:"faceavoid", n:"字幕避脸", c:"自动", look:"人坐得低、脸落到字幕位置时，那几句字幕自动移到下巴下面。卡片压到眼睛时也会自动让开。", when:"默认就有。", say:"字幕不要避脸（通常不用说）", note:"需要人像去背；没有就照常。", need:"人像去背"}
+    ]},
+    {h:"秀证据：卡片收合", sub:"画面收进卡片，上方放证据——收益证明、成果展示最有说服力", items:[
+      {k:"takeover", wide:true, n:"卡片接管", c:"takeover", look:"画面收进下方圆角框、人物头冲出框上缘；背景可用模糊画面或纸面；上方是标题或面板区。", when:"重点时刻、秀证据、结尾停留。一支片 2–3 次。", say:"这段用卡片收合，纸面背景；最后一段停到片尾", note:"头冲出框需要人像去背；人坐太低时头不会冲出去，属于正常。", need:"人像去背"},
+      {k:"proof", n:"证据截图卡", c:"proof", look:"白框圆角截图＋上方小标题＋底边黄色日期胶囊＋右上角金额印章。两张可以并排。", when:"后台数据、订单、收入、评价、聊天截图。", say:"放后台截图，说出 1,593 那一刻盖「+$1,593」印章，加金币声", note:"截图必须是真的；太高的截图会自动缩到放得下。", need:"截图"},
+      {k:"flow", n:"工作流步骤卡", c:"flow", look:"一排小卡（图标＋小字＋粗体），每步对准台词出现，最后一张强调色当「结果」。", when:"讲你的流程：拍 → 剪 → 赚。", say:"做工作流：随手拍 3 分钟 → AI 自动剪辑 → 每周进账", note:"3 步最好看，最多 4 步。"}
+    ]},
+    {h:"气氛与节奏", sub:"锦上添花，点到为止", items:[
+      {k:"sparkle", n:"呼吸与闪光", c:"自动", look:"卡片落定后轻轻上下浮动；标题、数据、金句、片尾在强调色处闪一两下。", when:"默认就有。", say:"卡片别晃／不要闪光", note:"不需要就说一声关掉。"},
+      {k:"zoom", n:"推近", c:"zooms", look:"缓推（铺陈）或瞬切推近（落点、数字揭晓），像换机位。", when:"落点、金句、数字揭晓；每分钟最多 3 次瞬切。", say:"说出结论那一刻瞬切推近", note:"机位太远还可以全片推近，它会出对比图给你选倍率。"},
+      {k:"confetti", n:"拉炮彩带", c:"confetti", look:"彩色纸片从中下方喷出、边转边飘落。", when:"达成里程碑、公布好消息。", say:"说到破十万粉时放拉炮，加拉炮声", note:"一支片一次就好。"},
+      {k:"countdown", n:"圆环倒数", c:"countdown", look:"圆环每秒缩短＋中间大数字，每秒一声滴答；默认在头顶上方。", when:"「三、二、一」、揭晓前的悬念。", say:"揭晓前做 3 秒倒数", note:"不要滴答声可以关。"}
+    ]},
+    {h:"画面技巧", sub:"让画面有层次", items:[
+      {k:"behind", n:"文字穿插", c:"behind_subject", look:"大字排在人物后面，人站在字前面。", when:"人物居中、头顶有空间的片头标题。", say:"片头标题做文字穿插，字在我后面", note:"需要人像去背。", need:"人像去背"},
+      {k:"cutout", n:"人物抠出", c:"cutout", look:"把人从画面抠出来，放在别的背景或颜色上。", when:"想做海报感、换背景。", say:"这几秒把我抠出来放在强调色背景上", note:"需要人像去背。", need:"人像去背"},
+      {k:"broll", n:"B-roll 满版", c:"broll", look:"插入的画面盖满屏幕，你的声音照常；满版时字幕自动抬到中上。", when:"讲到一个画面：产品界面、现场、物件。", say:"讲到咖啡店时插 assets/cafe.mp4，从第 3 秒开始", note:"自己的素材最好；也能找免费素材或 AI 生成（先报价）。", need:"素材"},
+      {k:"brollblur", n:"B-roll 模糊铺底／上下黑边", c:"broll · blur／letterbox", look:"横式素材放进竖版：上下用同画面模糊铺底，或留黑边。", when:"插入横拍的素材、屏幕录制。", say:"这段横拍的用模糊铺底", note:"图片会自动缓慢推近，不会是死图。"},
+      {k:"image", n:"图片／logo", c:"image", look:"放一张图或 logo；黑色 logo 可以垫白色圆底。", when:"品牌露出、合作方 logo、产品图。", say:"右上角放 assets/logo.png，垫白色圆底", note:"透明底 PNG 最好。"},
+      {k:"clip", n:"透明动画片段", c:"clip", look:"叠一段带透明通道的动画（例如品牌动效）。", when:"需要复杂动效时，由动效 skill 做好再叠进来。", say:"找动效那边做一段 logo 动画，叠在开头", note:"做法见套件里的 motion-graphic-video-editor。"}
+    ]}
+  ];
+
+  var root = document.getElementById("galleryRoot"), html = "";
+  G.forEach(function(g){
+    html += '<div class="gal-group"><h3>' + g.h + ' <small>' + g.sub + '</small></h3><div class="gal">';
+    g.items.forEach(function(it){
+      html += '<article class="w' + (it.wide ? ' wide' : '') + '">' + S[it.k]() + '<div><h4>' + it.n + ' <code>' + it.c + '</code>' + (it.need ? ' <span class="badge req">需要' + it.need + '</span>' : '') + '</h4><dl>' +
+        '<dt>长什么样</dt><dd>' + it.look + '</dd><dt>什么时候用</dt><dd>' + it.when + '</dd><dt>这样说</dt><dd class="s">' + it.say + '</dd>' +
+        (it.note ? '<dt>小提醒</dt><dd>' + it.note + '</dd>' : '') + '</dl></div></article>';
+    });
+    html += "</div></div>";
+  });
+  root.innerHTML = html;
+
+  /* ---------- 风格 ---------- */
+  var ST = [
+    ["ink","#1B2430","#F0B23C","#3DDC84","商业、知识：墨底、米白字、琥珀强调。稳重，最百搭。"],
+    ["neon","#141033","#32E3C2","#3DDC84","Web3、科技：近黑底、青绿强调、细描边。"],
+    ["gold","#222735","#F59E0B","#3DDC84","金融、加密：石板底、金色信任感。"],
+    ["trust","#192134","#3B82F6","#10B981","理财、机构：深海军底、信任蓝、盈利绿。"],
+    ["paper","#EFE7D6","#C2452D","#15803D","编辑、印刷感：米白底、深墨字、朱红强调。"],
+    ["mag","#F4F4F5","#EC4899","#15803D","杂志、评论：纯白卡、近黑字、品红强调。"],
+    ["serif","#F3ECDD","#9A3412","#15803D","纸感衬线：暖米底、宋体标题、赭红强调。"],
+    ["mrone 🔒","#0B0B0D","#FFC933","#3DDC84","MR ONE 黑金：白色粗标题、金黄关键词与编号方块。授权者专用。"],
+    ["otg 🔒","#0A0A0A","#E60012","#10B981","OTG 火箭风：OTG 红、毛玻璃、星空断章、激光扫光。授权者专用。"]
+  ];
+  document.getElementById("styleRoot").innerHTML = ST.map(function(s){
+    var light = /^#[EF]/i.test(s[1]);
+    return '<div class="sty"><div class="sw" style="background:' + s[1] + ';color:' + (light ? "#15181D" : "#F2F2F2") + '"><i style="background:' + s[2] + '"></i><i style="background:' + s[3] + '"></i><b>' + s[0] + '</b></div><div class="t">' + s[4] + '</div></div>';
+  }).join("");
+
+  /* ---------- 配乐与音效 ---------- */
+  var BGM = [["focus-quiet","76 BPM","安静专注，几乎无鼓","干货教学、密集资讯"],["warm-story","80 BPM","温暖叙事，中等节奏","幕后故事、个人分享"],["upbeat-energetic","96 BPM","明快振奋，鼓点最密","发布公告、成果展示"],["chill-tropical","84 BPM","热带 chill，有节奏感","户外、数字游民"],["lounge-vacation","70 BPM","慵懒度假，带颤音琴","悠闲、放松"],["late-night-chill","68 BPM","深夜氛围，慢而忧郁","夜拍、沉思"],["minimal-intimate","66 BPM","极简安静，无底鼓","严肃话题、独白"]];
+  document.getElementById("bgmRoot").innerHTML = BGM.map(function(b){ return "<tr><td class=\"mono\">" + b[0] + "</td><td>" + b[1] + "</td><td>" + b[2] + "</td><td>" + b[3] + "</td></tr>"; }).join("");
+  var SFX = [["coin","叮叮，金币声","金额、数字揭晓","说出金额时加金币声"],["pop","啵","卡片弹出、清单一条条出现","卡片弹出加「啵」"],["ding","叮","结论、重点、提示","说结论时叮一下"],["whoosh","咻","转场、卡片收合进场","进卡片时加咻"],["click","喀","按钮、勾选","勾选时加喀"],["tick","滴答","倒数每一秒","倒数加滴答（默认就有）"],["confetti","拉炮","庆祝、里程碑","放拉炮加拉炮声"]];
+  document.getElementById("sfxRoot").innerHTML = SFX.map(function(b){ return "<tr><td class=\"mono\">" + b[0] + "</td><td>" + b[1] + "</td><td>" + b[2] + "</td><td>" + b[3] + "</td></tr>"; }).join("");
+
+  /* ---------- 改片说法 ---------- */
+  var ED = [
+    ["某句字幕错字、英文不对","第 12 秒「韩洲」改成「杭州」；英文改成 …"],
+    ["字幕太小／太低","字幕大一点；字幕往上一点"],
+    ["换一套风格","换成 neon 风格"],
+    ["卡片太多、太挤","第 20 秒那张卡拿掉；卡片少一点"],
+    ["卡片挡到脸","那张卡往下／往右一点；或：别挡我的脸"],
+    ["某张卡出现太久／太早","清单晚一秒出来；数据卡缩短到两秒"],
+    ["音乐太大声","配乐小声一点（或：配乐第二个版本）"],
+    ["有底噪","先给我听降噪；降噪用加强"],
+    ["想加／拿掉音效","数字出来加金币声；音效全部拿掉"],
+    ["剪太碎／太拖","停顿留长一点；这段整段剪掉"],
+    ["开头不够抓人","换一句当开头预告；推荐几句给我"],
+    ["结尾太突然","结尾加片尾卡；最后淡出慢一点"],
+    ["人太小、机位太远","整支推近一点（它会出对比图让你选）"],
+    ["手机上先看看","出一个手机预览版（30MB 以内，不是成品）"],
+    ["要正式成品","出成片、做封面"]
+  ];
+  document.getElementById("editRoot").innerHTML = ED.map(function(e){ return "<tr><td>" + e[0] + "</td><td><span class=\"mono\">" + e[1] + "</span></td></tr>"; }).join("");
+
+  /* ---------- 验收清单 ---------- */
+  var CK = [
+    ["字幕没有错字","特别是人名、品牌名、数字、英文。"],
+    ["每张卡片都没挡脸、没撑出画面","看成品的帧，不只看预览。"],
+    ["开头 3 秒有抓人的东西","预告句、片头标题或画面动作。"],
+    ["声音清楚、音乐不抢话","戴耳机听一次开头和结尾。"],
+    ["截图和数字是真的","秀证据的内容要经得起追问。"],
+    ["结尾有明确的下一步","关注、留言关键词或看主页。"],
+    ["封面文字在安全区、不压脸","主页裁切后也看得到。"],
+    ["用的是 final.mp4","不是 final_preview.mp4。"]
+  ];
+  var ckRoot = document.getElementById("checkRoot"), saved = {};
+  try { saved = JSON.parse(localStorage.getItem("aaaai-editor-guide-check") || "{}"); } catch (e) { saved = {}; }
+  ckRoot.innerHTML = CK.map(function(c, i){ return '<label for="ck' + i + '"><input type="checkbox" id="ck' + i + '"' + (saved[i] ? " checked" : "") + '><span><b>' + c[0] + '</b><br><span style="color:var(--ink-3);font-size:14px">' + c[1] + '</span></span></label>'; }).join("");
+  ckRoot.addEventListener("change", function(e){ var t = e.target; if (!t.id) return; saved[t.id.slice(2)] = t.checked; try { localStorage.setItem("aaaai-editor-guide-check", JSON.stringify(saved)); } catch (err) {} });
+
+  /* ---------- 常见问题 ---------- */
+  var FQ = [
+    ["预览和成品有什么不同？","预览（<code>final_preview.mp4</code>）是半分辨率，给你看版面和节奏，几十秒就出来；成品（<code>final.mp4</code>）是全画质、响度锁定好的正式版本，要说「出成片」才会渲染。"],
+    ["第一次渲染为什么比较久？","有卡片接管、文字穿插时要先算人像遮罩；长片会分段渲染。这些都有缓存，之后改卡片、改字幕再出预览通常半分钟到一分钟。"],
+    ["它会不会删掉或改到我的原始素材？","不会。原始素材只读取，永远不删、不移动、不覆盖；所有剪辑决定都记在项目的 storyboard.json 里。"],
+    ["一定要花钱吗？","不用。只有「AI 生成 B-roll」可能花钱（每条约 $0.15～$0.35），每次都先报价、你同意才生成；每个项目默认上限 $2，超过会先提醒你。"],
+    ["API 密钥安全吗？","密钥只在你自己的终端输入、存进 Mac 钥匙串，不经过聊天、不写进任何文件；只经 https 发给官方网址，错误信息里出现也会打码。不要把密钥贴进和 AI 的对话里。"],
+    ["我的素材是横拍的怎么办？","它会问你要保持横版（YouTube 等）还是裁成竖版短视频；裁竖版时人会放在中间，机位远可以整支推近。"],
+    ["说「照旧」会沿用什么？","上一支片的风格、配乐、字幕设置。同一系列用照旧，各集的风格和音量才会一致。"],
+    ["为什么头没有冲出卡片框？","卡片接管的「头冲出框」需要你的头在框上缘附近；坐得比较低时头在框里面，这是正常的。拍的时候坐高一点、头顶留点空间效果最好。"],
+    ["字幕为什么有时候跑到下面？","那是「字幕避脸」：脸落到字幕位置时，那几句会移到下巴下面。不想要就说「字幕不要避脸」。"],
+    ["可以用我自己的音乐吗？","可以，告诉它文件位置就好。请确认你有使用权；常备的 7 首是原创、零版权。"],
+    ["英文片也能剪吗？","能。会自动判断语言，英文字幕按单词断行，也能加中文翻译；回复和字幕都跟着你用的语言。"],
+    ["我想做没有真人的讲解片、动画片？","跟它说你要做什么：品牌动效会交给动效 skill，讲解片、网站转影片会交给 HyperFrames；做完再回到 aaaai-editor 统一加字幕、响度、封面。"]
+  ];
+  document.getElementById("faqRoot").innerHTML = FQ.map(function(q){ return "<details><summary>" + q[0] + "</summary><div class=\"a\"><p>" + q[1] + "</p></div></details>"; }).join("");
+
+  /* ---------- 复制 ---------- */
+  document.addEventListener("click", function(e){
+    var b = e.target.closest ? e.target.closest(".copy") : null; if (!b) return;
+    var src = document.getElementById(b.getAttribute("data-copy")); if (!src) return;
+    var text = src.innerText.split("\n").map(function(l){ return l.replace(/\s+←.*$/, ""); }).join("\n");
+    function done(){ var t = b.textContent; b.textContent = "已复制"; b.classList.add("done"); setTimeout(function(){ b.textContent = t; b.classList.remove("done"); }, 1600); }
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); } else { fallback(); }
+    function fallback(){ var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (err) {} document.body.removeChild(ta); }
+  });
+
+  /* ---------- 范例分页 ---------- */
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  tabs.forEach(function(t){ t.addEventListener("click", function(){
+    tabs.forEach(function(x){ x.setAttribute("aria-selected", x === t ? "true" : "false"); document.getElementById(x.getAttribute("aria-controls")).hidden = x !== t; });
+  }); });
+
+  /* ---------- 目录高亮 ---------- */
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
+  var secs = links.map(function(a){ return document.querySelector(a.getAttribute("href")); });
+  function spy(){ var y = window.scrollY + 120, cur = 0; secs.forEach(function(s, i){ if (s && s.offsetTop <= y) cur = i; }); links.forEach(function(a, i){ a.classList.toggle("on", i === cur); }); }
+  window.addEventListener("scroll", spy, {passive:true}); spy();
+
+  /* ---------- 深浅色 ---------- */
+  var btn = document.getElementById("themeBtn");
+  if (btn) btn.addEventListener("click", function(){
+    var r = document.documentElement, cur = r.getAttribute("data-theme");
+    var dark = cur ? cur === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    r.setAttribute("data-theme", dark ? "light" : "dark");
+  });
+})();
+</script>
+</body>
+</html>

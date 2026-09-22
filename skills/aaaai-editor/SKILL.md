@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.15"
+  version: "1.0.16"
 ---
 
 # aaaai-editor 影片总监
@@ -295,6 +295,10 @@ render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP，**同
 用户说「发布了」：频道档案有「发布之后」就照做（清可重算的中间产物，素材与 work/*.json 不动）。
 
 ## 参考
+
+**用户问「怎么用」「有哪些功能／小组件」「提示词怎么写」**：先指给他《使用指南》——
+`$APP/docs/使用指南.html`（`open` 它就会用浏览器打开）或 `$APP/docs/使用指南.pdf`，再按他的问题讲重点；
+用户照指南里「提示词格式范本」填来的需求，逐行照做，没写的行用开工三问补齐。
 
 `$APP/docs/00-快速安装.md`（安装须知、密钥、MCP）· `$APP/README.md`（命令总览）· `$APP/docs/CARDS.md` · `$APP/docs/STYLE.md` · `$APP/docs/RECIPES.md` ·
 `$APP/docs/LONG.md` · `$APP/profiles/TEMPLATE/`（建自己的频道档案）· `$APP/LICENSE.md`
