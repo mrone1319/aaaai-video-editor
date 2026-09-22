@@ -349,7 +349,8 @@ def blocks_text(ov, th, W) -> Tuple[List[dict], str]:
     col = ov.get("color") or th["text"]
     if isinstance(col, str) and col.startswith("@"):   # "@muted" 这类：引用风格的语义色
         col = th.get(col[1:], th["text"])
-    return [_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.056), col, role="free")], "none"
+    return [_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.056), col,
+                 role=ov.get("role") or "free")], "none"
 
 
 def blocks_step(ov, th, W) -> Tuple[List[dict], str]:

@@ -365,6 +365,55 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             fr["bg_layers"] = [bg_layer] if star else []   # 星空盖在模糊画面之上（半透明）
             prepared.append(rec)
             continue
+        if typ == "cta_box":   # 评论框：白底长条＋头像圆点＋发送键（打完字那一刻亮起来）＋闪动游标
+            th = theme.theme(ov.get("style") or sb.get("style"), sb.get("_base"), sb.get("brand"))
+            bx, by = int(W * float(ov["x"])), int(H * float(ov["y"]))
+            bw, bh = int(W * float(ov["w"])) & ~1, int(H * float(ov["h"])) & ~1
+            av = int(bh * 0.62)
+            sd = int(bh * 0.70)
+            send_at = float(ov["send_at"])
+            rec = {"ov": ov, "t0": t0, "t1": t1, "under": False, "behind": False, "layers": [],
+                   "items": [], "cutout": None}
+            for lit, la, lb in ((False, t0, send_at), (True, send_at, t1)):
+                if lb - la <= 0.01:
+                    continue
+                shapes = [{"x": int(bh * 0.19), "y": (bh - av) // 2, "w": av, "h": av, "r": av // 2,
+                           "fill": "#E7E7EC"},
+                          {"x": bw - sd - int(bh * 0.19), "y": (bh - sd) // 2, "w": sd, "h": sd, "r": sd // 2,
+                           "fill": th["accent"] if lit else "#DCDCE2"}]
+                png, m = draw.make_plate({"w": bw, "h": bh, "radius": bh // 2, "fill": "#FFFFFF", "alpha": 1.0,
+                                          "border": {"w": 0},
+                                          "shadow": {"soft": int(bh * 0.30), "alpha": 0.34, "dy": int(bh * 0.10)},
+                                          "shapes": shapes,
+                                          "icons": [{"name": "arrow_right",
+                                                     "x": bw - sd - int(bh * 0.19) + sd // 2 - int(sd * 0.27),
+                                                     "y": (bh - sd) // 2 + sd // 2 - int(sd * 0.27),
+                                                     "size": int(sd * 0.54),
+                                                     "color": "#1E1B16" if lit else "#9A9AA4", "stroke": 3.0}]},
+                                         os.path.join(work, "plates"))
+                inputs.append(["-loop", "1", "-t", "%.3f" % max(0.1, lb - la), "-i", os.path.relpath(png, work)])
+                rise = int(round(H * 0.012))
+                rec["layers"].append({"idx": idx, "x": "%d" % (bx - m),
+                                      "y": "%d+(%d)*(1-%s)" % (by - m, rise, ease(t0, DEF_DI)) if not lit
+                                           else "%d" % (by - m),
+                                      "t0": la, "t1": lb, "scale": None,
+                                      "di": 0.0 if lit else DEF_DI, "do": DEF_DO if lit else 0.0,
+                                      "fade": not lit})
+                idx += 1
+            # 游标：打完字之后在字尾闪动（打字途中不画，省一层也不抢眼）
+            cw = max(3, int(W * 0.005))
+            ch = max(8, int(H * float(ov.get("caret_h", 0.03))))
+            kx = int(W * float(ov["caret_x"]))
+            png, m = draw.make_plate({"w": cw, "h": ch, "radius": cw // 2, "fill": th["accent"], "alpha": 1.0,
+                                      "border": {"w": 0}, "shadow": {}}, os.path.join(work, "plates"))
+            inputs.append(["-loop", "1", "-t", "%.3f" % max(0.1, t1 - send_at), "-i", os.path.relpath(png, work)])
+            rec["layers"].append({"idx": idx, "x": "%d" % (kx - m), "y": "%d" % (by + (bh - ch) // 2 - m),
+                                  "t0": send_at, "t1": t1, "scale": None, "di": 0.0, "do": 0.0, "fade": False,
+                                  "pre": "geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
+                                         "a='alpha(X,Y)*(0.5+0.5*sin(2*PI*T/0.9))'"})
+            idx += 1
+            prepared.append(rec)
+            continue
         if typ == "cutout":
             mi, _, _ = need_matte(t0, t1, "cutout")
             subjects.append({"a": t0, "b": t1, "mode": "cutout", "idx": mi, "ov": ov,

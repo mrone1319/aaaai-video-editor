@@ -59,11 +59,16 @@
     {"icon": "rocket", "top": "AI", "big": "自动剪辑", "at": 41.6},
     {"icon": "money", "top": "现金流", "big": "每周进账", "at": 42.6}]},
   {"type": "cta", "t": [55.8, 62.0], "hold": true, "kicker": "想少绕一点路？", "question": "怎么**用 AI** 入门",
-   "question_at": 56.0, "keyword": "留言「入门」", "cta_at": 58.2, "badge": "我把分享会链接发给你", "sfx": "ding"}
+   "question_at": 56.0, "keyword": "入门", "cta_at": 58.2, "badge": "我把分享会链接发给你", "sfx": "ding"}
 ]
 ```
 
 - 接管期间的卡片自动放进上方面板区（6%～32%），改成底板版；纸面背景时白卡深字，字幕落在纸面上会自动改深字。
 - `proof`：`width`（比例）、`x`（中心）、`top`、`max_h` 可调；截图太高会自动缩到面板区放得下。
 - `flow`：最后一张是强调色「结果」卡（`"result": false` 关掉）；图标用 `aaaai-editor icons` 里的名称。
-- `cta`：`question` 可用 `**关键词**` 变强调色；`keyword` 是大药丸，`badge` 是下面一行小字。
+- `cta`：`question` 可用 `**关键词**` 变强调色。默认是**评论框版**：白色评论框升起，`keyword` 一个字一个字打出来
+  （每字一声「喀」），游标闪动，发送键在打完那一刻亮起来，`badge` 是下面一行小字。
+  `keyword` 只写要观众打的那几个字（例 `"入门"`，不要写成「留言「入门」」），最多 4–5 个字才不挤。
+  可调：`hint`（框上方那行提示，默认「在评论区打这两个字」）、`type_speed`（每字秒数，默认 0.16）、
+  `type_sfx`（打字音，设 `null` 取消）、`keyword_scale`、`box_width`、`box_y`。
+  写 `"style": "pill"` 回到旧版：关键词做成一颗大药丸。

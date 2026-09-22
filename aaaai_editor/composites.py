@@ -111,22 +111,65 @@ def _flow(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
 
 
 def _cta(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
-    """行动号召卡：小标题＋问题（可用 **关键词**）→ 关键词大药丸（对准说出关键词那一刻弹出）→ 一行小字。"""
+    """行动号召卡。两种版式：
+
+    box（默认）：小标题＋问题 → 一行提示 → 模仿平台评论框：关键词一个字一个字打出来、
+      游标闪两下、发送键在打完那一刻亮起来。观众一看就知道「去评论区打这两个字」。
+    pill：旧版，关键词做成一颗大药丸。写 "style": "pill" 就回到旧版。
+    """
     t0, t1 = float(ov["t"][0]), float(ov["t"][1])
     qa = float(ov.get("question_at", t0))
     ca = float(ov.get("cta_at", qa + 1.0))
     top = float(ov.get("top", PANEL_TOP))
     out = [{"type": "title", "t": [qa, t1], "kicker": ov.get("kicker"), "text": ov.get("question", ""),
             "_xy": [0.5, top], "lite": False, "anim": "rise", "align": "center"}]
-    if ov.get("keyword"):
-        out.append({"type": "stamp", "t": [ca, t1], "text": ov["keyword"], "_xy": [0.5, top + 0.165],
-                    "scale": float(ov.get("keyword_scale", 2.2)), "anim": "pop", "_raw": True,
-                    "sfx": ov.get("sfx"), "sfx_at": ca if ov.get("sfx") else None})
+    kw = ov.get("keyword") or ""
+    if (ov.get("style") or "box") != "box":
+        if kw:
+            out.append({"type": "stamp", "t": [ca, t1], "text": kw, "_xy": [0.5, top + 0.165],
+                        "scale": float(ov.get("keyword_scale", 2.2)), "anim": "pop", "_raw": True,
+                        "sfx": ov.get("sfx"), "sfx_at": ca if ov.get("sfx") else None})
+        if ov.get("badge"):
+            out.append({"type": "text", "t": [ca + 0.3, t1], "text": ov["badge"], "_xy": [0.5, top + 0.235],
+                        "scale": 0.85, "anim": "fade",
+                        "color": "@muted" if not win or win.get("bg") != "paper" else ON_PAPER["muted"]})
+        return out
+    if not kw:
+        return out
+    hint = ov.get("hint") or ("在评论区打这%s个字" % _cn_num(len(kw)))
+    bw = float(ov.get("box_width", 0.815))            # 评论框宽（相对画面宽）
+    bh = bw * W * 0.148 / H                           # 高：照手机输入框的比例
+    by = float(ov.get("box_y", top + 0.196))
+    out.append({"type": "text", "t": [ca - 0.25, t1], "text": hint, "_xy": [0.5, by - 0.032], "scale": 0.82,
+                "anim": "fade", "color": "#FFFFFF" if not win or win.get("bg") != "paper" else ON_PAPER["text"]})
+    # 关键词一个字一个字打出来：每个字一层，位置按实际字宽往右长（不是整块居中跳动）
+    from . import cards
+    ts = float(ov.get("keyword_scale", 1.45))
+    tx = 0.5 - bw / 2 + bh * H * 0.86 / W              # 头像右边就是打字的位置
+    U = min(W, int(H * 0.75))
+    fs = round(U * ts * 0.056)
+    n = len(kw)
+    step = float(ov.get("type_speed", 0.16))
+    done = ca + step * n
+    for i in range(n):
+        w_i = cards.est_w(kw[:i + 1], fs)
+        out.append({"type": "text", "t": [ca + step * i, t1], "text": kw[:i + 1],
+                    "_xy": [tx + w_i / 2.0 / W, by + bh * 0.20], "role": "title", "scale": ts,
+                    "anim": "none", "halo": False, "color": ON_PAPER["text"], "_raw": True,
+                    "sfx": ov.get("type_sfx", "click"), "sfx_at": ca + step * i})
+    caret = tx + (cards.est_w(kw, fs) + fs * 0.14) / W
+    out.append({"type": "cta_box", "t": [ca - 0.25, t1], "x": 0.5 - bw / 2, "y": by, "w": bw, "h": bh,
+                "send_at": done + 0.12, "caret_x": caret, "caret_h": fs * 1.16 / H,
+                "sfx": ov.get("sfx"), "sfx_at": done + 0.12})
     if ov.get("badge"):
-        out.append({"type": "text", "t": [ca + 0.3, t1], "text": ov["badge"], "_xy": [0.5, top + 0.235],
-                    "scale": 0.85, "anim": "fade",
-                    "color": "@muted" if not win or win.get("bg") != "paper" else ON_PAPER["muted"]})
+        out.append({"type": "text", "t": [done + 0.45, t1], "text": ov["badge"], "_xy": [0.5, by + bh + 0.022],
+                    "scale": 0.88, "anim": "fade",
+                    "color": "#FFFFFF" if not win or win.get("bg") != "paper" else ON_PAPER["text"]})
     return out
+
+
+def _cn_num(n: int) -> str:
+    return "两" if n == 2 else ("一二三四五六七八九十"[n - 1] if 1 <= n <= 10 else str(n))
 
 
 def _countdown(ov: dict, W: int, H: int) -> List[dict]:
@@ -174,7 +217,8 @@ def expand(sb: dict) -> dict:
             out.append(o)
     # 落在接管期间的卡片：底板版、放进面板区；纸面背景改白卡深字
     for o in out:
-        if o.get("type") in ("frame", "broll", "proof_img", "ring", "confetti", "glow", "image", "clip", "cutout"):
+        if o.get("type") in ("frame", "broll", "proof_img", "ring", "confetti", "glow", "image", "clip", "cutout",
+                             "cta_box"):
             continue
         win = _in_window(o, wins)
         if not win or o.get("_raw"):
