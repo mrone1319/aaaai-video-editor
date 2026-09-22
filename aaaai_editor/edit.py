@@ -9,7 +9,7 @@ import difflib
 import json
 import os
 import re
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from . import audio, env, zh
 from .timeline import Timeline

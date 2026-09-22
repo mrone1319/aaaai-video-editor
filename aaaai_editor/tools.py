@@ -7,8 +7,6 @@ listen／probe-cut 移植自 MR ONE 频道自己的 map-audio／probe-cut：
 """
 from __future__ import annotations
 
-import json
-import math
 import os
 import re
 import shutil
@@ -16,7 +14,7 @@ import subprocess
 import tempfile
 from typing import List, Optional, Tuple
 
-from . import captions, env, render, zh
+from . import env, render, zh
 from .timeline import Timeline
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -80,6 +78,10 @@ def listen(src: str, a: float, b: float, win: float = 2.5, hop: float = 0.5) -> 
 
 def probe_cut(src: str, mode: str, anchor: float, lo: float, hi: float, step: float, expect: str):
     """end：从 anchor 听到 t，找「已经讲完 expect」的最早 t；start：找「从 t 开始、开头是 expect」的最晚 t。"""
+    if lo > hi or step <= 0:
+        raise env.ToolError("范围不对：lo 要小于等于 hi，step 要大于 0")
+    if mode == "end" and lo <= anchor:
+        raise env.ToolError("end 模式是「从 anchor 听到 t」：lo 要大于 anchor（现在 anchor=%.2f、lo=%.2f）" % (anchor, lo))
     tmpd = tempfile.mkdtemp()
     try:
         wav, exp, out, t = _wav(src, tmpd), _clean(zh.t2s(expect)), [], lo

@@ -6,3 +6,11 @@ work/
 # 作者的开发笔记：只留在本机，不随插件／zip 发出去
 CLAUDE.md
 docs/PLAN.md
+
+# 密钥类文件：就算误放进仓库也不会被提交、打包
+.env
+*.env
+.env.*
+*.pem
+*.key
+secrets*

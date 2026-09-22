@@ -168,13 +168,17 @@ for f in "$HOME_DIR"/models/ggml-*.bin "$HOME"/.cache/*/models/ggml-*.bin "$HOME
   [ "$(stat -f %z "$f")" -gt 500000000 ] && FOUND="$f" && break
 done
 MURL="https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"; MDST="$HOME_DIR/models/ggml-medium.bin"
+MSHA1="fd9727b6e1217c2f614f9b698455c4ffd82463b4"
 if [ -n "$FOUND" ]; then ok "已有：$FOUND"
 elif [ "$MODEL" = 1 ] && ask "下载 whisper medium 模型（约 1.5GB，多语言，中英文都能认）？"; then
   # 先下到 .part（中断可续传），完整了才改名，半截文件不会被当成「已有」
-  curl -fL -C - --progress-bar "$MURL" -o "$MDST.part" && [ "$(stat -f %z "$MDST.part")" -gt 1400000000 ] \
-    && mv "$MDST.part" "$MDST" && ok "ggml-medium.bin" || warn "下载没完成（重跑安装器会接着下载）"
+  # 下载完核对官方校验码（whisper.cpp 公布的 SHA-1）：被篡改或下载损坏的模型不会被启用
+  if curl -fL -C - --progress-bar "$MURL" -o "$MDST.part" && [ "$(stat -f %z "$MDST.part")" -gt 1400000000 ]; then
+    if [ "$(shasum -a 1 "$MDST.part" | cut -d' ' -f1)" = "$MSHA1" ]; then mv "$MDST.part" "$MDST" && ok "ggml-medium.bin（校验码正确）"
+    else mv "$MDST.part" "$MDST.bad"; warn "模型校验码不对（下载损坏或被篡改），没有启用；已改名为 $MDST.bad，请重跑安装器"; fi
+  else warn "下载没完成（重跑安装器会接着下载）"; fi
 else warn "还没有语音模型：转录前需要它"
-  todo "下载语音模型（约 1.5GB，可续传）：curl -fL -C - $MURL -o $MDST.part && mv $MDST.part $MDST"; fi
+  todo "下载语音模型（约 1.5GB，可续传）：curl -fL -C - $MURL -o $MDST.part && [ \"\$(shasum -a 1 $MDST.part | cut -d' ' -f1)\" = $MSHA1 ] && mv $MDST.part $MDST"; fi
 
 # ---------- 5. Claude Code skills ----------
 step "5. Claude Code skills"

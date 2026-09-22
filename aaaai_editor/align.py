@@ -14,7 +14,6 @@ import bisect
 import difflib
 import json
 import os
-import subprocess
 from typing import List, Optional, Tuple
 
 from . import audio, env, zh
@@ -84,7 +83,26 @@ def voiced_wav(src: str, wav: str):
     return convert
 
 
+TOKENS_VER = 1   # 听写方法改了就加一：旧缓存自动失效
+
+
 def token_stream(src: str, work: str, lang: str) -> List[Tuple[str, float, float]]:
+    """整支素材的逐字时间（不带提示词）。按素材大小／修改时间缓存：align、check-sync、tidy 共用，不重复听写。"""
+    st = os.stat(src)
+    key = [os.path.abspath(src), st.st_size, st.st_mtime_ns, lang, PAD, MERGE, TOKENS_VER]
+    cache = os.path.join(work, "align_tokens_cache.json")
+    try:
+        d = json.load(open(cache, encoding="utf-8"))
+        if d.get("key") == key:
+            return [tuple(t) for t in d["tokens"]]
+    except (OSError, ValueError):
+        pass
+    toks = _token_stream(src, work, lang)
+    json.dump({"key": key, "tokens": toks}, open(cache, "w", encoding="utf-8"), ensure_ascii=False)
+    return toks
+
+
+def _token_stream(src: str, work: str, lang: str) -> List[Tuple[str, float, float]]:
     wav = os.path.join(work, "align16k.wav")
     convert = voiced_wav(src, wav)
     base = os.path.join(work, "align_tokens")

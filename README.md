@@ -126,3 +126,12 @@ aaaai-editor mcp                                     # 以 MCP 服务器运行
 
 卡片、推近与人像去背见 `docs/CARDS.md`，长片分段与对时体检见 `docs/LONG.md`，
 风格／图标／卡片新选项见 `docs/STYLE.md`，配方见 `docs/RECIPES.md`。
+
+## 开发与测试
+
+改完程序发版前跑这两个（测试素材与输出都在 `~/.cache/aaaai-editor/`，不碰你的项目和「成品」文件夹）：
+
+```bash
+bash scripts/regress.sh    # 回归：同一素材渲染两次、与基准逐字节比对（外观有意改变时加 --update）
+bash scripts/smoke.sh      # 冒烟：每个命令真的跑一次（B-roll 只测不花钱的部分）
+```

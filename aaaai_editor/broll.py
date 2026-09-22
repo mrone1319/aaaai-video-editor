@@ -20,16 +20,17 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import tempfile
 import time
 from typing import Dict, List, Optional, Tuple
 
 from . import config, env, keys, net
 
-FAL_BASE = os.environ.get("AAAAI_EDITOR_FAL_BASE", "https://queue.fal.run")
-PEXELS_BASE = os.environ.get("AAAAI_EDITOR_PEXELS_BASE", "https://api.pexels.com")
-HF_BASE = os.environ.get("AAAAI_EDITOR_HF_BASE", "https://api.higgsfield.ai")
+# 官方网址；环境变量覆盖只给本机模拟测试用（只接受 https 或 localhost）
+FAL_BASE = net.safe_base(os.environ.get("AAAAI_EDITOR_FAL_BASE"), "https://queue.fal.run")
+PEXELS_BASE = net.safe_base(os.environ.get("AAAAI_EDITOR_PEXELS_BASE"), "https://api.pexels.com")
+HF_BASE = net.safe_base(os.environ.get("AAAAI_EDITOR_HF_BASE"), "https://api.higgsfield.ai")
+net.trust(FAL_BASE, PEXELS_BASE, HF_BASE)    # 密钥只会发给这三个主机
 
 DEFAULTS = {
     "t2i": "fal-ai/flux/schnell",
@@ -213,10 +214,15 @@ def normalize(src: str, dst: str, aspect: str, fps: int = 30, max_sec: float = 1
     return dst
 
 
+IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".bmp", ".tif", ".tiff")
+
+
 def _data_uri(path: str) -> str:
     """本地图片 → data URI（先缩到 1280 以内，避免请求太大）。iPhone 的 HEIC 先用系统 sips 转 JPEG。"""
     if not os.path.isfile(path):
         raise env.ToolError("找不到首帧图片：%s" % path)
+    if not path.lower().endswith(IMAGE_EXT):   # 只上传图片：别的文件（文字、密钥档）不会被送出去
+        raise env.ToolError("首帧只接受图片（%s）：%s" % (" ".join(IMAGE_EXT), os.path.basename(path)))
     d = tempfile.mkdtemp(prefix="aaaai-editor-up-")
     try:
         tmp = os.path.join(d, "up.jpg")
@@ -263,7 +269,7 @@ def fal_run(model: str, body: dict, timeout: int = 600) -> dict:
     sub = net.request("POST", "%s/%s" % (FAL_BASE, model), headers=h, body=body)
     st_url, res_url = sub.get("status_url"), sub.get("response_url")
     if not st_url:
-        raise env.ToolError("fal 没有返回 status_url：%s" % str(sub)[:200])
+        raise env.ToolError("fal 没有返回 status_url：%s" % net.redact(str(sub)[:200], [k]))
     t0 = time.time()
     while time.time() - t0 < timeout:
         st = net.request("GET", st_url, headers=h)
@@ -271,7 +277,7 @@ def fal_run(model: str, body: dict, timeout: int = 600) -> dict:
         if s == "COMPLETED":
             return net.request("GET", res_url, headers=h)
         if s not in ("IN_QUEUE", "IN_PROGRESS"):
-            raise env.ToolError("fal 任务状态异常：%s" % str(st)[:200])
+            raise env.ToolError("fal 任务状态异常：%s" % net.redact(str(st)[:200], [k]))
         time.sleep(3)
     raise env.ToolError("fal 任务超时（%d 秒）" % timeout)
 

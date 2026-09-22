@@ -169,6 +169,7 @@ def junctions(e: Envelope, cuts) -> List[dict]:
         # 也可能是故意砍掉后面的话——所以只作提示，由人判断
         after = peak(b, b + 0.08) if b < e.dur - 0.05 else -120.0
         out.append({"i": i, "a": a, "b": b, "head": head, "tail": tail, "after": after,
-                    "tail_bad": tail > e.decay_thr + 6, "head_bad": i > 0 and head > e.decay_thr + 6,
+                    # 剪点就在素材结尾：后面没有声音可以延长，不算问题
+                    "tail_bad": tail > e.decay_thr + 6 and b < e.dur - 0.05, "head_bad": i > 0 and head > e.decay_thr + 6,
                     "cont": after > e.voice_thr})
     return out

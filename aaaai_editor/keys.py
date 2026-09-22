@@ -30,8 +30,13 @@ KEYS: Dict[str, dict] = {
 }
 
 
+# 用环境变量给的密钥：载入时就从环境里移走、只留在本进程的内存。
+# 之后启动的 ffmpeg、whisper 等外部程序都继承不到，密钥不会跟着外流。
+_ENV: Dict[str, str] = {k: os.environ.pop(k) for k in list(KEYS) if os.environ.get(k)}
+
+
 def get(name: str) -> Optional[str]:
-    v = os.environ.get(name)
+    v = _ENV.get(name) or os.environ.get(name)
     if v:
         return v.strip()
     for svc in (SERVICE,):

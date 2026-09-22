@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import math
 import os
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .png import write_rgba
 

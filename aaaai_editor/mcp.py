@@ -76,12 +76,26 @@ def _path(p):
     return p if os.path.isabs(p) else os.path.join(config.get("projects_dir"), p)
 
 
+def _safe_out(p: str) -> str:
+    """MCP 由别的 AI 调用：输出只能写成家目录里的影片文件，不能写进隐藏目录（~/.ssh、~/.zshrc 这类）。"""
+    rp = os.path.realpath(p)
+    home = os.path.realpath(os.path.expanduser("~"))
+    rel = os.path.relpath(rp, home)
+    if rel.startswith("..") or any(part.startswith(".") for part in rel.split(os.sep)):
+        raise ValueError("输出路径必须在家目录里、不能是隐藏目录：%s" % p)
+    if not rp.lower().endswith((".mp4", ".mov")):
+        raise ValueError("输出文件必须是 .mp4 或 .mov：%s" % p)
+    return rp
+
+
 def _call(name: str, a: dict) -> str:
     from . import broll
     a = dict(a)
     for k in ("plan", "storyboard", "image", "output_filename"):
         if a.get(k):
             a[k] = _path(a[k])
+    if a.get("output_filename"):
+        a["output_filename"] = _safe_out(a["output_filename"])
     if name == "broll_status":
         return broll.status_text()
     if name == "broll_search":

@@ -169,10 +169,6 @@ def to_events(pcs: List[dict], tl: Timeline) -> list:
     return ev
 
 
-def build_events(segments: List[dict], tl: Timeline, maxw: float) -> list:
-    return to_events(pieces(segments, maxw), tl)
-
-
 def track_path(sb: dict) -> str:
     return os.path.join(sb["_base"], sb["captions"].get("track") or TRACK)
 

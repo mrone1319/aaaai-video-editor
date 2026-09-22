@@ -10,7 +10,7 @@ import hashlib
 import json
 import math
 import os
-from typing import Callable, Optional, Sequence, Tuple
+from typing import Callable, Tuple
 
 from .png import write_rgba
 

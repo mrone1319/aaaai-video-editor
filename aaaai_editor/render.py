@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 from typing import List, Optional
 
 from . import captions, env, overlays, recipes, segment, theme
@@ -62,42 +61,50 @@ def _hl_color(sb: dict) -> Optional[str]:
         return None
 
 
+def _seek_inputs(cuts, source: str) -> List[str]:
+    """每个剪辑段各开一次素材、从段头附近开始解码（-ss 放在 -i 前面＝精确跳转）。
+    只解码用得到的部分：素材常有一半以上被剪掉，整支解码是渲染最花时间的一步。"""
+    args: List[str] = []
+    for a, b in cuts:
+        args += ["-ss", "%.3f" % a, "-t", "%.3f" % (b - a + 1.0), "-i", source]
+    return args
+
+
 def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
-                framing: Optional[dict] = None, hdr: bool = False) -> str:
+                framing: Optional[dict] = None, hdr: bool = False, seek_base: Optional[int] = None) -> str:
     """裁切拼接 + 统一画幅，产出 [base]。deep=True 时走 yuv444，卡片边缘不被色度下采样。
 
     nframes：分段渲染时把这一段锁成确定帧数。各段单独做 fps 重采样会各自取整，
     不锁帧数就会每个接缝少一帧，段数一多就累积成音画不同步。
     """
-    parts = []
-    src = "[0:v]"
-    if hdr:   # iPhone HLG／HDR10：先色调映射成 SDR bt709，否则成片发灰、颜色不对
-        parts.append("[0:v]zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,"
-                     "zscale=t=bt709:m=bt709:r=tv,format=yuv420p,split=%d%s"
-                     % (len(cuts), "".join("[h%d]" % i for i in range(len(cuts)))))
-    for i, (a, b) in enumerate(cuts):
-        if hdr:
-            src = "[h%d]" % i
-        # 每段先转到目标帧率再锁死帧数：不然每个剪辑点的取整误差会一路累积，
-        # 长片到后面字幕就和画面对不上了
-        n = max(1, int(round((b - a) * fps)))
-        parts.append(src + "trim=start=%.3f:end=%.3f,setpts=PTS-STARTPTS,fps=%s,"
-                     "tpad=stop_mode=clone:stop_duration=0.5,trim=end_frame=%d,"
-                     "setpts=PTS-STARTPTS[v%d]" % (a, b, fps, n, i))
     n = len(cuts)
-    parts.append("%sconcat=n=%d:v=1:a=0[cat]" % ("".join("[v%d]" % i for i in range(n)), n))
     z = float((framing or {}).get("zoom", 1.0))
     if z > 1.0001:   # 全局推近（机位坐得远）：并进第一次编码，不多压一代
         cx, cy = float(framing.get("cx", 0.5)), float(framing.get("cy", 0.4))
-        tail = ("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d:(iw-%d)*%.4f:(ih-%d)*%.4f"
-                % (int(w * z) & ~1, int(h * z) & ~1, w, h, w, cx, h, cy))
+        fit = ("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d:(iw-%d)*%.4f:(ih-%d)*%.4f"
+               % (int(w * z) & ~1, int(h * z) & ~1, w, h, w, cx, h, cy))
     else:
-        tail = ("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d"
-                % (w, h, w, h))
+        fit = "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d" % (w, h, w, h)
+    # 先缩到成片尺寸再分给各段：素材常比成片大（手机 4K），在原尺寸上分 n 路裁切会慢好几倍
+    pre = ("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=hable:desat=0,"
+           "zscale=t=bt709:m=bt709:r=tv,format=yuv420p," if hdr else "")   # iPhone HLG／HDR10 → SDR bt709
+    if seek_base is None:
+        parts = ["[0:v]%s%s,split=%d%s" % (pre, fit, n, "".join("[s%d]" % i for i in range(n)))]
+    else:   # 每段一个已跳转的输入（见 _seek_inputs）：时间从 0 起算
+        parts = ["[%d:v]%s%s[s%d]" % (seek_base + i, pre, fit, i) for i in range(n)]
+    for i, (a, b) in enumerate(cuts):
+        # 每段先转到目标帧率再锁死帧数：不然每个剪辑点的取整误差会一路累积，
+        # 长片到后面字幕就和画面对不上了
+        k = max(1, int(round((b - a) * fps)))
+        ta, tb = (a, b) if seek_base is None else (0.0, b - a)
+        parts.append("[s%d]trim=start=%.3f:end=%.3f,setpts=PTS-STARTPTS,fps=%s,"
+                     "tpad=stop_mode=clone:stop_duration=0.5,trim=end_frame=%d,"
+                     "setpts=PTS-STARTPTS[v%d]" % (i, ta, tb, fps, k, i))
+    parts.append("%sconcat=n=%d:v=1:a=0[cat]" % ("".join("[v%d]" % i for i in range(n)), n))
+    tail = "null"
     if nframes:
         # 先用克隆帧补足（源区间偶尔会短一帧），再裁到确定帧数
-        tail += (",tpad=stop_mode=clone:stop_duration=0.5,trim=end_frame=%d,setpts=PTS-STARTPTS"
-                 % nframes)
+        tail = "tpad=stop_mode=clone:stop_duration=0.5,trim=end_frame=%d,setpts=PTS-STARTPTS" % nframes
     if deep:
         tail += ",format=yuv444p"
     parts.append("[cat]%s[base]" % tail)
@@ -141,15 +148,6 @@ def _voice_graph(cuts, has_audio: bool = True, denoise: str = "") -> str:
     return ";".join(parts)
 
 
-def _measure_loudness(wav: str, target: float) -> dict:
-    p = env.run([env.ffmpeg(), "-v", "info", "-i", wav, "-af",
-                 "loudnorm=I=%s:TP=-1.5:LRA=11:print_format=json" % target, "-f", "null", "-"])
-    m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", p.stderr, re.S)
-    if not m:
-        raise env.ToolError("响度测量失败")
-    return json.loads(m.group(0))
-
-
 def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, work: str,
                  out: str, proxy: bool, tag: str, t1: Optional[float] = None,
                  nframes: Optional[int] = None, total: Optional[float] = None) -> None:
@@ -184,8 +182,9 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
     ov_inputs, assemble = overlays.build(sb, work, w, h, fps, source=sb["source"],
                                          base_graph=_video_base(cuts, w, h, fps, False, nframes,
                                                                 sb.get("framing"), sb.get("_hdr", False)))
+    seek_base = 1 + sum(g.count("-i") for g in ov_inputs)   # 各段跳转输入排在卡片素材之后
     parts = [_video_base(cuts, w, h, fps, bool(ov_inputs) and not proxy, nframes, sb.get("framing"),
-                         sb.get("_hdr", False))]
+                         sb.get("_hdr", False), seek_base)]
     cur = "base"
     if zoom_str:
         parts.append("[base]%s[zb]" % zoom_str)
@@ -204,6 +203,7 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
     args = [ff, "-y", "-v", "error", "-i", sb["source"]]
     for g in ov_inputs:
         args += g
+    args += _seek_inputs(cuts, sb["source"])
     if proxy:
         venc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "30"]
     elif sb["output"].get("encoder") == "hw":   # 长片赶时间：Apple 硬件编码，快数倍、文件稍大、画质略低
