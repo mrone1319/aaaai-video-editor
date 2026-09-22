@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 from typing import Dict, List, Optional, Tuple
 
@@ -608,8 +609,10 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             r["frame"]["branch"] = branch[len(subjects) + 1 + k]
         subj_lab: Dict[int, str] = {}
         for i, sj in enumerate(subjects):
-            m = ("[%d:v]format=gray,tpad=start_duration=%.3f:start_mode=add:color=black,"
-                 "scale=%d:%d" % (sj["idx"], sj["a"], W, H))
+            # 遮罩档是 mkv（时基 1/1000）：直接 tpad 补秒数会把每帧当 33ms 算，越后面的段落遮罩越超前
+            # （45 秒处约早 14 帧，头冲出框的部分就和画面错开）。先 fps 换成整帧时基，再按帧数补到起点
+            m = ("[%d:v]format=gray,fps=%s,tpad=start=%d:start_mode=add:color=black,"
+                 "scale=%d:%d" % (sj["idx"], fps, int(math.ceil(sj["a"] * fps - 1e-6)), W, H))
             if float(mc["feather"]) > 0:
                 m += ",gblur=sigma=%.2f" % float(mc["feather"])
             if zoom:
