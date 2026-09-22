@@ -108,6 +108,13 @@ def circle_photo(src: str, size: int, focus: float, cache_dir: str) -> str:
         return out
     from . import env
     r = size / 2.0
+    if src.lower().endswith((".heic", ".heif")):   # iPhone 照片：少数 HEIC 版本 ffmpeg 解不了，先用系统 sips 转 JPEG
+        jpg = os.path.join(cache_dir, "avatar_%s_src.jpg" % key)
+        try:
+            env.run(["sips", "-s", "format", "jpeg", src, "--out", jpg])
+            src = jpg
+        except env.ToolError:
+            pass
     env.run([env.ffmpeg(), "-y", "-v", "error", "-i", src, "-vf",
              "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d:(iw-%d)/2:(ih-%d)*%.3f,format=rgba,"
              "geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='255*clip((%.2f-hypot(X-%.2f,Y-%.2f))/1.5,0,1)'"

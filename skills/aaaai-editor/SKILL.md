@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.16"
+  version: "1.0.17"
 ---
 
 # aaaai-editor 影片总监
@@ -76,7 +76,10 @@ HyperFrames 没装：`claude plugin marketplace add https://github.com/heygen-co
 | `otg` 🔒 | OTG 社群内容（OTG 红、Orbitron、毛玻璃、星空断章、激光扫光）——**已授权才列** |
 
 **② 配乐**：`"$A" bgm` 看常备配乐（7 首原创、零版权），挑最贴的 1–2 首放选项（写 BPM 与感觉）；
-其余选项：用你提供的音乐文件／不加配乐。
+其余选项：用你提供的音乐文件／**HeyGen 音乐库**（一万首以上）／不加配乐。
+用户选 HeyGen 音乐库：调用 skill `hyperframes:media-use` 的 `resolve bgm`（按用户描述找，先给 2–3 首试听），
+下载到 `$P/assets/` 后写进 `"music": {"file": "assets/<曲名>.mp3", "db": -18, "duck": true}`。第一次要用户本人在终端
+`heygen auth login --oauth` 登录（免费额度，你不能替他登录）；并提醒他：商用前在 HeyGen 确认该曲授权。
 
 **③ 字幕**（按影片语言给选项）：中文片 → 中文 ／ 中英双语（英文由你翻译）／ 不要；
 英文或其他语言的片 → 原语言字幕 ／ 原语言＋中文翻译 ／ 不要。**回复与字幕都跟随用户的语言**，不要默认中文。
@@ -140,7 +143,7 @@ P=$("$A" new <主题英文短名>)
 |---|---|
 | 开头 0–3 秒抛出主题 | `hook` |
 | 片中有一句特别有力的话 | 先 `"$A" hook "$P/storyboard.json" --suggest` 列出候选（按数字、反差、强烈字眼、句子完整打分），挑一句给用户确认；**开头预告**：`"$A" hook "$P/storyboard.json" --text "<那句话的几个字>"`，把那句剪一份放到最前面（`--mode move` 是搬过去、不重复）；卡片时间自动顺延 |
-| 自我介绍（有头像照片） | `avatar`：`{"use":"avatar","t":[a,b],"file":"assets/<照片>","name":"…","role":"…"}`，圆形头像＋强调色外圈；没照片就用 `speaker` |
+| 自我介绍（有头像照片） | 照片先复制进 `$P/assets/`（原图不动；HEIC 可直接用），`avatar`：`{"use":"avatar","t":[a,b],"file":"assets/<照片>","name":"…","role":"…"}`，圆形头像＋强调色外圈；没照片就用 `speaker` |
 | 说出一个关键数字 | `stat_hit` |
 | 列举第一、第二… | `steps`（加 `"layout": "rows"` 出编号行卡）；每条写 `"at": <秒>` 对准说到它的时刻 |
 | 真正换章节 | `chapter` |

@@ -69,6 +69,7 @@ h3{font-size:20px;font-weight:700}
 .lede{font-size:18px;color:var(--ink-2);max-width:40em}
 .prose{max-width:42em;color:var(--ink-2);display:flex;flex-direction:column;gap:12px}
 .prose strong{color:var(--ink)}
+p.prose{display:block}
 
 /* ---- 开头 ---- */
 .hero{display:flex;flex-direction:column;gap:26px;padding-top:6px}
@@ -240,14 +241,16 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <li><a href="#prepare"><span>02</span>开始之前</a></li>
     <li><a href="#walk"><span>03</span>第一次剪片</a></li>
     <li><a href="#template"><span>04</span>提示词格式范本</a></li>
-    <li><a href="#gallery"><span>05</span>小组件图鉴</a></li>
-    <li><a href="#styles"><span>06</span>风格一览</a></li>
-    <li><a href="#sound"><span>07</span>配乐与音效</a></li>
-    <li><a href="#edit"><span>08</span>想改哪里怎么说</a></li>
-    <li><a href="#files"><span>09</span>文件在哪里</a></li>
-    <li><a href="#qa"><span>10</span>发布前验收</a></li>
-    <li><a href="#faq"><span>11</span>常见问题</a></li>
-    <li><a href="#habits"><span>12</span>让成片稳定的习惯</a></li>
+    <li><a href="#intro"><span>05</span>介绍自己：名字与头像</a></li>
+    <li><a href="#gallery"><span>06</span>小组件图鉴</a></li>
+    <li><a href="#styles"><span>07</span>风格一览</a></li>
+    <li><a href="#sound"><span>08</span>配乐与音效</a></li>
+    <li><a href="#edit"><span>09</span>想改哪里怎么说</a></li>
+    <li><a href="#files"><span>10</span>文件在哪里</a></li>
+    <li><a href="#qa"><span>11</span>发布前验收</a></li>
+    <li><a href="#faq"><span>12</span>常见问题</a></li>
+    <li><a href="#habits"><span>13</span>让成片稳定的习惯</a></li>
+    <li><a href="#license"><span>14</span>版权与授权</a></li>
   </ol>
   <button class="theme-btn" id="themeBtn" type="button">切换深浅色</button>
 </nav>
@@ -255,13 +258,14 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.0.16</span><span class="chip">macOS</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.0.17</span><span class="chip">macOS</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
     <div class="who">你在 Claude Code 里输入</div>
     <span class="cmd">/aaaai-editor</span> 帮我剪 ~/Movies/raw/0921.mp4，做成 60 秒竖版，中英双语字幕，开头用最有力的一句当预告<span class="caret" aria-hidden="true"></span>
   </div>
+  <div class="note ok" style="max-width:720px"><b class="k">最简单</b><span>什么都不想写？输入 <code>/aaaai-editor 帮我剪片</code> 就行——它会请你把影片拖进窗口，再一步一步问你要什么。</span></div>
   <div class="flow3">
     <div><span class="n">第 1 步</span><b>丢素材、说需求</b><small>一句话也行，或照「提示词格式范本」填一份。</small></div>
     <div><span class="n">第 2 步</span><b>回答几个问题</b><small>风格、配乐、字幕；它会先给你看对照图。</small></div>
@@ -319,7 +323,10 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <div class="step"><div class="dot">02</div><div class="body">
       <h3>开口说需求<span class="time">30 秒</span></h3>
       <p class="prose">在 Claude Code 输入 <code>/aaaai-editor</code>，后面接一句话。想讲得更完整，就用下一章的「提示词格式范本」。</p>
+      <div class="say">/aaaai-editor 帮我剪片</div>
+      <p class="prose">最短就这样。它会先请你把影片拖进窗口，然后一步一步问。多给一点信息，来回就少一点：</p>
       <div class="say">/aaaai-editor 帮我剪 ~/Movies/raw/0921.mp4，做成竖版短视频，中英双语字幕</div>
+      <div class="note tip"><b class="k">TIP</b><span>在 Finder 里把影片文件直接拖进 Claude Code 的输入框，路径就会自动出现，不用自己打。</span></div>
     </div></div>
 
     <div class="step"><div class="dot">03</div><div class="body">
@@ -368,7 +375,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       <h3>出成片与封面<span class="time">几分钟（看片长）</span></h3>
       <div class="lanes">
         <div class="lane"><div class="l">它会做</div><ul><li>渲染正式成片：响度 −14 LUFS、真峰值不超过 −1 dB。</li><li>抽成品的帧再验收一次、字幕对时体检。</li><li>做封面（竖版 1080×1920 与 1080×1350；横版片出 1920×1080），检查文字在安全区、不压脸。</li><li>成片和封面复制一份到「影片 › aaaai-editor › 成品」。</li></ul></div>
-        <div class="lane you"><div class="l">你要做</div><ul><li>给封面一句 6–8 个字的钩子，或让它建议。</li><li>用第 10 章的清单看一遍。</li></ul></div>
+        <div class="lane you"><div class="l">你要做</div><ul><li>给封面一句 6–8 个字的钩子，或让它建议。</li><li>用第 11 章的清单看一遍。</li></ul></div>
       </div>
     </div></div>
 
@@ -397,7 +404,8 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <span class="f">【字幕】</span>中英双语；高亮：品牌名、所有数字
 <span class="f">【开头】</span>推荐 3 句让我选                      <span class="c">← 或：用「……」那句当预告</span>
 <span class="f">【剪辑】</span>剪掉停顿、口头禅、讲错重讲的（先列给我看）
-<span class="f">【卡片】</span>说到「三个弯」时做编号清单；自我介绍加头像牌（照片 assets/me.jpg）
+<span class="f">【介绍】</span>我叫 MR ONE，AI 工作流 · 一人公司；头像 ~/Pictures/头像/me.jpg   <span class="c">← 第 5 章</span>
+<span class="f">【卡片】</span>说到「三个弯」时做编号清单
 <span class="f">【秀证据】</span>讲到收入时用卡片收合，截图在 ~/Desktop/proof/，金额盖印章
 <span class="f">【声音】</span>配乐小声一点；有风扇声先给我听降噪；数字出来加金币声
 <span class="f">【结尾】</span>停在留言卡：留言「入门」我发链接
@@ -411,11 +419,12 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <div><b>【素材】</b><p>影片路径（在 Finder 里把文件拖进 Claude Code 就会出现路径）。多支素材、照片、截图、logo、自己的 B-roll 都写上。</p></div>
     <div><b>【片型】</b><p>口播、访谈、活动现场，以及要发的平台。平台决定画幅、节奏和封面尺寸。</p></div>
     <div><b>【核心】</b><p>观众看完要记住的一句话。卡片、开头、封面都会围绕它，写了成片会更集中。</p></div>
-    <div><b>【风格】</b><p>写风格名，或「你推荐」。风格决定卡片与字幕的配色字体（第 6 章）。</p></div>
+    <div><b>【风格】</b><p>写风格名，或「你推荐」。风格决定卡片与字幕的配色字体（第 7 章）。</p></div>
     <div><b>【字幕】</b><p>中文／中英双语／原语言＋中文／不要；要高亮的词；字幕要不要大一点、高一点。</p></div>
     <div><b>【开头】</b><p>指定哪一句当开头预告，或让它推荐。「开头加片头标题：……」也写这里。</p></div>
     <div><b>【剪辑】</b><p>剪停顿（默认会做）、口头禅与 NG；想保留的段落、想删的段落。</p></div>
-    <div><b>【卡片】</b><p>用「讲到……的时候」描述时间点就好，不用精确秒数。常用说法见第 5 章每个组件的「这样说」。</p></div>
+    <div><b>【介绍】</b><p>你的名字、身份（一行就好），和头像照片放在哪里。有照片出「头像牌」，没照片出「人名条」。怎么准备照片见第 5 章。</p></div>
+    <div><b>【卡片】</b><p>用「讲到……的时候」描述时间点就好，不用精确秒数。常用说法见第 6 章每个组件的「这样说」。</p></div>
     <div><b>【秀证据】</b><p>有收入、后台、订单、评价截图时写。截图要是真的，它不会替你编数据。</p></div>
     <div><b>【声音】</b><p>配乐选哪首、大小声；降噪；要不要音效、要哪几种。</p></div>
     <div><b>【结尾】</b><p>片尾标题、行动号召（留言关键词、关注、私信），要不要停在卡片上到结束。</p></div>
@@ -424,13 +433,21 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
   <h3>三个填好的例子</h3>
   <div class="tabs" role="tablist" aria-label="范例">
-    <button type="button" role="tab" id="tab-a" aria-controls="ex-a" aria-selected="true">知识口播</button>
+    <button type="button" role="tab" id="tab-e" aria-controls="ex-e" aria-selected="true">最简单</button>
+    <button type="button" role="tab" id="tab-a" aria-controls="ex-a" aria-selected="false">知识口播</button>
     <button type="button" role="tab" id="tab-b" aria-controls="ex-b" aria-selected="false">收益证明</button>
     <button type="button" role="tab" id="tab-c" aria-controls="ex-c" aria-selected="false">活动现场／访谈</button>
     <button type="button" role="tab" id="tab-d" aria-controls="ex-d" aria-selected="false">一句话懒人版</button>
   </div>
 
-  <div class="tpl tabpanel" id="ex-a" role="tabpanel" aria-labelledby="tab-a">
+  <div class="tpl tabpanel" id="ex-e" role="tabpanel" aria-labelledby="tab-e">
+    <div class="tpl-head"><b>最简单 · 一句话开工</b><button class="copy" type="button" data-copy="pe">复制</button></div>
+<pre id="pe"><span class="f">/aaaai-editor</span> 帮我剪片</pre>
+    <p class="why">接下来它会：① 请你把影片拖进窗口；② 发风格对照图，问风格、配乐、字幕；③ 核对字幕、给你看预览。
+      你只要一路回答。熟悉之后，再照「通用范本」一次写清楚，来回会少很多。</p>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-a" role="tabpanel" aria-labelledby="tab-a" hidden>
     <div class="tpl-head"><b>知识口播 · 60 秒竖版</b><button class="copy" type="button" data-copy="pa">复制</button></div>
 <pre id="pa"><span class="f">/aaaai-editor</span>
 <span class="f">【素材】</span>~/Movies/raw/ai-3-mistakes.mp4
@@ -441,8 +458,9 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <span class="f">【字幕】</span>中英双语；高亮每个「弯」的关键词
 <span class="f">【开头】</span>推荐 3 句让我选
 <span class="f">【剪辑】</span>剪停顿、口头禅，讲错重讲的列给我看
+<span class="f">【介绍】</span>我叫 MR ONE，AI 工作流 · 一人公司；头像 ~/Pictures/头像/me.jpg
 <span class="f">【卡片】</span>开头加片头标题「入门的三个弯」；讲到第一、二、三个弯时各出一张编号行卡；
-      最后那句金句做金句卡；自我介绍时加人名条
+      最后那句金句做金句卡；说「我是 MR ONE」那句出头像牌
 <span class="f">【声音】</span>配乐 focus-quiet；不要音效
 <span class="f">【结尾】</span>片尾：关注我，下期讲怎么选工具
 <span class="f">【封面】</span>你帮我想 3 个 8 字以内的</pre>
@@ -493,8 +511,63 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 </section>
 
 <!-- 05 -->
+<section id="intro">
+  <div class="eyebrow">05 · 介绍自己</div>
+  <h2>介绍自己：名字与头像</h2>
+  <p class="lede">新观众第一次看到你，最需要知道「你是谁、凭什么听你说」。在你说「大家好，我是……」的那一刻，出一张有名字、身份的卡片——有照片用头像牌，没照片用人名条。</p>
+  <div class="gal">
+    <article class="w"><span id="introAvatar"></span><div><h4>头像牌 <code>avatar</code> <span class="badge req">需要照片</span></h4><dl>
+      <dt>长什么样</dt><dd>左下角圆形照片（外圈是风格的强调色）＋名字＋一行身份。</dd>
+      <dt>适合</dt><dd>自我介绍；嘉宾第一次出现；讲到某位名人、合作方时（换成对方的照片）。</dd>
+      <dt>这样说</dt><dd class="s">说「我是 MR ONE」那句出头像牌，头像 ~/Pictures/头像/me.jpg，身份写 AI 工作流 · 一人公司</dd></dl></div></article>
+    <article class="w"><span id="introLower"></span><div><h4>人名条 <code>speaker</code></h4><dl>
+      <dt>长什么样</dt><dd>画面下沿：强调色短竖线＋粗体名字＋一行身份，从左边滑入。</dd>
+      <dt>适合</dt><dd>没有合适的照片，或画面里已经看得到你的脸。</dd>
+      <dt>这样说</dt><dd class="s">自我介绍时加人名条：MR ONE，AI 工作流</dd></dl></div></article>
+  </div>
+
+  <h3>头像照片怎么准备</h3>
+  <div class="need">
+    <div><b>脸清楚、光线亮</b><span>大头照或半身照都行，正面或微侧，别戴会反光的墨镜。</span></div>
+    <div><b>正方形最好</b><span>竖拍、横拍也可以——会自动裁成正方形再变圆形，默认保留偏上的部分（脸通常在上面）。</span></div>
+    <div><b>至少 500×500</b><span>太小的图放大后会糊。手机原图就够。</span></div>
+    <div><b>JPG、PNG、HEIC 都行</b><span>iPhone 照片（HEIC）不用转档。背景简单一点，圆框里更干净。</span></div>
+  </div>
+
+  <h3>照片放在哪里</h3>
+  <div class="steps">
+    <div class="step"><div class="dot">A</div><div class="body">
+      <h3>放在一个固定的地方</h3>
+      <p class="prose">例如「图片 › 头像 › me.jpg」。之后每支片都用同一张，最省事。</p>
+    </div></div>
+    <div class="step"><div class="dot">B</div><div class="body">
+      <h3>告诉它在哪里</h3>
+      <p class="prose">在提示词的【介绍】写上路径，或直接把照片拖进 Claude Code 输入框（路径会自动出现）。它会复制一份到项目的 <code>assets</code> 文件夹，你的原图不会被改。</p>
+      <div class="say">【介绍】我叫 MR ONE，AI 工作流 · 一人公司；头像 ~/Pictures/头像/me.jpg</div>
+    </div></div>
+    <div class="step"><div class="dot">C</div><div class="body">
+      <h3>看预览、微调</h3>
+      <p class="prose">出预览后看头像牌那一帧，不满意就直接说：</p>
+      <div class="tbl"><table>
+        <thead><tr><th>想要</th><th>这样说</th></tr></thead>
+        <tbody>
+          <tr><td>脸在圆框里太低／被切到</td><td><span class="mono">头像取景往上一点</span>（或「往下一点」）</td></tr>
+          <tr><td>照片太小</td><td><span class="mono">头像大一点</span></td></tr>
+          <tr><td>换到右边</td><td><span class="mono">头像牌放右下角</span></td></tr>
+          <tr><td>出现太久／太早</td><td><span class="mono">头像牌晚一秒出来，停三秒就好</span></td></tr>
+          <tr><td>想要更醒目</td><td><span class="mono">头像牌出来时加关注框框住它</span></td></tr>
+          <tr><td>身份太长换行</td><td><span class="mono">身份改成「AI 工作流」</span></td></tr>
+        </tbody>
+      </table></div>
+    </div></div>
+  </div>
+  <div class="note tip"><b class="k">TIP</b><span>头像牌会对准你说出名字的那一刻出现，停 3～4 秒。一支片通常只介绍一次；系列片可以每集都放，观众更容易记住你。</span></div>
+  <div class="note ok"><b class="k">嘉宾</b><span>访谈、活动片也一样：「嘉宾第一次出现时加头像牌，照片 ~/Desktop/guest.jpg，名字 Alex Chen，身份 某某公司 创办人」。</span></div>
+</section>
+
+<!-- 06 -->
 <section id="gallery">
-  <div class="eyebrow">05 · 图鉴</div>
+  <div class="eyebrow">06 · 图鉴</div>
   <h2>小组件图鉴</h2>
   <p class="lede">左边的小画面是 9:16 竖屏示意：<span class="mono">灰色人像</span>是你、白色横线是字幕（约在画面 70% 处）、黄色是强调色。「这样说」可以直接抄进提示词。</p>
   <div id="galleryRoot" style="display:flex;flex-direction:column;gap:40px"></div>
@@ -502,7 +575,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 06 -->
 <section id="styles">
-  <div class="eyebrow">06 · 风格</div>
+  <div class="eyebrow">07 · 风格</div>
   <h2>风格一览</h2>
   <p class="lede">风格决定卡片和字幕的配色、字体与质感。开工时它会发一张对照图给你看，说风格名就能换，换风格不用重做别的步骤。</p>
   <div class="styles" id="styleRoot"></div>
@@ -511,7 +584,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 07 -->
 <section id="sound">
-  <div class="eyebrow">07 · 声音</div>
+  <div class="eyebrow">08 · 声音</div>
   <h2>配乐与音效</h2>
   <div class="prose"><p>全部是原创，<b>没有版权问题</b>。配乐遇到人声会自动压低；音效在响度锁定之前混进去，成片响度照样准确。音效默认不加——一分钟 3～6 个就够，多了会吵。</p></div>
   <h3>7 首常备配乐</h3>
@@ -519,6 +592,15 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <thead><tr><th>名称</th><th>速度</th><th>感觉</th><th>适合</th></tr></thead>
     <tbody id="bgmRoot"></tbody>
   </table></div>
+  <h3>还想要更多配乐：HeyGen 音乐库</h3>
+  <div class="prose">
+    <p>套件同时装了 HeyGen 的 HyperFrames。它能从 <b>HeyGen 音乐库（一万首以上）</b>按描述帮你找配乐，下载到项目里，再照常混进片子（一样会自动闪避人声、锁定响度）。</p>
+  </div>
+  <div class="lanes">
+    <div class="lane you"><div class="l">第一次用：先登录一次</div><ul><li>在「终端」App 装好 HeyGen 的命令行工具（按 HeyGen 官方说明）。</li><li>执行 <code>heygen auth login --oauth</code>，用你的 HeyGen 账号登录——走免费额度。</li><li>不确定就跟 Claude 说「帮我设定 HeyGen 音乐库」，它会一步一步带你做，登录那一步要你自己来。</li></ul></div>
+    <div class="lane"><div class="l">之后这样说</div><ul><li>「配乐从 HeyGen 音乐库找一首轻快、不抢人声的 lo-fi」</li><li>「找三首给我试听，节奏跟 upbeat-energetic 差不多」</li><li>「用 HeyGen 找一个转场的『咻』音效」</li></ul></div>
+  </div>
+  <div class="note warn"><b class="k">注意</b><span>HeyGen 音乐库的曲子依 HeyGen 的使用条款授权；要商用（广告、客户项目）前，先在 HeyGen 确认该曲的授权范围。内建的 7 首与 7 种音效是原创，可放心用在自己的成片里。</span></div>
   <h3>7 种音效</h3>
   <div class="tbl"><table>
     <thead><tr><th>名称</th><th>听起来</th><th>用在</th><th>这样说</th></tr></thead>
@@ -528,7 +610,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 08 -->
 <section id="edit">
-  <div class="eyebrow">08 · 改片</div>
+  <div class="eyebrow">09 · 改片</div>
   <h2>想改哪里，这样说</h2>
   <p class="lede">改什么都不用重来：转录、人像遮罩、卡片图都有缓存，改完重出预览通常半分钟到一分钟。</p>
   <div class="tbl"><table>
@@ -539,7 +621,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 09 -->
 <section id="files">
-  <div class="eyebrow">09 · 位置</div>
+  <div class="eyebrow">10 · 位置</div>
   <h2>文件在哪里</h2>
   <div class="tbl"><table>
     <thead><tr><th>东西</th><th>位置</th><th>说明</th></tr></thead>
@@ -559,7 +641,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 10 -->
 <section id="qa">
-  <div class="eyebrow">10 · 验收</div>
+  <div class="eyebrow">11 · 验收</div>
   <h2>发布前看一遍</h2>
   <p class="lede">它出片前已经自己检查过，但发布是你的名字——用两分钟再看一次。勾选只存在你这台电脑的浏览器里。</p>
   <div class="check" id="checkRoot"></div>
@@ -567,14 +649,14 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 11 -->
 <section id="faq">
-  <div class="eyebrow">11 · 常见问题</div>
+  <div class="eyebrow">12 · 常见问题</div>
   <h2>常见问题</h2>
   <div class="faq" id="faqRoot"></div>
 </section>
 
 <!-- 12 -->
 <section id="habits">
-  <div class="eyebrow">12 · 好习惯</div>
+  <div class="eyebrow">13 · 好习惯</div>
   <h2>让成片稳定的习惯</h2>
   <div class="rules">
     <div><b>先定字幕，再排卡片</b>卡片时间照字幕排；字幕后改，卡片可能要跟着挪。</div>
@@ -586,8 +668,26 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <div><b>证据用真的</b>收益、后台、订单截图必须是真实的；它只负责排版，不替你编数字。</div>
     <div><b>花钱的事它会先问</b>AI 生成 B-roll 每次都先报价；看到报价再决定，不同意就不会花。</div>
   </div>
+</section>
+
+<!-- 14 -->
+<section id="license">
+  <div class="eyebrow">14 · 版权</div>
+  <h2>版权与授权</h2>
+  <p class="lede">aaaai-editor 免费给你使用；用它做出来的影片、封面、字幕都归你，包括商业用途。以下几项有各自的权利人：</p>
+  <div class="tbl"><table>
+    <thead><tr><th>内容</th><th>权利人</th><th>你可以</th></tr></thead>
+    <tbody>
+      <tr><td><b>aaaai-editor 套件本身</b>（程序、风格、卡片、配方、图标、文档、常备配乐与音效）</td><td>© aaaai.ai</td><td>免费安装使用、为自己修改；不可转售、转赠、公开散布或重新包装成自己的产品。</td></tr>
+      <tr><td><code>mrone</code> 风格与字幕样式 🔒</td><td>© MR ONE</td><td>MR ONE 社群成员或获 MR ONE 授权者才可使用。</td></tr>
+      <tr><td><code>otg</code> 风格与字幕样式 🔒（OTG 名称、配色、品牌元素）</td><td>© OTG 社群</td><td>OTG 社群成员或获 OTG 授权者才可使用。</td></tr>
+      <tr><td>你用它做出的成片、封面、字幕</td><td>你</td><td>任何用途，含商业用途。</td></tr>
+      <tr><td>HeyGen 音乐库、Pexels 素材、AI 生成的 B-roll</td><td>各服务提供方</td><td>依各自的条款使用；Pexels 素材要标注 Pexels 与摄影师（它会帮你整理署名清单）。</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><b class="k">受限风格</b><span>🔒 的两套风格需要你本人确认有授权才会出现（这是君子协定，不是加密锁）。没有授权请勿使用，也不要用它们做冒用该品牌的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.0.16 · © MR ONE。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
+    <span>aaaai-editor v1.0.17 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
 </section>
@@ -705,6 +805,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     html += "</div></div>";
   });
   root.innerHTML = html;
+  ["introAvatar:avatar", "introLower:lower"].forEach(function(x){ var p = x.split(":"), e = document.getElementById(p[0]); if (e) e.outerHTML = S[p[1]](); });
 
   /* ---------- 风格 ---------- */
   var ST = [
@@ -776,7 +877,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     ["说「照旧」会沿用什么？","上一支片的风格、配乐、字幕设置。同一系列用照旧，各集的风格和音量才会一致。"],
     ["为什么头没有冲出卡片框？","卡片接管的「头冲出框」需要你的头在框上缘附近；坐得比较低时头在框里面，这是正常的。拍的时候坐高一点、头顶留点空间效果最好。"],
     ["字幕为什么有时候跑到下面？","那是「字幕避脸」：脸落到字幕位置时，那几句会移到下巴下面。不想要就说「字幕不要避脸」。"],
-    ["可以用我自己的音乐吗？","可以，告诉它文件位置就好。请确认你有使用权；常备的 7 首是原创、零版权。"],
+    ["可以用我自己的音乐吗？","可以，告诉它文件位置就好，请确认你有使用权。还想要更多选择，可以用 HeyGen 音乐库（第 8 章）。常备的 7 首是原创，可放心用在自己的成片里。"],
     ["英文片也能剪吗？","能。会自动判断语言，英文字幕按单词断行，也能加中文翻译；回复和字幕都跟着你用的语言。"],
     ["我想做没有真人的讲解片、动画片？","跟它说你要做什么：品牌动效会交给动效 skill，讲解片、网站转影片会交给 HyperFrames；做完再回到 aaaai-editor 统一加字幕、响度、封面。"]
   ];
