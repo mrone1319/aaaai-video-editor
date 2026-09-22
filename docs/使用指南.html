@@ -902,7 +902,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   /* ---------- 目录高亮 ---------- */
   var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));
   var secs = links.map(function(a){ return document.querySelector(a.getAttribute("href")); });
-  function spy(){ var y = window.scrollY + 120, cur = 0; secs.forEach(function(s, i){ if (s && s.offsetTop <= y) cur = i; }); links.forEach(function(a, i){ a.classList.toggle("on", i === cur); }); }
+  function spy(){ var y = window.scrollY + Math.max(160, window.innerHeight * 0.3), cur = 0; secs.forEach(function(s, i){ if (s && s.offsetTop <= y) cur = i; }); links.forEach(function(a, i){ a.classList.toggle("on", i === cur); }); }
   window.addEventListener("scroll", spy, {passive:true}); spy();
 
   /* ---------- 深浅色 ---------- */
