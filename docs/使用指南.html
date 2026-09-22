@@ -107,6 +107,7 @@ p.prose{display:block}
 .need div{border-top:2px solid var(--ink);padding-top:10px}
 .need b{display:block;font-size:15.5px}
 .need span{font-size:14px;color:var(--ink-2);line-height:1.6;display:block;margin-top:2px}
+.need code,.lane code,.fields code{white-space:normal;overflow-wrap:anywhere}
 
 /* ---- 步骤 ---- */
 .steps{display:flex;flex-direction:column;gap:0;counter-reset:s}
@@ -242,15 +243,16 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <li><a href="#walk"><span>03</span>第一次剪片</a></li>
     <li><a href="#template"><span>04</span>提示词格式范本</a></li>
     <li><a href="#intro"><span>05</span>介绍自己：名字与头像</a></li>
-    <li><a href="#gallery"><span>06</span>小组件图鉴</a></li>
-    <li><a href="#styles"><span>07</span>风格一览</a></li>
-    <li><a href="#sound"><span>08</span>配乐与音效</a></li>
-    <li><a href="#edit"><span>09</span>想改哪里怎么说</a></li>
-    <li><a href="#files"><span>10</span>文件在哪里</a></li>
-    <li><a href="#qa"><span>11</span>发布前验收</a></li>
-    <li><a href="#faq"><span>12</span>常见问题</a></li>
-    <li><a href="#habits"><span>13</span>让成片稳定的习惯</a></li>
-    <li><a href="#license"><span>14</span>版权与授权</a></li>
+    <li><a href="#publish"><span>06</span>写文案、打包发布</a></li>
+    <li><a href="#gallery"><span>07</span>小组件图鉴</a></li>
+    <li><a href="#styles"><span>08</span>风格一览</a></li>
+    <li><a href="#sound"><span>09</span>配乐与音效</a></li>
+    <li><a href="#edit"><span>10</span>想改哪里怎么说</a></li>
+    <li><a href="#files"><span>11</span>文件在哪里</a></li>
+    <li><a href="#qa"><span>12</span>发布前验收</a></li>
+    <li><a href="#faq"><span>13</span>常见问题</a></li>
+    <li><a href="#habits"><span>14</span>让成片稳定的习惯</a></li>
+    <li><a href="#license"><span>15</span>版权与授权</a></li>
   </ol>
   <button class="theme-btn" id="themeBtn" type="button">切换深浅色</button>
 </nav>
@@ -258,7 +260,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.0.18</span><span class="chip">macOS</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.0.19</span><span class="chip">macOS</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
@@ -287,6 +289,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <article><h3>声音一次搞定</h3><p>降噪（先给你听三档）、配乐遇到人声自动压低、7 种音效（金币、啵、咻……）、成片响度锁定 −14 LUFS（各平台通用标准）。</p></article>
     <article><h3>B-roll 三种来源</h3><p>用你自己的素材最好；也能找免费素材（Pexels），或用 AI 生成——生成前一定先报价、你同意才花钱，每个项目默认上限 $2。</p></article>
     <article><h3>出片前自己先验收</h3><p>按卡片时间自动抽帧检查、字幕对时体检、封面 15% 安全区检查。没看过实际画面，它不会说「完成了」。</p></article>
+    <article><h3>剪完接着写文案</h3><p>交给「内容生产线」：按你指定的平台（小红书、抖音、X、IG、B站…）写好文案、配图，打包成发布包，按客户记住品牌语气。发帖要你亲手按。</p></article>
     <article><h3>快，而且安全</h3><p>只解码用得到的片段，60 秒的片预览约半分钟。原始素材永远不删、不改、不移动；API 密钥存在 Mac 钥匙串，只发给官方网址。</p></article>
   </div>
 </section>
@@ -375,13 +378,13 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       <h3>出成片与封面<span class="time">几分钟（看片长）</span></h3>
       <div class="lanes">
         <div class="lane"><div class="l">它会做</div><ul><li>渲染正式成片：响度 −14 LUFS、真峰值不超过 −1 dB。</li><li>抽成品的帧再验收一次、字幕对时体检。</li><li>做封面（竖版 1080×1920 与 1080×1350；横版片出 1920×1080），检查文字在安全区、不压脸。</li><li>成片和封面复制一份到「影片 › aaaai-editor › 成品」。</li></ul></div>
-        <div class="lane you"><div class="l">你要做</div><ul><li>给封面一句 6–8 个字的钩子，或让它建议。</li><li>用第 11 章的清单看一遍。</li></ul></div>
+        <div class="lane you"><div class="l">你要做</div><ul><li>给封面一句 6–8 个字的钩子，或让它建议。</li><li>用第 12 章的清单看一遍。</li></ul></div>
       </div>
     </div></div>
 
     <div class="step"><div class="dot">09</div><div class="body">
       <h3>发布（可选）<span class="time">看平台</span></h3>
-      <p class="prose">它会问你要不要交给「内容生产线」：按你指定的平台写文案、出图、打包。发布本身要你亲手按——平台不允许 AI 自己发帖。</p>
+      <p class="prose">它会问你要不要交给「内容生产线」：按你指定的平台写文案、出图、打包。说「要，发小红书和抖音」就行，成片、封面、逐字稿会自动带过去。发布本身要你亲手按——平台不允许 AI 自己发帖。详细用法见第 6 章。</p>
     </div></div>
 
   </div>
@@ -411,6 +414,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <span class="f">【结尾】</span>停在留言卡：留言「入门」我发链接
 <span class="f">【画幅】</span>竖版 9:16
 <span class="f">【封面】</span>封面字：AI 入门别绕路
+<span class="f">【发布】</span>剪完交给内容生产线：小红书、抖音各一条文案        <span class="c">← 第 6 章</span>
 <span class="f">【其他】</span>专有名词：MR ONE、Claude Code</pre>
   </div>
 
@@ -419,15 +423,16 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <div><b>【素材】</b><p>影片路径（在 Finder 里把文件拖进 Claude Code 就会出现路径）。多支素材、照片、截图、logo、自己的 B-roll 都写上。</p></div>
     <div><b>【片型】</b><p>口播、访谈、活动现场，以及要发的平台。平台决定画幅、节奏和封面尺寸。</p></div>
     <div><b>【核心】</b><p>观众看完要记住的一句话。卡片、开头、封面都会围绕它，写了成片会更集中。</p></div>
-    <div><b>【风格】</b><p>写风格名，或「你推荐」。风格决定卡片与字幕的配色字体（第 7 章）。</p></div>
+    <div><b>【风格】</b><p>写风格名，或「你推荐」。风格决定卡片与字幕的配色字体（第 8 章）。</p></div>
     <div><b>【字幕】</b><p>中文／中英双语／原语言＋中文／不要；要高亮的词；字幕要不要大一点、高一点。</p></div>
     <div><b>【开头】</b><p>指定哪一句当开头预告，或让它推荐。「开头加片头标题：……」也写这里。</p></div>
     <div><b>【剪辑】</b><p>剪停顿（默认会做）、口头禅与 NG；想保留的段落、想删的段落。</p></div>
     <div><b>【介绍】</b><p>你的名字、身份（一行就好），和头像照片放在哪里。有照片出「头像牌」，没照片出「人名条」。怎么准备照片见第 5 章。</p></div>
-    <div><b>【卡片】</b><p>用「讲到……的时候」描述时间点就好，不用精确秒数。常用说法见第 6 章每个组件的「这样说」。</p></div>
+    <div><b>【卡片】</b><p>用「讲到……的时候」描述时间点就好，不用精确秒数。常用说法见第 7 章每个组件的「这样说」。</p></div>
     <div><b>【秀证据】</b><p>有收入、后台、订单、评价截图时写。截图要是真的，它不会替你编数据。</p></div>
     <div><b>【声音】</b><p>配乐选哪首、大小声；降噪；要不要音效、要哪几种。</p></div>
     <div><b>【结尾】</b><p>片尾标题、行动号召（留言关键词、关注、私信），要不要停在卡片上到结束。</p></div>
+    <div><b>【发布】</b><p>剪完要不要顺便写文案、打包：发哪些平台、各几条。不写，剪完它也会问你。</p></div>
     <div><b>【其他】</b><p>片长上限、必须保留的句子、容易听错的专有名词、账号名（封面右下角）。</p></div>
   </div>
 
@@ -566,8 +571,76 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 </section>
 
 <!-- 06 -->
+<section id="publish">
+  <div class="eyebrow">06 · 发布</div>
+  <h2>写文案、打包发布：内容生产线</h2>
+  <p class="lede">片子剪好，下一步是「发什么文案、配什么图」。套件里的 <b>social-content-pipeline（内容生产线）</b>会按你指定的平台，把成片、封面、文案整理成一份发布就绪包——你打开平台、贴上、按发布就好。</p>
+
+  <h3>它会做的五件事</h3>
+  <div class="steps">
+    <div class="step"><div class="dot">01</div><div class="body"><h3>搜集信息</h3><p class="prose">先从你的逐字稿取事实，再查相关的最新资讯、同类账号在发什么、有没有能借的热点。</p></div></div>
+    <div class="step"><div class="dot">02</div><div class="body"><h3>分析角度</h3><p class="prose">定出这条内容的钩子、目标受众（具体到哪一群人）和语气。</p></div></div>
+    <div class="step"><div class="dot">03</div><div class="body"><h3>按平台写文案</h3><p class="prose">每个平台各写一份能直接发的文案，长度、标签照该平台的规矩；数字和事实都来自你的内容，不编造。</p></div></div>
+    <div class="step"><div class="dot">04</div><div class="body"><h3>配图</h3><p class="prose">有连 Canva 就用它出图（会先问你）；没有也能交付——直接用 aaaai-editor 做的封面，或给你一段具体的配图说明。短视频平台直接用成片。</p></div></div>
+    <div class="step"><div class="dot">05</div><div class="body"><h3>打包、归档</h3><p class="prose">每条内容配好文字＋图片／影片的位置，交给你；同时存一份归档，下次不会重复选题。</p></div></div>
+  </div>
+
+  <h3>两种开始方式</h3>
+  <div class="lanes">
+    <div class="lane you"><div class="l">A · 剪完直接接着做（最常用）</div><ul>
+      <li>成片交付后它会问：「要不要交给内容生产线？」</li>
+      <li>你回答：「要，发小红书和抖音，各一条」。</li>
+      <li>成片、封面、逐字稿、风格会自动带过去，不用再给一次。</li></ul></div>
+    <div class="lane you"><div class="l">B · 单独启动（已经有片、或只要文案）</div><ul>
+      <li>用固定的开头启动：<code>启动内容生产线：</code>、<code>/content-pipeline</code> 或 <code>content pipeline:</code>。</li>
+      <li>它只认这三种开头；随口说「帮我写条推文」只会得到一条文案，不会走完整流程。</li></ul></div>
+  </div>
+
+  <div class="tpl">
+    <div class="tpl-head"><b>内容生产线范本</b><button class="copy" type="button" data-copy="tplPub">复制范本</button></div>
+<pre id="tplPub"><span class="f">启动内容生产线：</span>
+<span class="f">【主题】</span>AI 入门最贵的是绕路的时间
+<span class="f">【客户】</span>MR ONE（我自己的账号）                <span class="c">← 每个账号／品牌一份品牌档案</span>
+<span class="f">【平台】</span>小红书、抖音、X                        <span class="c">← 可多选</span>
+<span class="f">【数量】</span>每个平台 1 条
+<span class="f">【素材】</span>成片 ~/Movies/aaaai-editor/成品/20260921-example-cut.mp4；封面在同一个文件夹
+<span class="f">【目标】</span>导流到 9/24 的 AI 入门分享会
+<span class="f">【语气】</span>轻松直接，不要营销腔
+<span class="f">【必须带】</span>分享会日期；留言「入门」领链接
+<span class="f">【不要】</span>「家人们」「绝绝子」；夸大收益
+<span class="f">【语言】</span>小红书、抖音用简体中文；X 用英文</pre>
+    <p class="why">从剪片直接接过来时，【素材】会自动带上，其他行照需要写。第一次用某个【客户】，它会先问四个问题建品牌档案（见下方），之后自动沿用。</p>
+  </div>
+
+  <h3>会写成什么样</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>平台</th><th>文案</th><th>画面</th><th>标签／话题</th></tr></thead>
+    <tbody>
+      <tr><td>小红书</td><td>标题 20 字内＋分段正文（1000 字内）</td><td>3:4 首图（标题大字压图）</td><td><code>#话题#</code> 放文末</td></tr>
+      <tr><td>抖音／视频号</td><td>一两句描述</td><td>9:16 成片</td><td><code>#话题</code></td></tr>
+      <tr><td>TikTok／YouTube Shorts</td><td>钩子开头；Shorts 标题 100 字符内</td><td>9:16 成片</td><td>hashtag</td></tr>
+      <tr><td>Instagram 贴文／Reels</td><td>前 125 个字决定展开前看到什么</td><td>4:5 贴文或 9:16 Reels</td><td>文末或首条留言</td></tr>
+      <tr><td>X</td><td>单条 280 字符；长内容写成推文串</td><td>16:9 或 1:1；影片可 9:16</td><td>0–2 个</td></tr>
+      <tr><td>B站</td><td>标题 80 字内＋简介（写清看点与时间轴）</td><td>16:9 横版＋封面</td><td>投稿页另外填</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note tip"><b class="k">TIP</b><span>标签默认每条最多 5 个，只挑最有用的。平台规则常变，发之前在平台上再看一眼。</span></div>
+
+  <h3>品牌档案：它会记住每个账号的调性</h3>
+  <div class="need">
+    <div><b>第一次会问 4 件事</b><span>主色与视觉风格、语气（专业／轻松／悬念…）、禁忌词与必带声明、输出语言。</span></div>
+    <div><b>存在你自己的电脑</b><span><code>文稿 › brand-profiles › 客户名.md</code>，就是一份普通文字档，你也可以自己改。</span></div>
+    <div><b>多个账号分开记</b><span>帮客户、帮公司、自己的账号各一份，风格不会混在一起。</span></div>
+    <div><b>每次产出自动归档</b><span><code>文稿 › content-history › 客户名</code>，下次选题会避开发过的内容。</span></div>
+  </div>
+
+  <div class="note warn"><b class="k">它不会做</b><span>① <b>自动发帖</b>——平台不允许 AI 自己公开发文，最后一步要你亲手按；② <b>从头生成视频</b>——要剪片请用 aaaai-editor，剪好再交给它打包。</span></div>
+  <div class="note ok"><b class="k">不用 Canva 也行</b><span>Canva 是可选的：在 Claude 里连接 Canva 后，它会先问你再出图；没连接时，用 aaaai-editor 的封面（竖版 1080×1920、1080×1350，横版 1920×1080），或给你一段写清画面、构图、配色、尺寸的配图说明。</span></div>
+</section>
+
+<!-- 07 -->
 <section id="gallery">
-  <div class="eyebrow">06 · 图鉴</div>
+  <div class="eyebrow">07 · 图鉴</div>
   <h2>小组件图鉴</h2>
   <p class="lede">左边的小画面是 9:16 竖屏示意：<span class="mono">灰色人像</span>是你、白色横线是字幕（约在画面 70% 处）、黄色是强调色。「这样说」可以直接抄进提示词。</p>
   <div id="galleryRoot" style="display:flex;flex-direction:column;gap:40px"></div>
@@ -575,7 +648,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 06 -->
 <section id="styles">
-  <div class="eyebrow">07 · 风格</div>
+  <div class="eyebrow">08 · 风格</div>
   <h2>风格一览</h2>
   <p class="lede">风格决定卡片和字幕的配色、字体与质感。开工时它会发一张对照图给你看，说风格名就能换，换风格不用重做别的步骤。前 7 套是通用风格，按内容挑；最后两套是<b>社群风格</b>——可以用，但它们带着 MR ONE、OTG 的品牌印记，一般不建议当你自己频道的主风格。</p>
   <div class="styles" id="styleRoot"></div>
@@ -584,7 +657,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 07 -->
 <section id="sound">
-  <div class="eyebrow">08 · 声音</div>
+  <div class="eyebrow">09 · 声音</div>
   <h2>配乐与音效</h2>
   <div class="prose"><p>全部是原创，<b>没有版权问题</b>。配乐遇到人声会自动压低；音效在响度锁定之前混进去，成片响度照样准确。音效默认不加——一分钟 3～6 个就够，多了会吵。</p></div>
   <h3>7 首常备配乐</h3>
@@ -610,7 +683,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 08 -->
 <section id="edit">
-  <div class="eyebrow">09 · 改片</div>
+  <div class="eyebrow">10 · 改片</div>
   <h2>想改哪里，这样说</h2>
   <p class="lede">改什么都不用重来：转录、人像遮罩、卡片图都有缓存，改完重出预览通常半分钟到一分钟。</p>
   <div class="tbl"><table>
@@ -621,7 +694,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 09 -->
 <section id="files">
-  <div class="eyebrow">10 · 位置</div>
+  <div class="eyebrow">11 · 位置</div>
   <h2>文件在哪里</h2>
   <div class="tbl"><table>
     <thead><tr><th>东西</th><th>位置</th><th>说明</th></tr></thead>
@@ -641,7 +714,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 10 -->
 <section id="qa">
-  <div class="eyebrow">11 · 验收</div>
+  <div class="eyebrow">12 · 验收</div>
   <h2>发布前看一遍</h2>
   <p class="lede">它出片前已经自己检查过，但发布是你的名字——用两分钟再看一次。勾选只存在你这台电脑的浏览器里。</p>
   <div class="check" id="checkRoot"></div>
@@ -649,14 +722,14 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 11 -->
 <section id="faq">
-  <div class="eyebrow">12 · 常见问题</div>
+  <div class="eyebrow">13 · 常见问题</div>
   <h2>常见问题</h2>
   <div class="faq" id="faqRoot"></div>
 </section>
 
 <!-- 12 -->
 <section id="habits">
-  <div class="eyebrow">13 · 好习惯</div>
+  <div class="eyebrow">14 · 好习惯</div>
   <h2>让成片稳定的习惯</h2>
   <div class="rules">
     <div><b>先定字幕，再排卡片</b>卡片时间照字幕排；字幕后改，卡片可能要跟着挪。</div>
@@ -672,7 +745,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 
 <!-- 14 -->
 <section id="license">
-  <div class="eyebrow">14 · 版权</div>
+  <div class="eyebrow">15 · 版权</div>
   <h2>版权与授权</h2>
   <p class="lede">aaaai-editor 免费给你使用；用它做出来的影片、封面、字幕都归你，包括商业用途。以下几项有各自的权利人：</p>
   <div class="tbl"><table>
@@ -687,7 +760,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">社群风格</b><span><code>mrone</code> 与 <code>otg</code> 是两个频道／社群的品牌风格：你可以用，但名称、配色和品牌元素归原权利人，不要用它们做冒充该品牌、或让人误以为是官方的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.0.18 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
+    <span>aaaai-editor v1.0.19 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
 </section>
@@ -846,7 +919,8 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     ["结尾太突然","结尾加片尾卡；最后淡出慢一点"],
     ["人太小、机位太远","整支推近一点（它会出对比图让你选）"],
     ["手机上先看看","出一个手机预览版（30MB 以内，不是成品）"],
-    ["要正式成品","出成片、做封面"]
+    ["要正式成品","出成片、做封面"],
+    ["写发布文案","交给内容生产线，发小红书和抖音各一条"]
   ];
   document.getElementById("editRoot").innerHTML = ED.map(function(e){ return "<tr><td>" + e[0] + "</td><td><span class=\"mono\">" + e[1] + "</span></td></tr>"; }).join("");
 
@@ -877,7 +951,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     ["说「照旧」会沿用什么？","上一支片的风格、配乐、字幕设置。同一系列用照旧，各集的风格和音量才会一致。"],
     ["为什么头没有冲出卡片框？","卡片接管的「头冲出框」需要你的头在框上缘附近；坐得比较低时头在框里面，这是正常的。拍的时候坐高一点、头顶留点空间效果最好。"],
     ["字幕为什么有时候跑到下面？","那是「字幕避脸」：脸落到字幕位置时，那几句会移到下巴下面。不想要就说「字幕不要避脸」。"],
-    ["可以用我自己的音乐吗？","可以，告诉它文件位置就好，请确认你有使用权。还想要更多选择，可以用 HeyGen 音乐库（第 8 章）。常备的 7 首是原创，可放心用在自己的成片里。"],
+    ["可以用我自己的音乐吗？","可以，告诉它文件位置就好，请确认你有使用权。还想要更多选择，可以用 HeyGen 音乐库（第 9 章）。常备的 7 首是原创，可放心用在自己的成片里。"],
     ["英文片也能剪吗？","能。会自动判断语言，英文字幕按单词断行，也能加中文翻译；回复和字幕都跟着你用的语言。"],
     ["我想做没有真人的讲解片、动画片？","跟它说你要做什么：品牌动效会交给动效 skill，讲解片、网站转影片会交给 HyperFrames；做完再回到 aaaai-editor 统一加字幕、响度、封面。"]
   ];
