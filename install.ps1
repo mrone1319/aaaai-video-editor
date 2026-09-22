@@ -208,5 +208,5 @@ Step "8. 体检"
 if ($TODO.Count -gt 0) { Step "还剩这些要你自己决定／在视窗里做"; foreach ($t in $TODO) { Write-Host "  · $t" } }
 Write-Host ""
 Write-Host "完成。在 Claude Code 里说「/aaaai-editor」或丢一段视频进去就能开始。"
-Write-Host "Claude Desktop／Cursor 想用 B-roll 工具：把 MCP 服务器设为命令 $A、参数 mcp（见 docs\00-快速安装.md）。"
+Write-Host "Claude Desktop／Cursor 想用 B-roll 工具：把 MCP 服务器设为命令 $A、参数 mcp（见 docs\安装指南-Windows.md）。"
 Write-Host "社群风格 mrone（© MR ONE）、otg（© OTG 社群）可以直接使用，品牌归原权利人，请勿用来冒充。"

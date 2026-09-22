@@ -1,0 +1,293 @@
+# aaaai-editor 安装指南 · Mac 版
+
+aaaai-editor 影片总监套件：把口播、访谈或长片交给 AI 剪辑助手（Claude Code 或 ChatGPT Codex），自动完成剪静音、字幕、卡片、配乐、响度、封面、B-roll 和验收。中文、英文等多种语言的影片都能剪，竖版和横版都支持。
+
+> 这份是 **Mac** 的安装指南；用 Windows 电脑请看 `安装指南-Windows`（同一个文件夹里有 .md 与 .pdf 两种）。
+
+### 电脑需求
+
+| 项目 | 需求 |
+|---|---|
+| 系统 | macOS 13 Ventura 以上 |
+| 处理器 | **Apple M 系列（M1 以上）**。Intel 芯片的 Mac 能装，但转录、人像去背、渲染会慢很多，不建议 |
+| 内存 | 最少 8GB，**建议 16GB** |
+| 硬盘 | 至少留 **20GB**（工具与语音模型约 3GB，其余给素材和成片；手机 4K 素材一分钟约 0.5GB） |
+| 网络 | 安装时要下载约 3GB；之后剪片不用联网 |
+
+怎么看：左上角苹果图标 →「关于本机」，芯片写 Apple M 开头就可以。
+
+---
+
+## 一、安装前先知道这些
+
+### 会安装（都是免费开源）
+
+| 项目 | 用途 | 备注 |
+|---|---|---|
+| Homebrew | 装下面这些工具 | 没有的话要你在「终端」App 里装，需要输入开机密码 |
+| FFmpeg（full 版） | 剪辑、合成、编码 | |
+| whisper.cpp＋medium 模型 | 语音转字幕（多语言） | 模型约 1.5GB，下载前会问；中断了重跑会接着下载 |
+| Python 3.12＋OpenCC／fontTools／brotli／NumPy 等 | 引擎、繁转简、字体量测 | 装在你的用户目录（pip --user） |
+| Node.js＋Playwright／Chromium | 动画片渲染、HyperFrames | Chromium 约 1GB；可用 `--no-mg` 跳过 |
+| Xcode Command Line Tools | 人像去背（字卡穿插在人后面） | Apple 官方安装窗口，会先问 |
+| 开源字体 Orbitron、IBM Plex Mono | 风格用字 | 放在 `~/.aaaai-editor/fonts`，不动系统字体 |
+
+- 程序放在 `~/.aaaai-editor/app`。
+- 3 个 skill 会复制进 `~/.claude/skills`。如果那里已有同名的 skill，会先备份，不会直接覆盖；卸载时会还原。
+- 装好后，在 Claude Code 里输入 `/aaaai-editor` 就能启动。
+
+**时间与空间**：
+- 首次安装约下载 3GB，视网速需要 10–30 分钟，装好约占 4GB。
+- 每个项目的中间档大约是成片的 3–5 倍大，发布后可以清掉。
+- 1 分钟的口播片：转录约 1 分钟，完整渲染约 1–3 分钟（Apple 芯片）。
+
+### 会接入的其他工具（免费）
+
+- **Claude Code**：没有的话安装器会问你要不要装。
+- **HeyGen HyperFrames 官方 skill**（Apache-2.0）：讲解片、网站转影片、产品发布等其他格式。只在 Claude Code 可用。
+- **ChatGPT Codex**（电脑上有才会装）：skill 放进 `~/.agents/skills`，并可选把 aaaai-editor 注册成 Codex 的 MCP 工具。
+
+### 可选：要花钱或要账户的（不绑也能正常剪片）
+
+这几把密钥只给 **B-roll（插入的空镜画面）** 用，全部可选。没绑的来源会自动跳过；一把都没绑时，B-roll 就只用你自己的素材。
+
+| 密钥 | 用途 | 费用 | 申请 |
+|---|---|---|---|
+| `PEXELS_API_KEY` | 免费素材库 | **$0**（使用时须标注 Pexels 与摄影师） | https://www.pexels.com/api/new/ |
+| `FAL_KEY` | AI 生成：Flux 首帧＋Wan 2.2 动态、可灵 2.5 | Wan 2.2 约 **$0.15/条**，可灵 2.5 约 **$0.35/5 秒**（在 fal 预充值） | https://fal.ai/dashboard/keys |
+| `HF_CREDENTIALS` | Higgsfield（只在你指定时用） | 扣你 Higgsfield 账户的额度，失败会退还 | https://cloud.higgsfield.ai/ |
+
+价格是 2026 年 9 月官方页面上的数字，可能会变，最终以对方账单为准。
+
+**关于花钱：**
+- 每次要花钱之前都会先报价（每条多少钱、合计多少），**问过你、你同意了才执行**。
+- 每个项目默认上限 **$2**。超出时会提醒你，你同意就继续，不会因为费用而锁住功能。
+- 上限可以改：`~/.aaaai-editor/bin/aaaai-editor config --set broll.budget=10`
+- 生成过的镜头会存进素材库 `~/.aaaai-editor/broll-library/`，同一个镜头再用不再付费。
+
+**关于密钥安全：**
+- 密钥存进 macOS 钥匙串，只在**你自己的终端**输入，屏幕上不显示。
+- 不要把密钥贴进和 AI 的聊天里。
+- 密钥不会写进项目文件或任何设置档。
+- 密钥只会经由 https 发给该服务的官方主机（Pexels、fal、Higgsfield）；服务回传的网址若换到别的主机，程序会拒绝，不会把密钥带过去；网址跳转到别的主机时也会先拿掉密钥。
+- 错误信息里若出现密钥会自动打码；ffmpeg、whisper 等外部程序拿不到密钥。
+- 语音模型下载完会核对官方校验码，被篡改或下载损坏的不会启用。
+
+### 隐私：什么会离开你的电脑
+
+| 资料 | 去向 |
+|---|---|
+| 视频、音频、字幕、转录 | **只在你的电脑上处理**（语音识别也是本机的 whisper） |
+| B-roll 的画面描述、搜索关键词 | 发给 Pexels 或 fal（只在你同意生成时） |
+| 你选做首帧的照片 | 上传给 fal 生成影片（只在你指定、同意时） |
+| 你和 AI 助手的对话 | 按你使用的平台（Claude／Codex）各自的政策 |
+
+### 在 Claude 里会用到的（Claude 自带或连接器）
+
+- **Canva 连接器**：发布流水线「出图」（贴文配图）时使用。
+  - 需要 Canva 账户，免费版或付费版都可以，第一次用时 Claude 会提示你连接。
+  - 不连也可以：改用 aaaai-editor 做好的封面，或者只交文案。
+- **Claude 内建的文件 skill**（docx／pdf 等）：只在你要求导出文件时使用。
+
+### 版权
+
+- 程序免费提供给指定的人使用。
+- **mrone**（© MR ONE）和 **otg**（© OTG 社群）是社群风格：可以免费使用，但不是首选推荐；品牌归原权利人，请勿用来冒充。
+- 详见 `LICENSE.md`、`CREDITS.md`。
+
+---
+
+## 二、安装
+
+### 方法 A：zip 安装包（最简单）
+
+1. 解压 `aaaai-editor-v*.zip`。
+2. 双击 `双击安装.command`，按提示一步步选择。
+3. 如果 macOS 跳出「无法打开／无法验证开发者」：
+   - 打开「系统设置 → 隐私与安全性」，拉到下面，点「仍要打开」；
+   - 或者在「终端」App 里执行下面这行，再双击一次：
+
+```bash
+xattr -dr com.apple.quarantine ~/Downloads/aaaai-editor-v*
+```
+
+（路径换成你解压的位置。旧版 macOS 可以用「右键 → 打开」。）
+
+### 方法 B：Claude Code 插件（能一键更新）
+
+先准备好这两样，只要做一次：
+
+1. **Claude Code**：在「终端」App 执行下面这行。
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
+
+2. **GitHub 登录**（仓库是私有的，要先接受仓库邀请）：从 https://cli.github.com 下载安装 `gh`，然后在终端执行下面两行。
+
+```bash
+gh auth login
+```
+
+```bash
+gh auth setup-git
+```
+
+然后安装插件。一定要用 https 地址：简写会走 SSH，没设 SSH 的电脑会失败。
+
+```bash
+claude plugin marketplace add https://github.com/mrone1319/aaaai-video-editor.git
+```
+
+```bash
+claude plugin install aaaai-editor@aaaai-editor
+```
+
+装好后在 Claude Code 里说「/aaaai-editor」，它会先把第一节的须知讲给你听，你同意后再帮你跑安装器。
+需要开机密码的步骤（Homebrew、Xcode 工具），Claude 没办法替你输入。它会列出来，请你在「终端」App 里自己执行。
+
+### 安装器选项
+
+在终端里手动跑安装器时可以加选项，例如：
+
+```bash
+bash install.sh --no-model
+```
+
+| 选项 | 作用 |
+|---|---|
+| `--yes` | 不逐项询问，全部照默认做 |
+| `--no-deps` | 不装 Homebrew 套件与 Python 套件（已自行装好时） |
+| `--no-model` | 不下载语音模型 |
+| `--no-mg` | 不装动画渲染（Playwright／Chromium） |
+| `--no-skills` | 不复制 skill 到 `~/.claude/skills` |
+| `--no-keys` | 不引导绑定密钥 |
+| `--no-codex` | 不装到 Codex |
+| `--no-hyperframes` | 不装 HyperFrames |
+| `--plugin` | 由 Claude Code 插件调用（skill 由插件提供） |
+| `--dev` | 开发模式：程序指回安装包文件夹（改代码立刻生效） |
+
+安装器会问你要不要把 `aaaai-editor` 加进 PATH。
+- 加了：新开的终端可以直接打 `aaaai-editor`。
+- 没加：本文里的 `aaaai-editor` 都写成 `~/.aaaai-editor/bin/aaaai-editor`。
+
+---
+
+## 三、之后再绑密钥或改设置
+
+```bash
+~/.aaaai-editor/bin/aaaai-editor keys
+```
+
+```bash
+~/.aaaai-editor/bin/aaaai-editor keys set PEXELS_API_KEY
+```
+
+```bash
+~/.aaaai-editor/bin/aaaai-editor broll status
+```
+
+- 第一条列出每把密钥的状态、用途和费用。
+- 第二条绑定密钥，钥匙串会以隐藏方式请你输入。
+- 第三条看 B-roll 目前能用哪些来源。
+- 移除密钥：`~/.aaaai-editor/bin/aaaai-editor keys remove FAL_KEY`
+
+其他常用设置：
+
+| 设置 | 作用 |
+|---|---|
+| `~/.aaaai-editor/bin/aaaai-editor config --set handle=@你的账号` | 封面上印的账号名 |
+| `~/.aaaai-editor/bin/aaaai-editor config --set projects_dir=~/Documents/我的剪辑` | 项目存放位置（默认 `影片/aaaai-editor`） |
+| `~/.aaaai-editor/bin/aaaai-editor config --set exports_dir=~/Desktop/成品` | 成片复制到哪里（默认 `影片/aaaai-editor/成品`；设空字串 `exports_dir=` 就不复制） |
+| `~/.aaaai-editor/bin/aaaai-editor config --set profile=<名字>` | 使用频道档案（复制 `~/.aaaai-editor/app/profiles/TEMPLATE` 到 `~/.aaaai-editor/profiles/<名字>` 来建） |
+
+---
+
+## 四、在其他平台使用（MCP）
+
+B-roll 生成可以做成标准 MCP 工具，给任何支持 MCP 的 AI 用：
+
+| 平台 | 设置 |
+|---|---|
+| ChatGPT Codex | `codex mcp add aaaai-editor -- ~/.aaaai-editor/bin/aaaai-editor mcp`（安装器会问你） |
+| Claude Code | 不需要，skill 直接调用命令；想要也可以 `claude mcp add aaaai-editor -- ~/.aaaai-editor/bin/aaaai-editor mcp` |
+| Claude Desktop | 在 `claude_desktop_config.json` 的 `mcpServers` 加 `"aaaai-editor": {"command": "/Users/你的用户名/.aaaai-editor/bin/aaaai-editor", "args": ["mcp"]}` |
+| Cursor 等 | 同样填命令 `~/.aaaai-editor/bin/aaaai-editor`、参数 `mcp` |
+
+提供的工具：
+
+| 工具 | 作用 |
+|---|---|
+| `broll_status` | 可用来源 |
+| `broll_search` | 搜 Pexels |
+| `broll_estimate` | 估价 |
+| `generate_broll_clip` | 生成一条 |
+| `broll_plan` | 整个项目的估价、生成、审片、放进成片 |
+| `broll_library` | 素材库 |
+| `doctor` | 检查依赖 |
+
+- 要花钱的工具一律两步：先返回报价，你同意后才真正生成。
+- 相对路径按项目目录解析。
+
+---
+
+## 五、开始用：5 分钟试剪
+
+> 装好之后，先打开同一个文件夹里的 **《使用指南》**（`使用指南.html`，双击用浏览器看；或 `使用指南.pdf`）：
+> 有手把手的第一次剪片、可以直接复制的提示词格式范本、每个小组件的说明。
+
+1. 用手机录一段 30–60 秒的口播（对着镜头随便讲，中间停顿几次）。
+2. 在 Claude Code 里说「/aaaai-editor 帮我剪 ~/Downloads/我的视频.mov」。
+   在 Codex 里说「用 aaaai-editor 剪 ~/Downloads/我的视频.mov」。
+3. 它会先问你四件事：
+   - 风格（附对照图）
+   - 配乐
+   - 字幕（跟随影片语言）
+   - 横拍素材要不要裁成竖版
+4. 大约 5 分钟后你会收到：
+   - 去掉停顿、带字幕和卡片、响度统一的成片
+   - 一张封面
+
+**成片在哪里**：打开 Finder，左边侧栏点「影片」→ `aaaai-editor` → `成品`，文件名就是项目名。
+可以把 `成品` 文件夹拖到 Finder 侧栏，以后一点就到。
+
+之后想加 B-roll、调卡片、换风格，直接用口语告诉它。
+
+---
+
+## 六、更新、卸载与常见问题
+
+**更新**
+
+- 插件安装：执行下面两行，然后在 Claude Code 里说「/aaaai-editor」。它发现版本变了会自动同步程序。
+
+```bash
+claude plugin marketplace update aaaai-editor
+```
+
+```bash
+claude plugin update aaaai-editor@aaaai-editor
+```
+
+- zip 安装：拿到新版 zip 后重跑一次安装器。你的设置、风格、频道档案、项目都不会被覆盖。
+
+**卸载**
+
+- 在安装包文件夹执行 `bash uninstall.sh`，插件用户执行 `bash ~/.aaaai-editor/app/uninstall.sh`。
+- 程序、skill、Codex／Claude 的 MCP 注册和插件都会移到废纸篓；安装前被备份的同名 skill 会还原。
+- 你的设置和项目默认保留；加 `--all` 连设置一起清。
+- 钥匙串里的密钥要先用 `aaaai-editor keys remove` 删。
+
+**常见问题**
+
+| 情况 | 办法 |
+|---|---|
+| `aaaai-editor doctor` 有 ❌ | 按提示补装，或重跑安装器（可以重复跑，已装好的会跳过） |
+| 找不到 `aaaai-editor` 命令 | 写完整路径 `~/.aaaai-editor/bin/aaaai-editor`，或重跑安装器选择加进 PATH |
+| 找不到 whisper-cli／ffmpeg | 新装的 Homebrew 要重开终端才生效；还是不行就执行 `brew install whisper-cpp ffmpeg-full` |
+| 模型下载中断 | 重跑安装器会接着下载；半截文件不会被当成已下载 |
+| 字幕是错的语言 | 转录时指定语言，例如 `--lang en`，再重跑 captions |
+| 竖拍的片变成横的 | 已自动按手机旋转标记转正；如果仍不对，删掉 `work/` 里的转录重跑 |
+| 人像穿插报错 | 执行 `xcode-select --install` 装好 Apple 的开发工具 |
+| 想用 mrone／otg 风格 | 直接跟 Claude 说「用 mrone 风格」即可，不需要授权；它们排在清单最后，不会被当首选推荐 |
+| 双击安装被拦下 | 见第二节方法 A 第 3 步 |

@@ -15,7 +15,7 @@
 #   --no-keys        不引导绑定 API 密钥（B-roll 用，全部可选；之后可 aaaai-editor keys set）
 #   --no-codex       不为 ChatGPT Codex 安装 skill／MCP
 #
-# 安装前须知的完整说明：docs/00-快速安装.md
+# 安装前须知的完整说明：docs/安装指南-Mac.md（Windows：docs/安装指南-Windows.md）
 # 可重复执行：已装的会跳过；更新程序不会动你的设置、风格、频道档案与项目（都在 ~/.aaaai-editor 与项目目录）。
 # ============================================================
 set -u
@@ -267,7 +267,7 @@ fi
 echo
 echo "完成。在 Claude Code 里说「/aaaai-editor」或丢一段视频进去就能开始。"
 echo "发布流水线要「出图」的话：在 Claude 里连接 Canva 等设计工具的连接器（第一次用时 Claude 会提示）。"
-echo "Claude Desktop／Cursor 想用 B-roll 工具：把 MCP 服务器设为命令 $HOME_DIR/bin/aaaai-editor、参数 mcp（见 docs/00-快速安装.md）。"
+echo "Claude Desktop／Cursor 想用 B-roll 工具：把 MCP 服务器设为命令 $HOME_DIR/bin/aaaai-editor、参数 mcp（见 docs/安装指南-Mac.md）。"
 echo "社群风格 mrone（© MR ONE）、otg（© OTG 社群）可以直接使用，品牌归原权利人，请勿用来冒充。"
 echo "建立自己的频道档案：复制 $HOME_DIR/app/profiles/TEMPLATE 到 $HOME_DIR/profiles/<名字>，再"
 echo "    $HOME_DIR/bin/aaaai-editor config --set profile=<名字>"

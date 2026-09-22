@@ -260,7 +260,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.0.20</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.0.21</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
@@ -317,7 +317,32 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     </tbody>
   </table></div>
   <div class="note warn"><b class="k">WINDOWS</b><span>Windows 版刚推出，已照 Mac 版同样的流程写好，但还需要在更多 Windows 电脑上实测；遇到问题请把画面截图给 Claude，它会帮你排查。</span></div>
-  <div class="note tip"><b class="k">TIP</b><span>装完第一次，可以直接跟 Claude 说「帮我检查 aaaai-editor 装好没有」，它会跑一次体检，全部 ✅ 就能开工。详细安装步骤、会装哪些东西、哪些要花钱，见套件里的 <code>docs/00-快速安装.md</code>。</span></div>
+  <h3>安装步骤</h3>
+  <div class="tabs" role="tablist" aria-label="安装">
+    <button type="button" role="tab" id="tab-mac" aria-controls="in-mac" aria-selected="true">Mac</button>
+    <button type="button" role="tab" id="tab-win" aria-controls="in-win" aria-selected="false">Windows</button>
+  </div>
+  <div class="tabpanel" id="in-mac" role="tabpanel" aria-labelledby="tab-mac">
+    <div class="steps">
+      <div class="step"><div class="dot">1</div><div class="body"><h3>解压安装包</h3><p class="prose">双击 <code>aaaai-editor-v*.zip</code> 解压。</p></div></div>
+      <div class="step"><div class="dot">2</div><div class="body"><h3>双击「双击安装.command」</h3><p class="prose">按提示一步步选（按 Enter 表示同意）。它会用 Homebrew 装 FFmpeg、whisper、Python，每一项都先问你；装 Homebrew 要输入开机密码。</p></div></div>
+      <div class="step"><div class="dot">3</div><div class="body"><h3>被拦下的话</h3><p class="prose">跳出「无法打开／无法验证开发者」：打开「系统设置 › 隐私与安全性」，拉到下面点「仍要打开」，再双击一次。</p></div></div>
+      <div class="step"><div class="dot">4</div><div class="body"><h3>人像去背（选装）</h3><p class="prose">安装器会问要不要装 Apple 的 Xcode 命令行工具——文字穿插、卡片接管要用到。</p></div></div>
+      <div class="step"><div class="dot">5</div><div class="body"><h3>看体检结果</h3><p class="prose">最后全部 ✅ 就能开始；在 Claude Code 里输入 <code>/aaaai-editor</code>。</p></div></div>
+    </div>
+    <p class="prose">完整说明（安装器选项、密钥、MCP、更新、卸载、常见问题）：套件里的 <code>docs/安装指南-Mac.md</code>。</p>
+  </div>
+  <div class="tabpanel" id="in-win" role="tabpanel" aria-labelledby="tab-win" hidden>
+    <div class="steps">
+      <div class="step"><div class="dot">1</div><div class="body"><h3>全部解压缩</h3><p class="prose">在 zip 上按右键 ›「全部解压缩」。不要直接在压缩档里双击，安装器会找不到其他文件。</p></div></div>
+      <div class="step"><div class="dot">2</div><div class="body"><h3>双击「Install-Windows.cmd」</h3><p class="prose">按提示一步步选（输入 y 或按 Enter 表示同意）。它会用 Windows 自带的 winget 装 Python、FFmpeg、Git，并从官方网址下载 whisper、语音模型与 MediaPipe 人像分割模型，每一项都先问你。</p></div></div>
+      <div class="step"><div class="dot">3</div><div class="body"><h3>被拦下的话</h3><p class="prose">跳出蓝色的「Windows 已保护你的电脑」：点「更多信息」›「仍要运行」。说「没有 winget」：到 Microsoft Store 安装「应用安装程序」。</p></div></div>
+      <div class="step"><div class="dot">4</div><div class="body"><h3>装 Claude Code</h3><p class="prose">到 claude.ai/download 下载 Windows 版。它需要 Git（第 2 步已装好）；装完把 Claude Code 完全关掉重开。</p></div></div>
+      <div class="step"><div class="dot">5</div><div class="body"><h3>看体检结果</h3><p class="prose">最后全部 ✅ 就能开始；在 Claude Code 里输入 <code>/aaaai-editor</code>。成品在资源管理器的「视频 › aaaai-editor › 成品」。</p></div></div>
+    </div>
+    <p class="prose">完整说明（安装器选项、密钥、MCP、更新、卸载、常见问题）：套件里的 <code>docs/安装指南-Windows.md</code>。</p>
+  </div>
+  <div class="note tip"><b class="k">TIP</b><span>装完第一次，可以直接跟 Claude 说「帮我检查 aaaai-editor 装好没有」，它会跑一次体检，全部 ✅ 就能开工。</span></div>
   <div class="note ok"><b class="k">不用花钱</b><span>剪片、字幕、卡片、配乐、音效、响度、封面全部免费。唯一可能花钱的是「AI 生成 B-roll」，而且每次都会先报价问你。</span></div>
 </section>
 
@@ -773,7 +798,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">社群风格</b><span><code>mrone</code> 与 <code>otg</code> 是两个频道／社群的品牌风格：你可以用，但名称、配色和品牌元素归原权利人，不要用它们做冒充该品牌、或让人误以为是官方的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.0.20 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
+    <span>aaaai-editor v1.0.21 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
 </section>
@@ -871,7 +896,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       {k:"zoom", n:"推近", c:"zooms", look:"缓推（铺陈）或瞬切推近（落点、数字揭晓），像换机位。", when:"落点、金句、数字揭晓；每分钟最多 3 次瞬切。", say:"说出结论那一刻瞬切推近", note:"机位太远还可以全片推近，它会出对比图给你选倍率。"},
       {k:"confetti", n:"拉炮彩带", c:"confetti", look:"彩色纸片从中下方喷出、边转边飘落。", when:"达成里程碑、公布好消息。", say:"说到破十万粉时放拉炮，加拉炮声", note:"一支片一次就好。"},
       {k:"countdown", n:"圆环倒数", c:"countdown", look:"圆环每秒缩短＋中间大数字，每秒一声滴答；默认在头顶上方。", when:"「三、二、一」、揭晓前的悬念。", say:"揭晓前做 3 秒倒数", note:"不要滴答声可以关。"},
-      {k:"whip", n:"甩镜转场", c:"transitions · whip", look:"换段落的剪辑点前后约 0.3 秒：画面放大、横向甩出去再甩回来，带动态模糊，自动配「咻」。字幕和卡片不受影响。", when:"真正换话题、进下一段的时候。", say:"讲完第一个弯、进第二个弯的时候加甩镜转场", note:"一分钟最多 2–3 个；片长不会变。"}
+      {k:"whip", n:"甩镜转场", c:"transitions · whip", look:"换段落的剪辑点前后约 0.3 秒：画面放大、横向甩出去再甩回来，带动态模糊，自动配「咻」。字幕和卡片不受影响。", when:"真正换话题、进下一段的时候。", say:"讲完第一个弯、进第二个弯的时候加甩镜转场", note:"只在你要求时才加，自动剪辑不会用；片长不会变。"}
     ]},
     {h:"画面技巧", sub:"让画面有层次", items:[
       {k:"behind", n:"文字穿插", c:"behind_subject", look:"大字排在人物后面，人站在字前面。", when:"人物居中、头顶有空间的片头标题。", say:"片头标题做文字穿插，字在我后面", note:"需要人像去背。", need:"人像去背"},
@@ -985,10 +1010,12 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   });
 
   /* ---------- 范例分页 ---------- */
-  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
-  tabs.forEach(function(t){ t.addEventListener("click", function(){
-    tabs.forEach(function(x){ x.setAttribute("aria-selected", x === t ? "true" : "false"); document.getElementById(x.getAttribute("aria-controls")).hidden = x !== t; });
-  }); });
+  Array.prototype.slice.call(document.querySelectorAll('[role="tablist"]')).forEach(function(list){   // 每组分页各自切换
+    var tabs = Array.prototype.slice.call(list.querySelectorAll('[role="tab"]'));
+    tabs.forEach(function(t){ t.addEventListener("click", function(){
+      tabs.forEach(function(x){ x.setAttribute("aria-selected", x === t ? "true" : "false"); document.getElementById(x.getAttribute("aria-controls")).hidden = x !== t; });
+    }); });
+  });
 
   /* ---------- 目录高亮 ---------- */
   var links = Array.prototype.slice.call(document.querySelectorAll(".toc a"));

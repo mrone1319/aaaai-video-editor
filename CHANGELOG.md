@@ -1,5 +1,13 @@
 # 更新记录
 
+## v1.0.21（2026-09-22）
+
+- **安装指南分成 Mac 版与 Windows 版**：`docs/安装指南-Mac.md`／`.pdf`、`docs/安装指南-Windows.md`／`.pdf`，各自从电脑需求、
+  须知、安装步骤、被系统拦下怎么办、安装器选项、密钥与设置、MCP、5 分钟试剪、更新卸载到常见问题完整写一遍；
+  `00-快速安装.md` 改成「先选你的电脑」的对照页。《使用指南》「开始之前」加上 Mac／Windows 分页的安装步骤。
+- **甩镜转场只在用户明确要求时才加**：SKILL 规定自动剪辑不加转场、不主动推荐；指南与卡片说明同步写明。
+- 新增 `scripts/export-docs.py`：一次导出《使用指南》与两份安装指南的 PDF。
+
 ## v1.0.20（2026-09-22）
 
 - **Windows 版**：`Install-Windows.cmd`／`install.ps1`（winget 安装 Python、FFmpeg 完整版、Git；官方网址下载 whisper.cpp、

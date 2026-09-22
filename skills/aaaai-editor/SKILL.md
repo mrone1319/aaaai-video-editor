@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.20"
+  version: "1.0.21"
 ---
 
 # aaaai-editor 影片总监
@@ -37,7 +37,7 @@ A="$HOME/.aaaai-editor/bin/aaaai-editor"; APP="$HOME/.aaaai-editor/app"; P="<项
 "$A" config        # 程序／资料位置、projects_dir、当前频道档案 profile
 "$A" doctor        # 全部 ✅ 才开工
 ```
-- **没装好**：先把 `${CLAUDE_PLUGIN_ROOT}/docs/00-快速安装.md` 的「安装前先知道这些」摘要给用户看
+- **没装好**：先把安装指南（Mac：`${CLAUDE_PLUGIN_ROOT}/docs/安装指南-Mac.md`；Windows：`…/docs/安装指南-Windows.md`）的「安装前先知道这些」摘要给用户看
   （会装什么、约 3GB 下载、哪些可选／要花钱），**用户同意才装**。然后：
   - 插件安装：`bash "${CLAUDE_PLUGIN_ROOT}/install.sh" --plugin`（后台执行、看日志）。
     **Windows**（`uname -s` 是 MINGW／MSYS）：改用 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "${CLAUDE_PLUGIN_ROOT}/install.ps1")" -NoSkills`。没有终端可问时，安装器对
@@ -181,8 +181,9 @@ P=$("$A" new <主题英文短名>)
 - 对比写成「以为 vs 其实」「以前 vs 现在」：`{"use":"compare","t":[a,b],"left":{"title":"你以为最贵","items":["订阅费"]},"right":{"title":"其实最贵","items":["绕路的时间"]}}`。
 - 密度：每 8–15 秒最多一个主卡（hook／stat_hit／steps／quote_pull／compare／takeover）；30 秒以下短片 hook + 一个主卡 + outro。
 - 人物居中的口播，标题卡可加 `"behind_subject": true` 做文字穿插。黑色 logo 用 `image` 卡加 `"disc": true`。
-- **转场**：换段落时可以加甩镜转场 `"transitions": [{"t": <成片秒数>, "type": "whip"}]`（会吸附到最近的剪辑点，自动配「咻」），
-  一分钟最多 2–3 个，只放在真正换话题的地方；不要放在文字穿插（`behind_subject`）的时段里。
+- **转场：只有用户明确要求才加**（例如「这里加甩镜转场」）。自动剪辑、排卡片时**不要自己加**，也不要主动推荐成默认。
+  用户要了才写 `"transitions": [{"t": <成片秒数>, "type": "whip"}]`（会吸附到最近的剪辑点，自动配「咻」），
+  放在他指定的位置；不要放在文字穿插（`behind_subject`）的时段里。
 - 卡片默认会**轻轻上下浮动（呼吸感）**，标题、数据、金句、片尾还会有一两下**闪光**；不要就在该卡片或 storyboard 顶层写
   `"float": false`／`"sparkle": false`。
 - 全部参数：`$APP/docs/CARDS.md`、`$APP/docs/STYLE.md`；微调用 `"$A" expand` 看展开结果。
@@ -290,7 +291,7 @@ Windows 版用 `install.ps1`（双击 `Install-Windows.cmd`）安装；命令、
 - 没有 `${CLAUDE_PLUGIN_ROOT}`：请用户在终端执行安装包里的 `install.sh`。
 - 斜杠命令 `/aaaai-editor` 只在 Claude Code；Codex 里用户说「用 aaaai-editor 剪…」即可。
 - 看画面：用该平台的读图能力打开抽出来的 PNG；不能读图就请用户看过再往下。
-- B-roll 也可以走 MCP 工具（`generate_broll_clip` 等，见 `$APP/docs/00-快速安装.md`），同样要先报价、用户同意才带 `confirmed`。
+- B-roll 也可以走 MCP 工具（`generate_broll_clip` 等，见 `$APP/docs/安装指南-Mac.md`／`安装指南-Windows.md` 的 MCP 一节），同样要先报价、用户同意才带 `confirmed`。
 
 ## 用户常见修改 → 改哪里
 
@@ -319,5 +320,5 @@ Windows 版用 `install.ps1`（双击 `Install-Windows.cmd`）安装；命令、
 `$APP/docs/使用指南.html`（`open` 它就会用浏览器打开）或 `$APP/docs/使用指南.pdf`，再按他的问题讲重点；
 用户照指南里「提示词格式范本」填来的需求，逐行照做，没写的行用开工三问补齐。
 
-`$APP/docs/00-快速安装.md`（安装须知、密钥、MCP）· `$APP/README.md`（命令总览）· `$APP/docs/CARDS.md` · `$APP/docs/STYLE.md` · `$APP/docs/RECIPES.md` ·
+`$APP/docs/安装指南-Mac.md`／`$APP/docs/安装指南-Windows.md`（安装须知、密钥、MCP；`00-快速安装.md` 是选择页）· `$APP/README.md`（命令总览）· `$APP/docs/CARDS.md` · `$APP/docs/STYLE.md` · `$APP/docs/RECIPES.md` ·
 `$APP/docs/LONG.md` · `$APP/profiles/TEMPLATE/`（建自己的频道档案）· `$APP/LICENSE.md`
