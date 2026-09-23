@@ -16,7 +16,7 @@ from typing import Callable, Optional, Tuple
 from .png import write_rgba
 
 RGB = Tuple[int, int, int]
-PLATE_VER = "6"
+PLATE_VER = "7"
 
 
 def hex_rgb(s: str) -> RGB:
@@ -229,7 +229,8 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
     if sh and sh.get("alpha", 0) > 0:
         sc = hex_rgb(sh.get("color", "#000000"))
         opaque = bool(spec.get("fill")) and float(spec.get("alpha", 1.0)) >= 0.9 and not spec.get("scrim")
-        skip = ((int(cx - hw + 2), int(cy - hh + 2), int(cx + hw - 2), int(cy + hh - 2))
+        # 只跳过「一定被底板盖住」的中间那块：四角是圆的，跳过整个外框会让角上少一块投影
+        skip = ((int(cx - hw + 2), int(cy - hh + r + 2), int(cx + hw - 2), int(cy + hh - r - 2))
                 if opaque else ())
         soft = max(1.0, float(sh.get("soft", 18)))
         spread = float(sh.get("spread", 0.0))

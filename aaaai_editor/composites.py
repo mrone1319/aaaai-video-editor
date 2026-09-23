@@ -20,7 +20,8 @@ PANEL_TOP = 0.065       # 面板区上缘（相对画面高）
 PANEL_BOTTOM = 0.325    # 面板区下缘：接管的框从 0.34 开始
 PAPER = "#F4EFE7"       # 纸面底色
 PILL = {"accent": "#F5C542", "on_accent": "#1E1B16"}          # 黄色日期胶囊
-ON_PAPER = {"plate": "#FFFFFF", "text": "#1E1B16", "muted": "#5B554C"}  # 纸面上的白卡深字
+ON_PAPER = {"plate": "#FFFFFF", "text": "#1E1B16", "muted": "#5B554C",
+            "border": {"w": 0}}                                      # 纸面上的白卡深字（不加描边）
 
 
 def _image_size(path: str) -> Tuple[int, int]:

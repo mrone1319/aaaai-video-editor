@@ -554,7 +554,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     """算出底板、文字项、图标项的绝对坐标、时间、动画。"""
     if ov.get("_result"):  # 工作流最后一张「结果」卡：强调色底、字用强调色上的对比色
         th = dict(th, plate=th["accent"], plate_alpha=1.0, text=th["on_accent"], muted=th["on_accent"],
-                  accent=th["on_accent"])
+                  accent=th["on_accent"], border={"w": 0})   # 实色结果卡：不要描边，柔影就够
     if ov.get("colors"):  # 单张卡片改色，可写 "@value" 引用语义色
         th = resolve_colors(dict(th, **ov["colors"]))
     typ = ov["type"]

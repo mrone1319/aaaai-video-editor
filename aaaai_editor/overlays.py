@@ -388,6 +388,18 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                   "cx": cx, "cy": cy, "popout": bool(ov.get("popout", True)), "subject": None}
             idx += 1
             if fr["popout"]:
+                # 冲出框的人物要跟着框的圆角收边：上半段整块保留，框内用同一个圆角
+                rr = int(th["radius"])
+                clip, cmg = draw.make_plate(
+                    {"w": bw, "h": cy + bh, "radius": 0, "fill": None, "alpha": 0.0,
+                     "border": {"w": 0}, "shadow": {},
+                     "shapes": [{"x": 0, "y": 0, "w": bw, "h": cy + rr, "r": 0, "fill": "#FFFFFF"},
+                                {"x": 0, "y": cy, "w": bw, "h": bh, "r": rr, "fill": "#FFFFFF"}]},
+                    os.path.join(work, "plates"))
+                inputs.append(["-loop", "1", "-t", "%.3f" % (t1 + 0.5), "-i", os.path.relpath(clip, work)])
+                fr["clip"], fr["cmg"] = idx, cmg
+                idx += 1
+            if fr["popout"]:
                 mi, _, _ = need_matte(t0, t1, "frame")
                 subjects.append({"a": t0, "b": t1, "mode": "frame", "idx": mi, "ov": ov, "order": -1})
                 fr["subject"] = len(subjects) - 1
@@ -576,7 +588,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     inputs.append(["-stream_loop", "-1", "-t", "%.3f" % dur, "-i", clip])
                     rec["layers"].append({"idx": idx, "x": "0", "y": "0", "t0": t0, "t1": t1, "scale": None,
                                           "di": p["di"], "do": p["do"], "fade": True,
-                                          "opacity": float(th.get("starfield_alpha", 1.0))})
+                                          "opacity": float(ov.get("_bleed_alpha",
+                                                                   th.get("starfield_alpha", 1.0)))})
                     idx += 1
                 else:
                     baked = [ic for ic in loose if abs(ic["t0"] - t0) < 1e-6]
@@ -791,9 +804,17 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                          % (k, k, fadeA(rec["t0"], rec["t1"], DEF_DI, DEF_DO), k))
             put("ff%d" % k, "%d" % f["bx"], "%d" % f["by"], rec["t0"], rec["t1"])
             if f["subject"] is not None:   # 人物：同样缩放，只保留框底以上 → 头冲出框上缘
-                parts.append("[%s]scale=%d:%d,crop=%d:%d:%d:0,%s[fp%d]"
-                             % (subj_lab[f["subject"]], f["vw"], f["vh"], f["bw"], f["cy"] + f["bh"], f["cx"],
-                                fadeA(rec["t0"], rec["t1"], DEF_DI, DEF_DO), k))
+                parts.append("[%s]scale=%d:%d,crop=%d:%d:%d:0[fpv%d]"
+                             % (subj_lab[f["subject"]], f["vw"], f["vh"], f["bw"], f["cy"] + f["bh"],
+                                f["cx"], k))
+                # 人物的去背遮罩再乘上框的圆角剪裁：框里的边缘才不会是方角
+                parts.append("[fpv%d]split=2[fpa%d][fpb%d]" % (k, k, k))
+                parts.append("[fpa%d]alphaextract[fpm%d]" % (k, k))
+                parts.append("[%d:v]alphaextract,crop=%d:%d:%d:%d[fcm%d]"
+                             % (f["clip"], f["bw"], f["cy"] + f["bh"], f["cmg"], f["cmg"], k))
+                parts.append("[fpm%d][fcm%d]blend=all_mode=multiply[fpmm%d]" % (k, k, k))
+                parts.append("[fpb%d][fpmm%d]alphamerge,%s[fp%d]"
+                             % (k, k, fadeA(rec["t0"], rec["t1"], DEF_DI, DEF_DO), k))
                 put("fp%d" % k, "%d" % f["bx"], "%d" % (f["by"] - f["cy"]), rec["t0"], rec["t1"])
 
         def emit(rec):
