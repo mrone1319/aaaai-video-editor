@@ -223,6 +223,30 @@ def ring_src(S: int, fps: float, color: str) -> str:
     return "color=c=black@0:s=%dx%d:r=%s,format=rgba,geq=r=%d:g=%d:b=%d:a='%s'" % (S, S, fps, r, g, b, a)
 
 
+def gauge_src(S: int, fps: float, color: str, track: str, ring_w: float, ratio: float,
+              t0: float, dur: float) -> str:
+    """进度圈（lavfi 来源）：淡色底圈＋强调色弧，从 12 点开始一圈圈填到目标值（缓出）。"""
+    r, g, b = draw.hex_rgb(color)
+    tr, tg, tb = draw.hex_rgb(track)
+    c = S / 2.0
+    ro, ri = c - 1.0, c - 1.0 - ring_w
+    rad = "hypot(X-%.1f,Y-%.1f)" % (c, c)
+    ang = "mod(atan2(X-%.1f,%.1f-Y)+2*PI,2*PI)/(2*PI)" % (c, c)
+    if dur > 0.01:   # 缓出：一开始快、接近目标慢下来
+        p = "min(1,max(0,(T-%.3f)/%.3f))" % (0.0, dur)
+        grow = "%.4f*(1-pow(1-%s,3))" % (ratio, p)
+    else:
+        grow = "%.4f" % ratio
+    on = "lte(%s,%s)" % (ang, grow)
+    band = "between(%s,%.1f,%.1f)" % (rad, ri, ro)
+    a = "255*%s*if(%s,1,0.22)" % (band, on)
+    rr = "if(%s,%d,%d)" % (on, r, tr)
+    gg = "if(%s,%d,%d)" % (on, g, tg)
+    bb = "if(%s,%d,%d)" % (on, b, tb)
+    return ("color=c=black@0:s=%dx%d:r=%s,format=rgba,geq=r='%s':g='%s':b='%s':a='%s'"
+            % (S, S, fps, rr, gg, bb, a))
+
+
 def _merge(rs: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
     out: List[Tuple[float, float]] = []
     for a, b in sorted(rs):
@@ -621,6 +645,16 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                                               "t1": min(t1, st + nfr / float(fps)), "scale": None,
                                               "di": 0.0, "do": 0.0, "fade": False})
                         idx += 1
+            gg_ = L.get("gauge")
+            if gg_:   # 进度圈：一层会动的圆环，跟着卡片一起进场
+                src = gauge_src(int(gg_["size"]), fps, gg_["color"], gg_["track"], gg_["w"],
+                                float(gg_["ratio"]), gg_["t0"], float(gg_["dur"]))
+                inputs.append(["-f", "lavfi", "-t", "%.3f" % max(0.2, gg_["t1"] - gg_["t0"]), "-i", src])
+                rec["layers"].append({"idx": idx, "x": "%d" % gg_["x"], "y": "%d" % gg_["y"],
+                                      "t0": gg_["t0"], "t1": gg_["t1"], "scale": None,
+                                      "di": gg_["di"], "do": gg_["do"], "fade": True})
+                idx += 1
+
             ph = L.get("photo")
             if ph:   # 头像牌：强调色圆（外圈）＋圆形照片，跟卡片同时进场
                 f = os.path.normpath(os.path.join(sb.get("_base", ""), ph["file"]))

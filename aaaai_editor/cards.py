@@ -163,7 +163,8 @@ def _icon_blk(ov, th, W, scale=0.085) -> Optional[dict]:
             "gap": 0, "align": ov.get("align", "center"), "delay": 0.0}
 
 
-LITE_TYPES = ("title", "quote", "lower_third", "stat", "bullets", "rows", "compare", "icons", "avatar")
+LITE_TYPES = ("title", "quote", "lower_third", "stat", "bullets", "rows", "compare", "icons", "avatar",
+              "gauge", "rank", "timeline", "rating")
 LOWER_TYPES = ("lower_third", "avatar")   # 放在画面下沿的卡片
 
 
@@ -286,8 +287,10 @@ def blocks_gauge(ov, th, W) -> Tuple[List[dict], str]:
     size = round(W * float(ov.get("size", 0.34)))
     b.append({"kind": "gauge", "size": size, "ratio": v, "color": th["accent"],
               "track": th.get("row") or "#FFFFFF", "text": ov.get("center", "%d%%" % round(v * 100)),
-              "text_color": th["text"], "gap": round(W * 0.022) if b else 0, "delay": 0.0,
-              "align": "center", "mono": True})
+              "text_color": th["text"], "gap": round(W * (0.046 if b else 0.012)), "delay": 0.0,
+              "align": "center", "mono": True, "pad_after": round(W * 0.034),
+              "count": bool(ov.get("count", True)), "count_dur": float(ov.get("count_dur", 1.0)),
+              "of": float(ov.get("of", 0) or 0), "value": float(ov.get("value", 0))}) 
     if ov.get("label"):
         b.append(_blk(ov["label"], round(W * 0.034), th["muted"], align="center",
                       gap=round(W * 0.016), role="label"))
@@ -616,6 +619,10 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     for b, ls in zip(blocks, lines_of):
         if b["kind"] == "icon":
             content_w = max(content_w, b["size"])
+        elif b["kind"] == "gauge":            # 进度圈本身就有宽度：卡片要按它放大，圈才不会出框
+            content_w = max(content_w, b["size"])
+        elif b["kind"] == "stars":
+            content_w = max(content_w, b["n"] * (b["size"] + b["step"]) - b["step"])
         for ln in ls:
             content_w = max(content_w, est_w(ln, b["size"], b["mono"], b.get("_wf")) + b["_lead_w"])
 
@@ -683,7 +690,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         if b["kind"] == "bar":
             return b["size"]
         if b["kind"] == "gauge":
-            return b["size"]
+            return b["size"] + b.get("pad_after", 0)
         if b["kind"] == "stars":
             return b["size"]
         if b["kind"] == "rank":
@@ -795,6 +802,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     shapes: List[dict] = []
     arcs: List[dict] = []
     stars: List[dict] = []
+    gauge = None
     if bleed_lite:
         bw = max(round(U * 0.10), 40)
         shapes.append({"x": W / 2.0 - bw / 2.0, "y": cur, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
@@ -837,15 +845,21 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             gx = ccx - sz / 2.0
             r_ = sz / 2.0 - max(6, U * 0.012)
             w_ = max(6, U * 0.016)
-            arcs.append({"cx": gx + sz / 2.0, "cy": cur + sz / 2.0, "r": r_, "w": w_,
-                         "color": b["track"], "alpha": 0.24, "a0": -90.0, "a1": 270.0})
-            arcs.append({"cx": gx + sz / 2.0, "cy": cur + sz / 2.0, "r": r_, "w": w_,
-                         "color": b["color"], "alpha": 1.0, "a0": -90.0, "a1": -90.0 + 360.0 * b["ratio"]})
+            gauge = {"cx": gx + sz / 2.0, "cy": cur + sz / 2.0, "r": r_, "w": w_, "size": sz,
+                     "ratio": b["ratio"], "color": b["color"], "track": b["track"],
+                     "t0": t0, "t1": t1, "dur": b["count_dur"] if b["count"] else 0.0,
+                     "di": di, "do": DO, "x": int(round(gx)), "y": int(round(cur))}
             csz = round(sz * 0.30)
-            items.append(dict(common, size=csz, color=b["text_color"], mono=True, t0=t0,
-                              y=int(round(cur + sz / 2.0 - csz * 0.62)), stroke=False, soft=False,
-                              text=b["text"], cx=int(round(gx + sz / 2.0)), role="number"))
-            cur += sz
+            it_g = dict(common, size=csz, color=b["text_color"], mono=True, t0=t0,
+                        y=int(round(cur + sz / 2.0 - csz * 0.62)), stroke=False, soft=bool(lite),
+                        text=b["text"], cx=int(round(gx + sz / 2.0)), role="number")
+            if b["count"]:   # 中间的数字用跳数：和圈一起填满
+                pct = not b.get("of")
+                it_g["counter"] = {"to": (b["value"] if not pct else round(b["ratio"] * 100)),
+                                   "from": 0.0, "prefix": "", "suffix": "%" if pct else "",
+                                   "digits": 0, "style": "comma", "count": True, "dur": b["count_dur"]}
+            items.append(it_g)
+            cur += sz + b.get("pad_after", 0)
             continue
         if b["kind"] == "rank":    # 排行榜：一行名称＋数值，下面一条按占比的长条
             lsz, vsz, bh_ = b["lsz"], b["vsz"], b["bar"]
@@ -992,7 +1006,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                               "y": int(round(y + b["size"] * 0.30)), "text": b["lead"],
                               "stroke": False, "role": "lead"})
             cur += b["size"] * lh_for(b["size"], U)
-    L = {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "arcs": arcs, "stars": stars, "t": (t0, t1)}
+    L = {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "arcs": arcs, "stars": stars, "gauge": gauge, "t": (t0, t1)}
     # 闪光：主卡（标题、数据、金句、片尾）进场时，主文字旁边闪出几颗四角星
     if (typ in ("title", "stat", "quote") or bleed_lite) and ov.get("chapter") is None \
             and ov.get("sparkle", th.get("sparkle", True)):

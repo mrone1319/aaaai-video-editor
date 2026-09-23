@@ -121,8 +121,12 @@ def _cta(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
     qa = float(ov.get("question_at", t0))
     ca = float(ov.get("cta_at", qa + 1.0))
     top = float(ov.get("top", PANEL_TOP))
-    out = [{"type": "title", "t": [qa, t1], "kicker": ov.get("kicker"), "text": ov.get("question", ""),
-            "_xy": [0.5, top], "lite": False, "anim": "rise", "align": "center"}]
+    # 在卡片接管里才用底板（上方本来就是面板区）；单独用时走遮罩版，看得见画面
+    title = {"type": "title", "t": [qa, t1], "kicker": ov.get("kicker"), "text": ov.get("question", ""),
+             "anim": "rise", "align": "center", "_xy": [0.5, top]}   # 位置固定在上方：下面接评论框
+    if win:
+        title["lite"] = False
+    out = [title]
     kw = ov.get("keyword") or ""
     if (ov.get("style") or "box") != "box":
         if kw:
