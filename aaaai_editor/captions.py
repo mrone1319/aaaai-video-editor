@@ -118,9 +118,6 @@ def resolve_style(sb: dict) -> str:
     cap = sb["captions"]
     if not cap.get("style"):
         cap["style"] = theme.theme(sb.get("style"), sb["_base"], sb.get("brand")).get("captions") or "clean"
-    th = theme.all_themes(sb.get("_base"))
-    if cap["style"] in th:
-        theme.check_access(cap["style"], th[cap["style"]])
     return cap["style"]
 
 

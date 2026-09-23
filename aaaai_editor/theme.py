@@ -61,38 +61,68 @@ BUILTIN: Dict[str, dict] = {
         "plate": ["#12161D", "#1B2430"], "plate_alpha": 0.92, "radius": 30,
         "text": "#F6F3EC", "muted": "#9BA6B4", "accent": "#F0B23C", "on_accent": "#14181F",
         "border": {"w": 0, "color": "#2A3442"},
-        "shadow": {"soft": 26, "alpha": 0.42, "dy": 10, "color": "#000000"}}),
+        "shadow": {"soft": 26, "alpha": 0.42, "dy": 10, "color": "#000000"},
+        "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono",
+        "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1}, "row_title": {"bold": 1},
+                 "kicker": {"bold": 1, "upper": 1, "tracking": 0.20}, "stamp": {"bold": 1},
+                 "number": {"font": "mono", "bold": 1}, "badge": {"font": "mono", "bold": 1},
+                 "name": {"bold": 1}, "item": {"bold": 1}, "row_tag": {"font": "mono", "bold": 1}}}),
     "neon": dict(_DARK_SEM, **{  # Web3：近黑底、青绿强调
         "desc": "Web3：近黑底、青绿强调、细描边",
         "plate": ["#0A0C18", "#141033"], "plate_alpha": 0.90, "radius": 22,
         "text": "#EAF2FF", "muted": "#8C96B8", "accent": "#32E3C2", "on_accent": "#06120F",
         "border": {"w": 2, "color": "#2B3570"},
-        "shadow": {"soft": 30, "alpha": 0.50, "dy": 8, "color": "#03030A"}}),
+        "shadow": {"soft": 30, "alpha": 0.50, "dy": 8, "color": "#03030A"},
+        "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono",
+        "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1}, "row_title": {"bold": 1},
+                 "kicker": {"font": "mono", "bold": 1, "upper": 1, "tracking": 0.26}, "stamp": {"bold": 1, "tracking": 0.10},
+                 "number": {"font": "mono", "bold": 1}, "badge": {"font": "mono", "bold": 1, "upper": 1},
+                 "name": {"bold": 1}, "item": {"bold": 1}, "row_tag": {"font": "mono", "bold": 1}}}),
     "paper": dict(_LIGHT_SEM, **{  # 编辑／印刷：米白底、深墨字、朱红强调
         "desc": "编辑／印刷：米白底、深墨字、朱红强调",
         "plate": ["#F8F4EA", "#EFE7D6"], "plate_alpha": 0.96, "radius": 10,
         "text": "#191512", "muted": "#6B6257", "accent": "#C2452D", "on_accent": "#FFFFFF",
         "border": {"w": 0, "color": "#D8CDB6"},
-        "shadow": {"soft": 22, "alpha": 0.30, "dy": 8, "color": "#2A2015"}}),
+        "shadow": {"soft": 22, "alpha": 0.30, "dy": 8, "color": "#2A2015"},
+        "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono", "serif_font": "Songti SC",
+        "type": {"title": {"font": "serif", "bold": 1}, "heading": {"font": "serif", "bold": 1}, "quote": {"font": "serif", "bold": 1},
+                 "kicker": {"bold": 1, "upper": 1, "tracking": 0.18}, "stamp": {"bold": 1},
+                 "number": {"font": "mono", "bold": 1}, "badge": {"font": "mono", "bold": 1},
+                 "row_title": {"bold": 1}, "name": {"bold": 1}, "item": {"bold": 1}}}),
     # —— 以下三套取自 uupm-design 的产品色板数据 ——
     "gold": dict(_DARK_SEM, **{  # Fintech/Crypto：金色信任 + 紫色科技
         "desc": "金融加密：石板底、金色信任、紫色科技",
         "plate": ["#1A2030", "#222735"], "plate_alpha": 0.93, "radius": 18,
         "text": "#F8FAFC", "muted": "#94A3B8", "accent": "#F59E0B", "on_accent": "#0F172A",
         "accent2": "#8B5CF6", "border": {"w": 2, "color": "#334155"},
-        "shadow": {"soft": 28, "alpha": 0.45, "dy": 10, "color": "#020617"}}),
+        "shadow": {"soft": 28, "alpha": 0.45, "dy": 10, "color": "#020617"},
+        "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono",
+        "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1}, "row_title": {"bold": 1},
+                 "kicker": {"font": "mono", "bold": 1, "upper": 1, "tracking": 0.24}, "stamp": {"bold": 1},
+                 "number": {"font": "mono", "bold": 1}, "badge": {"font": "mono", "bold": 1, "upper": 1},
+                 "name": {"bold": 1}, "item": {"bold": 1}, "row_tag": {"font": "mono", "bold": 1}}}),
     "trust": dict(_DARK_SEM, **{  # 理财：信任蓝 + 盈利绿
         "desc": "理财／机构：深海军底、信任蓝、盈利绿",
         "plate": ["#101A33", "#192134"], "plate_alpha": 0.93, "radius": 16,
         "text": "#FFFFFF", "muted": "#94A3B8", "accent": "#3B82F6", "on_accent": "#FFFFFF",
         "value": "#10B981", "border": {"w": 1, "color": "#2A3550"},
-        "shadow": {"soft": 26, "alpha": 0.45, "dy": 10, "color": "#020617"}}),
+        "shadow": {"soft": 26, "alpha": 0.45, "dy": 10, "color": "#020617"},
+        "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono",
+        "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1}, "row_title": {"bold": 1},
+                 "kicker": {"bold": 1, "upper": 1, "tracking": 0.22}, "stamp": {"bold": 1},
+                 "number": {"font": "mono", "bold": 1}, "badge": {"font": "mono", "bold": 1},
+                 "name": {"bold": 1}, "item": {"bold": 1}, "row_tag": {"font": "mono", "bold": 1}}}),
     "mag": dict(_LIGHT_SEM, **{  # 杂志：纯白卡、近黑字、品红强调
         "desc": "杂志／评论：纯白卡、近黑字、品红强调",
         "plate": ["#FFFFFF", "#F4F4F5"], "plate_alpha": 0.97, "radius": 6,
         "text": "#09090B", "muted": "#475569", "accent": "#EC4899", "on_accent": "#FFFFFF",
         "border": {"w": 2, "color": "#E4E4E7"},
-        "shadow": {"soft": 24, "alpha": 0.28, "dy": 9, "color": "#18181B"}}),
+        "shadow": {"soft": 24, "alpha": 0.28, "dy": 9, "color": "#18181B"},
+        "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono",
+        "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1, "italic": 1}, "row_title": {"bold": 1},
+                 "kicker": {"bold": 1, "upper": 1, "tracking": 0.30}, "stamp": {"bold": 1, "upper": 1, "tracking": 0.08},
+                 "number": {"font": "mono", "bold": 1}, "badge": {"font": "mono", "bold": 1, "upper": 1},
+                 "name": {"bold": 1}, "item": {"bold": 1}, "row_tag": {"font": "mono", "bold": 1}}}),
     # —— 以下三套走 libass 富文本（混色高亮、字距、斜体、展示字体）——
     "otg": {  # 依据 otg-dashboard/BRAND.md
         "desc": "OTG 火箭风：深空黑、OTG 红、火焰点缀、红色光晕、毛玻璃、星空断章、激光扫光",
@@ -115,8 +145,8 @@ BUILTIN: Dict[str, dict] = {
                  "kicker": {"bold": 1, "upper": 1, "tracking": 0.28},
                  "stamp": {"bold": 1, "upper": 1, "tracking": 0.12},
                  "number": {"font": "mono", "bold": 1}, "badge": {"font": "mono", "bold": 1},
-                 "name": {"bold": 1}, "position": {"bold": 1},
-                 "row_title": {"bold": 1}, "name": {"bold": 1}, "label": {"bold": 1}}},
+                 "name": {"bold": 1}, "position": {"bold": 1}, "item": {"bold": 1},
+                 "row_title": {"bold": 1}, "row_tag": {"font": "mono", "bold": 1}, "label": {"bold": 1}}},
     "mrone": {  # 参考你自己成片里的观感：近黑卡、白色粗标题、金黄高亮与编号
         "desc": "MR ONE 黑金：近黑卡、白色粗标题、金黄关键词与编号方块",
         "plate": ["#121215", "#0B0B0D"], "plate_alpha": 0.94, "radius": 22,
@@ -182,15 +212,6 @@ def resolve_colors(t: dict) -> dict:
     return t
 
 
-class Restricted(RuntimeError):   # 旧版的受限风格错误；社群风格现在不需授权，保留名称给旧代码引用
-    pass
-
-
-def check_access(key: str, t: dict) -> None:
-    """社群风格（mrone © MR ONE、otg © OTG 社群）人人可用，不需授权；只是不当首选推荐（见 SKILL）。"""
-    return
-
-
 def is_community(t: dict) -> bool:
     return bool(t.get("community") or t.get("restricted"))
 
@@ -200,7 +221,6 @@ def theme(name: Optional[str], base_dir: Optional[str] = None, brand: Optional[d
     key = name or DEFAULT_THEME
     if key not in themes:
         raise RuntimeError("没有这个风格：%s（可用：%s）" % (key, " ".join(themes)))
-    check_access(key, themes[key])
     t = dict(themes[key])
     if brand:
         t.update(brand)

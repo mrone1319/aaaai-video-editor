@@ -1,0 +1,24 @@
+{
+  "name": "mybrand",
+  "extends": "ink",
+  "desc": "示范：照自己的品牌色改一套风格（复制这个文件到 ~/.aaaai-editor/themes/ 再改）",
+  "plate": ["#14181F", "#0E1116"],
+  "plate_alpha": 0.94,
+  "radius": 20,
+  "text": "#FFFFFF",
+  "muted": "#9AA3AF",
+  "accent": "#4ADE80",
+  "on_accent": "#08120C",
+  "value": "#4ADE80",
+  "border": {"w": 1, "color": "#242A33"},
+  "shadow": {"soft": 26, "alpha": 0.45, "dy": 10, "color": "#000000"},
+  "sheen": 0.05,
+  "sparkle": 1,
+  "float": 1,
+  "type": {
+    "title": {"bold": 1},
+    "heading": {"bold": 1},
+    "kicker": {"bold": 1, "upper": 1, "tracking": 0.20},
+    "number": {"font": "mono", "bold": 1}
+  }
+}

@@ -24,6 +24,8 @@
 {"type":"title",  "t":[1,4], "kicker":"STEP 01", "text":"先定构思，再选效果", "sub":"一个载体，出现三次以上"}
 {"type":"stat",   "t":[5,8], "kicker":"TOTAL", "value":24800, "from":0, "suffix":"+", "label":"月活钱包",
                   "count":true, "count_dur":1.0, "digits":0, "format":"comma"}
+{"type":"stat",   "t":[5,8], "kicker":"每天省下", "value":3, "unit":"小时", "label":"一条片从 3 小时变 5 分钟",
+                  "bar":0.82}   // unit：单位小一号、用强调色；bar：量感条（也可写 "of":总量 自动算占比）
 {"type":"bullets","t":[9,14],"items":["转录成文字","剪掉停顿","加字幕和配乐"], "stagger":0.16}
 {"type":"quote",  "t":[2,6], "text":"不要用随机抖动假装人味", "by":"剪辑笔记"}
 {"type":"lower_third","t":[1,4],"name":"Alex Chen","role":"内容创作者"}
@@ -34,8 +36,11 @@
 {"type":"clip",   "t":[6,9], "file":"mg.mov", "width":1.0}
 ```
 
+- `stat`：`unit`（或 `suffix`）会自动小一号、换成强调色，数字才是主角；写 `bar`（0–1）或 `of`（总量）
+  会在最下面画一条量感条，占比一眼看得出来。
 - `stat` 的数字用等宽字体，计数时不会左右跳动。计数被摊成最多 20 个区间，
   所以千分位、前后缀都能正常显示（ffmpeg 表达式做不到千分位）。
+- `callout`（画面上的小标注）与 `stamp` 同一种版式，写哪个都行。
 - `clip` 吃带透明通道的片段（ProRes 4444 `.mov` 或 VP9-alpha `.webm`），
   可以直接放 `motion-graphic-video-editor` 输出的 MG 成品。
 
@@ -53,7 +58,8 @@
 
 ## 风格
 
-`~/.aaaai-editor/bin/aaaai-editor themes` 看全部风格与字体（详见 `docs/STYLE.md`）。想改配色／圆角／投影：在 `~/.aaaai-editor/themes/` 放一个继承现有风格的 json（写法见 `themes/README.md`），
+`~/.aaaai-editor/bin/aaaai-editor themes` 看全部风格与字体（详见 `docs/STYLE.md`）。想改配色／圆角／投影：在 `~/.aaaai-editor/themes/` 放一个继承现有风格的 json
+（写法见 `themes/README.md`，可直接复制 `themes/example-brand.json` 改），
 不要改程序里的 `aaaai_editor/theme.py`（更新会被覆盖）。开发者加卡片类型：在 `aaaai_editor/cards.py` 写一个 `blocks_*` 函数。
 
 ## 人像去背（文字穿插 / 人物抠出）
@@ -131,6 +137,10 @@ B-roll 时段内不要用 `behind_subject`（人物会被重贴到 B-roll 上面
 - 人名条：画面下沿一层渐变遮罩，左边一条强调色竖线，姓名粗体、职务用强调色。默认放左下，字幕在它上方。
 - 片尾（`outro`）：画面半透明压暗（人还看得到），居中大标题，上方强调色短线，副标题做成强调色按钮式标签；`"dim": 1` 为全黑。
 - 遮罩颜色取风格的底板色；浅色风格（paper、mag、serif）自动改用深色遮罩配浅色字，并把强调色提亮，保证任何画面上都看得清。
+- 风格档可调的视觉开关：`sheen`（底板顶部高光，0–0.12）、`sparkle`（标题／数字旁的小星光）、
+  `float`（落定后极轻微的浮动）、`shadow.spread`／`shadow.ambient`（投影扩散与环境光影）。
+- 卡片动效：入场时长按卡片类型分配（大标题慢、数字与小徽章快），`rise`／`pop` 收尾带一点超调；
+  单张卡写 `"di": 0.5` 可以自己指定入场时长。
 - 数据跳数（`stat`）、清单（`bullets`）、编号行卡（`rows`）、对比（`compare`）也一样：默认放左上、渐变遮罩、左对齐。
   清单内容一长（会盖到脸），遮罩会自动压深，变成一个明确的「清单时刻」。
 - 对比（`compare` 配方）改成上下两组：前一组淡色＋叉（你以为／以前），后一组价值色＋勾（其实／现在），第二组晚 0.6 秒出现（`reveal` 可调）。

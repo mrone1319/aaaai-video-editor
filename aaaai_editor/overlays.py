@@ -25,9 +25,13 @@ def col(hexc: str) -> str:
     return "0x" + hexc.lstrip("#")
 
 
-def ease(t0: float, d: float) -> str:
-    """0→1 的平滑渐变表达式（smoothstep）。"""
+def ease(t0: float, d: float, curve: str = "smooth") -> str:
+    """0→1 的渐变表达式。smooth＝smoothstep；back＝收尾走过头一点再回来（弹出感）。"""
     p = "min(1\\,max(0\\,(t-%.3f)/%.3f))" % (t0, max(d, 0.01))
+    if curve == "back":
+        k = 0.9
+        q = "((%s)-1)" % p
+        return "(1+%.2f*%s*%s*%s+%.2f*%s*%s)" % (k + 1.0, q, q, q, k, q, q)
     return "(%s)*(%s)*(3-2*(%s))" % (p, p, p)
 
 
@@ -63,7 +67,7 @@ def _drawtext(it: dict, work: str, fps: float) -> List[str]:
     font = theme.num_font() if it.get("mono") and not any(cards.is_cjk(c) for c in txt) \
         else theme.cjk_font()
     t0, t1, di, do = it["t0"], it["t1"], it["di"], it["do"]
-    s = ease(t0, di)
+    s = ease(t0, di, it.get("curve") or "smooth")
     if it.get("cx") is not None:
         x = "(%d-text_w/2)" % it["cx"]
     else:
@@ -559,7 +563,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                             idx += 1
                     png, margin = draw.make_plate(spec, os.path.join(work, "plates"))
                     inputs.append(["-loop", "1", "-t", "%.3f" % dur, "-i", os.path.relpath(png, work)])
-                    s_ = ease(t0, p["di"])
+                    s_ = ease(t0, p["di"], p.get("curve") or "smooth")
                     x = "%d" % (p["x"] - margin)
                     y = "%d" % (p["y"] - margin)
                     if p["dx"]:

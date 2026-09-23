@@ -13,8 +13,24 @@ MARGIN_X = 0.058   # 左右安全边距（相对宽）
 TOP_M = 0.085      # 上安全边距（相对高）
 BOT_M = 0.190      # 下安全边距：给字幕留位，卡片不压字幕
 PAD = 0.050        # 卡片内边距（相对宽）
-LH = 1.34          # 行高倍数
+LH = 1.34          # 行高倍数（基准）
+
+
+def lh_for(size: float, U: float) -> float:
+    """行高按字号收放：大标题收紧（松了显得散），小字放宽（挤了不好读）。"""
+    r = size / max(1.0, float(U))
+    if r >= 0.075:
+        return 1.16
+    if r >= 0.055:
+        return 1.24
+    if r <= 0.032:
+        return 1.42
+    return LH
 DI, DO = 0.42, 0.30  # 入场／出场时长（秒）
+# 每种卡片的入场时长：越大的东西给越多时间，越小的越干脆（动效有轻重，画面才有节奏）
+DI_BY_TYPE = {"title": 0.46, "quote": 0.46, "bullets": 0.40, "rows": 0.40, "compare": 0.40,
+              "icons": 0.38, "stat": 0.34, "step": 0.30, "lower_third": 0.38, "avatar": 0.38,
+              "text": 0.34, "stamp": 0.22}
 
 
 def is_cjk(ch: str) -> bool:
@@ -218,13 +234,37 @@ def blocks_stat(ov, th, W) -> Tuple[List[dict], str]:
          "count": bool(ov.get("count", True)), "dur": float(ov.get("count_dur", 1.0))}
     # 用终值字串量尺寸，计数过程中的中间值不会比它宽
     widest = c["prefix"] + fmt_num(max(abs(c["to"]), abs(c["from"])), c["style"], c["digits"]) + c["suffix"]
-    num = _blk(widest, round(W * float(ov.get("scale", 1.0)) * (0.170 if lite else 0.150)), th["accent"], mono=True,
+    num = _blk(widest, round(W * float(ov.get("scale", 1.0)) * (0.170 if lite else 0.150)),
+               th["accent"], mono=True,
                align=al, gap=round(W * 0.012) if b else 0, role="number")
     num["counter"] = c
+    # 单位（后缀，或单写 unit）小一号、换强调色：数字是主角，单位是配角
+    unit = ov.get("unit") or (ov.get("suffix") if ov.get("suffix") and not str(ov.get("suffix")).isdigit() else "")
+    if unit:
+        num["unit"] = unit
+        num["unit_scale"] = float(ov.get("unit_scale", 0.54))
+        num["unit_color"] = th["accent"]
+        num["color"] = th["text"]          # 数字用正文色、单位用强调色：主次分明
+        if not ov.get("suffix"):
+            c["suffix"] = unit
+            widest = c["prefix"] + fmt_num(max(abs(c["to"]), abs(c["from"])), c["style"], c["digits"]) + unit
+            num["text"] = widest
     b.append(num)
     if ov.get("label"):
         b.append(_blk(ov["label"], round(W * (0.040 if lite else 0.034)), th["text"] if lite else th["muted"],
                       align=al, gap=round(W * 0.010), role="label"))
+    ratio = ov.get("bar")
+    if ratio is None and ov.get("of"):          # 写了总量就自动算占比
+        try:
+            ratio = float(ov["value"]) / float(ov["of"])
+        except (TypeError, ZeroDivisionError, ValueError):
+            ratio = None
+    if ratio is not None:
+        pl_ = th["plate"][-1] if isinstance(th["plate"], (list, tuple)) else th["plate"]
+        dark = lite or sum(int(pl_.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)) < 3 * 128
+        b.append({"kind": "bar", "size": max(4, round(W * 0.011)), "gap": round(W * 0.026),
+                  "ratio": float(ratio), "color": th["accent"], "dark": dark,
+                  "align": al, "delay": 0.0, "text": "", "mono": False, "color_": None})
     return b, "fit"
 
 
@@ -410,7 +450,8 @@ def blocks_compare(ov, th, W) -> Tuple[List[dict], str]:
 
 BUILDERS = {"compare": blocks_compare, "title": blocks_title, "stat": blocks_stat, "bullets": blocks_bullets,
             "quote": blocks_quote, "lower_third": blocks_lower_third, "avatar": blocks_avatar, "stamp": blocks_stamp,
-            "text": blocks_text, "icons": blocks_icons, "rows": blocks_rows, "step": blocks_step}
+            "text": blocks_text, "icons": blocks_icons, "rows": blocks_rows, "step": blocks_step,
+            "callout": blocks_stamp}   # callout＝画面上的小标注，版式与印章相同
 
 ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
            "top_left": (0.0, 0.0), "top_right": (1.0, 0.0),
@@ -540,7 +581,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                     ls = wrap(plain, sz, tw, False, width_factor(th, "row_" + key, False))
                     parts.append((key, sz, gap if parts else 0, ls,
                                   line_runs(ls, plain, mask) if any(mask) else [None] * len(ls)))
-            th_ = sum(g + len(ls) * sz * LH for _k, sz, g, ls, _r in parts)
+            th_ = sum(g + len(ls) * sz * lh_for(sz, U) for _k, sz, g, ls, _r in parts)
             rows.append((parts, rp * 2 + max(bs, th_)))
         b.update(_rp=rp, _bs=bs, _gx=gx, _rowsm=rows, _rgap=U * (0.012 if lite else 0.020))
 
@@ -551,7 +592,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             return b["size"]
         if b["kind"] == "grid":
             return sum(b["_row_h"]) + b["_rgap"] * (len(b["_rows"]) - 1)
-        return len(ls) * b["size"] * LH
+        if b["kind"] == "bar":
+            return b["size"]
+        return len(ls) * b["size"] * lh_for(b["size"], U)
 
     photo_sz = round(U * float(ov.get("photo_size", 0.15))) if typ == "avatar" else 0
     if photo_sz:   # 头像牌：文字在照片旁边垂直置中
@@ -569,7 +612,11 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     dx0, dy0 = {"rise": (0, round(H * 0.026)), "fall": (0, -round(H * 0.026)),
                 "left": (-round(W * 0.05), 0), "right": (round(W * 0.05), 0),
                 "pop": (0, round(H * 0.014)), "fade": (0, 0)}.get(anim, (0, 0))
-    di = 0.26 if anim == "pop" else DI
+    # 入场时长按卡片分工：大标题慢一点（稳），数字与小徽章快一点（脆）；pop 走带超调的曲线
+    di = float(ov.get("di") or DI_BY_TYPE.get(typ, DI))
+    if anim == "pop":
+        di = min(di, 0.28)
+    cv = "back" if anim in ("pop", "rise") and typ not in ("lower_third", "avatar", "text") else "smooth"
 
     if mode == "bleed":
         px, py, plate_h = 0, 0, H
@@ -632,9 +679,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         else:
             plate = {"w": int(round(plate_w)), "h": int(round(plate_h)), "radius": th["radius"],
                      "fill": th["plate"], "alpha": th["plate_alpha"], "border": th["border"],
-                     "shadow": th["shadow"]}
+                     "shadow": th["shadow"], "sheen": float(th.get("sheen", 0.05))}
         plate.update({"x": int(round(px)), "y": int(round(py)), "dx": dx0, "dy": dy0,
-                      "t0": t0, "t1": t1, "di": di, "do": DO})
+                      "t0": t0, "t1": t1, "di": di, "do": DO, "curve": cv})
 
     items: List[dict] = []
     icons: List[dict] = []
@@ -649,7 +696,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         bw = max(round(U * 0.10), 40)
         shapes.append({"x": cbox_x, "y": py, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
     ccx = cbox_x + cbox_w / 2.0
-    common = {"t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0}
+    common = {"t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0, "curve": cv}
 
     def add_icon(name, x, y, size, color, badge, delay):
         icons.append(dict(common, name=name, x=round(x, 1), y=round(y, 1), size=int(round(size)),
@@ -657,6 +704,14 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
 
     for b, ls in zip(blocks, lines_of):
         cur += b["gap"]
+        if b["kind"] == "bar":   # 量感条：一条底轨＋一段强调色，占比一眼看得出来
+            h = b["size"]
+            shapes.append({"x": cbox_x, "y": cur, "w": cbox_w, "h": h, "r": h / 2.0,
+                           "fill": "#FFFFFF" if b["dark"] else "#000000", "alpha": 0.14})
+            fw = max(h, cbox_w * min(1.0, max(0.02, b["ratio"])))
+            shapes.append({"x": cbox_x, "y": cur, "w": fw, "h": h, "r": h / 2.0, "fill": b["color"]})
+            cur += h
+            continue
         if b["kind"] == "icon":
             x = ccx - b["size"] / 2.0 if b["align"] == "center" else cbox_x
             add_icon(b["name"], x, cur, b["size"], b["color"], b.get("badge"), b["delay"])
@@ -690,7 +745,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                         items.append(dict(common, size=sz, color=col[key], mono=False, t0=t0 + d,
                                           y=int(round(ty)), x=tx, text=ln, stroke=False,
                                           role="row_" + key, runs=runs[li]))
-                        ty += sz * LH
+                        ty += sz * lh_for(sz, U)
                 ry += rh + b["_rgap"]
             cur = ry - b["_rgap"]
             continue
@@ -718,11 +773,14 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             continue
         for li, ln in enumerate(ls):
             y = cur
-            it = {"size": b["size"], "color": b["color"], "mono": b["mono"],
+            it = {"size": b["size"], "color": b["color"], "mono": b["mono"], "curve": cv,
                   "t0": t0 + b["delay"], "t1": t1, "di": di, "do": DO,
                   "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none" and not lite and ov.get("halo", True),
                   "soft": False, "hl": th.get("hl") if lite else None,
                   "role": b.get("role", "text"), "runs": b["_runs"][li]}
+            for k_ in ("unit", "unit_scale", "unit_color"):
+                if b.get(k_) is not None and li == len(ls) - 1:
+                    it[k_] = b[k_]
             if b["align"] == "center":
                 it["cx"] = int(round(ccx))
             else:
@@ -750,7 +808,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                               "dx": dx0, "dy": dy0, "x": int(round(cbox_x)),
                               "y": int(round(y + b["size"] * 0.30)), "text": b["lead"],
                               "stroke": False, "role": "lead"})
-            cur += b["size"] * LH
+            cur += b["size"] * lh_for(b["size"], U)
     L = {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "t": (t0, t1)}
     # 闪光：主卡（标题、数据、金句、片尾）进场时，主文字旁边闪出几颗四角星
     if (typ in ("title", "stat", "quote") or bleed_lite) and ov.get("chapter") is None \
@@ -783,7 +841,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     if photo_sz:
         L["photo"] = {"file": ov.get("file", ""), "x": round(cbox_x), "y": round(py + pad + (body_h - photo_sz) / 2.0),
                       "size": photo_sz, "ring": th["accent"], "focus": float(ov.get("focus", 0.35)),
-                      "t0": t0, "t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0}
+                      "t0": t0, "t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0, "curve": cv}
     return L
 
 

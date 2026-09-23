@@ -15,7 +15,7 @@ from typing import Callable, Tuple
 from .png import write_rgba
 
 RGB = Tuple[int, int, int]
-PLATE_VER = "2"
+PLATE_VER = "3"
 
 
 def hex_rgb(s: str) -> RGB:
@@ -98,6 +98,92 @@ def paint(buf: bytearray, W: int, H: int, cx: float, cy: float, hw: float, hh: f
                 buf[i + 3] = int(round(na * 255))
 
 
+def _mask(W: int, H: int, cx: float, cy: float, hw: float, hh: float, r: float, step: int) -> list:
+    """圆角矩形的覆盖率图（每 step 像素取一格）：投影先在这张小图上糊，再放大回来。"""
+    mw, mh = max(1, W // step), max(1, H // step)
+    m = [0.0] * (mw * mh)
+    for j in range(mh):
+        y = (j + 0.5) * step
+        dy = abs(y - cy)
+        if _halfspan(hw + 1, hh + 1, r + 1, dy) < 0:
+            continue
+        row = j * mw
+        for i in range(mw):
+            x = (i + 0.5) * step
+            d = _sdf(x - cx, y - cy, hw, hh, r)
+            if d <= -step:
+                m[row + i] = 1.0
+            elif d < step:
+                m[row + i] = min(1.0, max(0.0, (step - d) / (2.0 * step)))
+    return m
+
+
+def _blur(m: list, w: int, h: int, rad: int, passes: int = 3) -> list:
+    """三次方框模糊 ≈ 高斯（用滑动窗口，纯 Python 也够快）。"""
+    if rad < 1:
+        return m
+    for _ in range(passes):
+        out = [0.0] * (w * h)
+        n = 2 * rad + 1
+        for j in range(h):                      # 横向
+            row = j * w
+            acc = m[row] * (rad + 1)
+            for i in range(min(rad, w - 1)):
+                acc += m[row + i + 1] if i + 1 < w else m[row + w - 1]
+            for i in range(w):
+                out[row + i] = acc / n
+                acc += m[row + min(w - 1, i + rad + 1)] - m[row + max(0, i - rad)]
+        m = out
+        out = [0.0] * (w * h)
+        for i in range(w):                      # 纵向
+            acc = m[i] * (rad + 1)
+            for j in range(min(rad, h - 1)):
+                acc += m[(j + 1) * w + i] if j + 1 < h else m[(h - 1) * w + i]
+            for j in range(h):
+                out[j * w + i] = acc / n
+                acc += m[min(h - 1, j + rad + 1) * w + i] - m[max(0, j - rad) * w + i]
+        m = out
+    return m
+
+
+def _put_shadow(buf: bytearray, W: int, H: int, m: list, mw: int, mh: int, step: int,
+                col: RGB, amax: float, over: bool = False, skip: tuple = ()) -> None:
+    """把糊好的小图按双线性放大，铺成投影。over=False 时 buf 还是空的，直接写字节。"""
+    cr, cg, cb = col
+    for y in range(H):
+        fy = (y + 0.5) / step - 0.5
+        j0 = min(mh - 1, max(0, int(fy)))
+        j1 = min(mh - 1, j0 + 1)
+        wy = min(1.0, max(0.0, fy - j0))
+        r0, r1 = j0 * mw, j1 * mw
+        if max(m[r0:r0 + mw]) <= 0.004 and max(m[r1:r1 + mw]) <= 0.004:
+            continue
+        row = y * W * 4
+        sx0, sx1 = (skip[0], skip[2]) if (skip and skip[1] <= y <= skip[3]) else (1, 0)
+        for x in range(W):
+            if sx0 <= x <= sx1:     # 底板自己会盖住的部分不用画投影（省掉大半的像素）
+                continue
+            fx = (x + 0.5) / step - 0.5
+            i0 = min(mw - 1, max(0, int(fx)))
+            i1 = min(mw - 1, i0 + 1)
+            wx = min(1.0, max(0.0, fx - i0))
+            v = ((m[r0 + i0] * (1 - wx) + m[r0 + i1] * wx) * (1 - wy)
+                 + (m[r1 + i0] * (1 - wx) + m[r1 + i1] * wx) * wy)
+            a = amax * v
+            if a <= 0.004:
+                continue
+            i = row + x * 4
+            da = buf[i + 3] / 255.0 if over else 0.0
+            if da <= 0.004:
+                buf[i:i + 4] = bytes((cr, cg, cb, min(255, int(a * 255 + 0.5))))
+                continue
+            na = a + da * (1 - a)
+            buf[i + 3] = min(255, int(na * 255 + 0.5))
+
+
+BAYER = (0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5)   # 4×4 有序抖动：大面积渐层不起色带
+
+
 def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
     """按 spec 生成底板 PNG（带缓存）。返回 (路径, 外扩边距)。
 
@@ -108,7 +194,9 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
     os.makedirs(cache_dir, exist_ok=True)
     path = os.path.join(cache_dir, "plate_%s.png" % key)
     sh = spec.get("shadow") or {}
-    margin = int(math.ceil(sh.get("soft", 0) + abs(sh.get("dy", 0)) + 2)) if sh else 2
+    # 环境光影比主投影铺得更开（soft×1.7）：边距要留够，否则投影会被画布切掉、出现一条硬边
+    margin = int(math.ceil(sh.get("soft", 0) * 1.9 + abs(sh.get("dy", 0)) + float(sh.get("spread", 0)) + 2)) \
+        if sh and sh.get("alpha", 0) > 0 else 2
     if os.path.isfile(path):
         return path, margin
 
@@ -121,8 +209,24 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
 
     if sh and sh.get("alpha", 0) > 0:
         sc = hex_rgb(sh.get("color", "#000000"))
-        paint(buf, W, H, cx + sh.get("dx", 0), cy + sh.get("dy", 0), hw, hh, r,
-              lambda _y: sc, float(sh["alpha"]), max(1.0, float(sh.get("soft", 18))))
+        opaque = bool(spec.get("fill")) and float(spec.get("alpha", 1.0)) >= 0.9 and not spec.get("scrim")
+        skip = ((int(cx - hw + 2), int(cy - hh + 2), int(cx + hw - 2), int(cy + hh - 2))
+                if opaque else ())
+        soft = max(1.0, float(sh.get("soft", 18)))
+        spread = float(sh.get("spread", 0.0))
+        step = max(1, int(soft / 5) or 1)        # 投影是低频的：先缩小再糊，快很多、也更柔
+        if sh.get("ambient", True):              # 更大更淡的环境光影：先铺在底下，层次更像真的
+            st2 = max(1, int(soft / 2.5) or 1)
+            mw2, mh2 = max(1, W // st2), max(1, H // st2)
+            m2 = _blur(_mask(W, H, cx, cy + soft * 0.25, hw, hh, r, st2), mw2, mh2,
+                       max(1, int(round(soft * 1.7 / st2 / 1.6))))
+            _put_shadow(buf, W, H, m2, mw2, mh2, st2, sc, float(sh["alpha"]) * 0.36, skip=skip)
+        mw, mh = max(1, W // step), max(1, H // step)
+        m = _mask(W, H, cx + sh.get("dx", 0), cy + sh.get("dy", 0),
+                  hw + float(sh.get("spread", 0.0)), hh + float(sh.get("spread", 0.0)),
+                  r + float(sh.get("spread", 0.0)), step)
+        m = _blur(m, mw, mh, max(1, int(round(soft / step / 1.6))))
+        _put_shadow(buf, W, H, m, mw, mh, step, sc, float(sh["alpha"]), over=True, skip=skip)
 
     # 半透明底板（毛玻璃）：投影只留在边外，底板里面挖空——否则红色光晕会透上来，整块变成红色
     if sh and sh.get("alpha", 0) > 0 and float(spec.get("alpha", 1.0)) < 0.9 and spec.get("fill"):
@@ -156,16 +260,19 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
     fill = spec.get("fill") if not sc else None
     alpha = float(spec.get("alpha", 1.0))
     if fill:
-        if isinstance(fill, str):
-            top = bot = hex_rgb(fill)
-        else:
-            top, bot = hex_rgb(fill[0]), hex_rgb(fill[-1])
+        stops = [hex_rgb(fill)] if isinstance(fill, str) else [hex_rgb(c) for c in fill]
+        if len(stops) == 1:
+            stops = stops * 2
         top_y, span = cy - hh, max(1.0, 2 * hh)
 
-        def grad(y: int, _t=top, _b=bot, _y0=top_y, _s=span) -> RGB:
-            p = min(1.0, max(0.0, (y + 0.5 - _y0) / _s))
-            return (int(_t[0] + (_b[0] - _t[0]) * p), int(_t[1] + (_b[1] - _t[1]) * p),
-                    int(_t[2] + (_b[2] - _t[2]) * p))
+        def grad(y: int, _st=stops, _y0=top_y, _s=span, _row=[0]) -> RGB:
+            p = min(1.0, max(0.0, (y + 0.5 - _y0) / _s)) * (len(_st) - 1)
+            k = min(len(_st) - 2, int(p))
+            f = p - k
+            a_, b_ = _st[k], _st[k + 1]
+            # 有序抖动：整行同一个偏移，8 位深的大面积渐层就不会出现一圈圈色带
+            d = (BAYER[(y & 3) * 4 + (y >> 2 & 3)] / 16.0 - 0.5)
+            return tuple(min(255, max(0, int(a_[i] + (b_[i] - a_[i]) * f + d))) for i in range(3))
 
         bd = spec.get("border") or {}
         bw = float(bd.get("w", 0))
@@ -175,6 +282,26 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
             paint(buf, W, H, cx, cy, hw - bw, hh - bw, max(0.0, r - bw), grad, alpha)
         else:
             paint(buf, W, H, cx, cy, hw, hh, r, grad, alpha)
+
+    sheen = float(spec.get("sheen", 0.0))
+    if fill and sheen > 0 and not sc:
+        # 顶部一层极淡的高光：像光从上面打下来，底板不再是一块死板的色
+        band = max(8.0, hh * 0.9)
+        for y in range(max(0, int(cy - hh)), min(H, int(cy - hh + band))):
+            k = 1.0 - (y - (cy - hh)) / band
+            a = sheen * k * k
+            if a <= 0.002:
+                continue
+            hs = _halfspan(hw - 0.5, hh - 0.5, r, abs(y + 0.5 - cy))
+            if hs <= 0:
+                continue
+            row = y * W * 4
+            for x in range(max(0, int(cx - hs + 1)), min(W, int(cx + hs - 1))):
+                i = row + x * 4
+                if not buf[i + 3]:
+                    continue
+                for k2 in range(3):
+                    buf[i + k2] = min(255, int(buf[i + k2] + (255 - buf[i + k2]) * a))
 
     # 卡片里的子形状（编号行卡的行底、编号方块）：同样烤进底板
     for sh in spec.get("shapes") or []:

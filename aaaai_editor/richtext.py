@@ -122,6 +122,17 @@ def _smooth(p: float) -> float:
     return p * p * (3 - 2 * p)
 
 
+def _back(p: float, k: float = 0.9) -> float:
+    """带一点超调的收尾：走过头一点再回来，卡片弹出时更有生气（k 越大越弹）。"""
+    p = min(1.0, max(0.0, p))
+    q = p - 1.0
+    return 1.0 + (k + 1.0) * q * q * q + k * q * q
+
+
+def curve(name: Optional[str]):
+    return _back if name == "back" else _smooth
+
+
 def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
               text: Optional[str] = None, a0: Optional[float] = None, a1: Optional[float] = None,
               fade_out: bool = True) -> List[str]:
@@ -165,6 +176,11 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
         body = "".join(("{\\c%s}%s{\\c%s}" % (hl, _esc(t), bc)) if h else _esc(t) for t, h in runs)
     else:
         body = _esc(raw)
+    unit = it.get("unit")
+    if unit and raw.endswith(unit):   # 数据卡的单位（「小时」「万」「+」）：小一号、用强调色，数字才是主角
+        us = float(it.get("unit_scale", 0.54))
+        body = (_esc(raw[:-len(unit)])
+                + "{\\fs%.1f\\c%s}%s" % (em * win * us, _c(it.get("unit_color") or th["accent"]), _esc(unit)))
 
     fl = it.get("float")
 
@@ -174,15 +190,18 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
         import math
         return fl["a"] * math.sin(2 * math.pi * (t - fl["s"]) / fl["p"]) * min(1.0, (t - fl["s"]) / 0.6)
 
+    _cv = curve(it.get("curve"))
+
     def pos_at(t):
-        k = 1.0 - _smooth((t - t_in) / di)
+        k = 1.0 - _cv((t - t_in) / di)
         return x + dx * k, y + dy * k + float_y(t)
 
     def alpha_at(t):
         return 1.0 - min(1.0, max(0.0, (t - t_in) / di))   # 0＝不透明
 
     # 时间断点：入场 4 段 + 静止段
-    cuts = [t_in + di * j / 4.0 for j in range(5)]
+    cuts = [t_in + di * j / (6.0 if it.get("curve") == "back" else 4.0)
+            for j in range(7 if it.get("curve") == "back" else 5)]   # 超调曲线多切两段，折线才跟得上
     if fl:   # 浮动：落定后每 0.2 秒一段 \move，折线逼近正弦
         tt = max(fl["s"], a0)
         while tt < a1:
