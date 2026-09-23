@@ -136,10 +136,12 @@ def _cta(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
         return out
     if not kw:
         return out
-    hint = ov.get("hint") or ("在评论区打这%s个字" % _cn_num(len(kw)))
+    # 关键词短就说「打这两个字」，长的或自带「」的就说「留言」（旧的 storyboard 也不会读起来怪）
+    plain = len(kw) <= 4 and not any(c in kw for c in "「」\"'（）()")
+    hint = ov.get("hint") or ("在评论区打这%s个字" % _cn_num(len(kw)) if plain else "在评论区留言")
     bw = float(ov.get("box_width", 0.815))            # 评论框宽（相对画面宽）
     bh = bw * W * 0.148 / H                           # 高：照手机输入框的比例
-    by = float(ov.get("box_y", top + 0.196))
+    by = float(ov.get("box_y", top + 0.176))   # 往上一点：下面那行小字才不会压到接管的画面框
     out.append({"_aux": True, "type": "text", "t": [ca - 0.25, t1], "text": hint, "_xy": [0.5, by - 0.032], "scale": 0.82,
                 "anim": "fade", "color": "#FFFFFF" if not win or win.get("bg") != "paper" else ON_PAPER["text"]})
     # 关键词一个字一个字打出来：每个字一层，位置按实际字宽往右长（不是整块居中跳动）
@@ -162,7 +164,7 @@ def _cta(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
                 "send_at": done + 0.12, "caret_x": caret, "caret_h": fs * 1.16 / H,
                 "sfx": ov.get("sfx"), "sfx_at": done + 0.12})
     if ov.get("badge"):
-        out.append({"_aux": True, "type": "text", "t": [done + 0.45, t1], "text": ov["badge"], "_xy": [0.5, by + bh + 0.022],
+        out.append({"_aux": True, "type": "text", "t": [done + 0.45, t1], "text": ov["badge"], "_xy": [0.5, by + bh + 0.012],
                     "scale": 0.88, "anim": "fade",
                     "color": "#FFFFFF" if not win or win.get("bg") != "paper" else ON_PAPER["text"]})
     return out

@@ -165,8 +165,10 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
         base.append("\\fsp%.1f" % (cfg["tracking"] * em))
     if it.get("soft"):   # 无底板的排版卡片：柔和投影代替描边，字放在任何画面上都清楚
         # 细描边（同字色）把字加粗一点 + 向下偏移的半透明投影托住字：任何画面上都清楚，字边不发虚
-        base += ["\\bord%.1f" % max(0.8, em * 0.014), "\\3c%s" % _c(it["color"]), "\\3a&H00&",
-                 "\\shad%.1f" % max(2.0, em * 0.05), "\\4c&H000000&", "\\4a&H40&"]
+        # 遮罩上的字：一圈很细的深色描边（在亮背景上也站得住）＋向下的柔和投影
+        # 遮罩上的字：纯黑细描边（实一点，才和浅遮罩分层、不会糊在一起）＋向下的黑色柔影
+        base += ["\\bord%.1f" % max(1.4, em * 0.030), "\\3c&H000000&", "\\3a&H33&",
+                 "\\shad%.1f" % max(2.5, em * 0.070), "\\4c&H000000&", "\\4a&H26&"]
     elif it.get("stroke"):
         base += ["\\bord%.1f" % max(2.0, em * 0.055), "\\3c&H000000&", "\\3a&H4C&", "\\shad0"]
     else:

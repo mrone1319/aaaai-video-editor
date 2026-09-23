@@ -664,8 +664,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         plate = {"w": W, "h": band, "radius": 0, "fill": None, "alpha": 1.0, "border": {"w": 0}, "shadow": {},
                  "scrim": {"color": sc_col, "power": 1.3,
                            # 长清单会盖到脸：干脆把遮罩压深，变成一个明确的「清单时刻」，不要半透明地糊在脸上
-                           "alpha": 0.80 if chap else (float(th.get("scrim_alpha", 0.78))
-                                                      if (typ in LOWER_TYPES or py + plate_h < H * 0.40) else 0.90),
+                           # 字自己有托影，遮罩只要托住对比就够：压太深会盖掉画面，看起来闷
+                           "alpha": 0.72 if chap else (float(th.get("scrim_alpha", 0.55))
+                                                      if (typ in LOWER_TYPES or py + plate_h < H * 0.40) else 0.66),
                            "hold": 1.0 if chap else (min(0.7, plate_h / float(band)) if mid else
                                                      (0.72 if typ in LOWER_TYPES
                                                       else min(0.72, max(0.45, (py + plate_h) / band)))),
@@ -785,7 +786,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             it = {"size": b["size"], "color": b["color"], "mono": b["mono"], "curve": cv,
                   "t0": t0 + b["delay"], "t1": t1, "di": di, "do": DO,
                   "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none" and not lite and ov.get("halo", True),
-                  "soft": False, "hl": th.get("hl") if lite else None,
+                  "soft": bool(lite), "hl": th.get("hl") if lite else None,
                   "role": b.get("role", "text"), "runs": b["_runs"][li]}
             if ov.get("type_in") and b.get("role") in ("title", "heading", "quote", "free", "text"):
                 it["type_in"] = True
