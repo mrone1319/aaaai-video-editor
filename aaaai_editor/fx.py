@@ -79,6 +79,66 @@ def starfield(W: int, H: int, fps: float, glow: str = "#E60012", flame: str = "#
     return out
 
 
+def mesh(W: int, H: int, fps: float, colors, seconds: float = 6.0, seed: int = 13,
+         base: str = "#0B0B0D") -> str:
+    """网状渐层背景：几团慢慢飘的色晕叠在底色上，首尾无缝可循环。
+
+    整屏卡片、片头片尾用它当底，比纯色有空气感。逐像素算太慢，所以先算一张 1/8 的小图，
+    交给 ffmpeg 放大（本来就是很柔的东西，放大完全看不出来）。
+    """
+    os.makedirs(FX, exist_ok=True)
+    cols = [hex_rgb(c) for c in (colors or ["#3A2E1A", "#1A2A3A"])][:4]
+    key = hashlib.sha1(repr((W, H, fps, tuple(cols), seconds, seed, base, 1)).encode()).hexdigest()[:12]
+    out = os.path.join(FX, "mesh_%s.mp4" % key)
+    if os.path.isfile(out):
+        return out
+    sw, sh = max(24, W // 8), max(24, H // 8)
+    n = int(round(seconds * fps))
+    br, bg_, bb = hex_rgb(base)
+    rnd = random.Random(seed)
+    blobs = []
+    for i, c in enumerate(cols):
+        blobs.append({"c": c, "x": rnd.uniform(0.15, 0.85), "y": rnd.uniform(0.12, 0.88),
+                      "ax": rnd.uniform(0.06, 0.16), "ay": rnd.uniform(0.06, 0.18),
+                      "k": rnd.choice([1, 1, 2]), "ph": rnd.random(),
+                      "r": rnd.uniform(0.38, 0.62), "a": rnd.uniform(0.55, 0.85)})
+    enc = subprocess.Popen(
+        [env.ffmpeg(), "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
+         "-s", "%dx%d" % (sw, sh), "-r", str(fps), "-i", "-",
+         "-vf", "scale=%d:%d:flags=bicubic,gblur=sigma=%d" % (W, H, max(6, W // 90)),
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "20", out],
+        stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    for f in range(n):
+        t = f / float(n)
+        buf = bytearray(sw * sh * 3)
+        cs = []
+        for b in blobs:   # 每团色晕沿椭圆飘（整数圈数 → 循环无缝）
+            ang = 2 * math.pi * (t * b["k"] + b["ph"])
+            cs.append((b["x"] + b["ax"] * math.cos(ang), b["y"] + b["ay"] * math.sin(ang),
+                       b["r"], b["a"], b["c"]))
+        for y in range(sh):
+            fy = (y + 0.5) / sh
+            row = y * sw * 3
+            for x in range(sw):
+                fx_ = (x + 0.5) / sw
+                r_, g_, b2_ = br, bg_, bb
+                for cx_, cy_, rr, aa, col in cs:
+                    d = ((fx_ - cx_) / rr) ** 2 + ((fy - cy_) / rr) ** 2
+                    w_ = aa * math.exp(-d * 2.4)
+                    if w_ < 0.004:
+                        continue
+                    r_ += (col[0] - r_) * w_
+                    g_ += (col[1] - g_) * w_
+                    b2_ += (col[2] - b2_) * w_
+                j = row + x * 3
+                buf[j] = min(255, int(r_)); buf[j + 1] = min(255, int(g_)); buf[j + 2] = min(255, int(b2_))
+        enc.stdin.write(bytes(buf))
+    enc.stdin.close()
+    if enc.wait() != 0:
+        raise env.ToolError("生成网状渐层失败")
+    return out
+
+
 def sweep(w: int, h: int, radius: float, fps: float, color: str = "#FFFFFF", peak: float = 0.30,
           dur: float = 0.60) -> Tuple[str, int]:
     """激光扫光：一道斜向光带从左扫到右，裁在卡片圆角内。返回 (帧序列模板, 帧数)。"""

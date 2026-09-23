@@ -130,6 +130,24 @@ def circle_photo(src: str, size: int, focus: float, cache_dir: str) -> str:
     return out
 
 
+def mesh_colors(th: dict) -> List[str]:
+    """网状渐层的几团颜色：强调色／次强调色／价值色各压暗一点，配上风格底色才不会太跳。"""
+    def dim(c: str, k: float) -> str:
+        r, g, b = draw.hex_rgb(c)
+        return "#%02X%02X%02X" % (int(r * k), int(g * k), int(b * k))
+    acc = th.get("accent", "#FFC933")
+    # 只用强调色（深浅两团）＋风格底色：不混进价值色，免得整块背景变成另一种颜色
+    out = [dim(acc, 0.40), dim(th.get("accent2") or acc, 0.20)]
+    pl = th["plate"][0] if isinstance(th["plate"], (list, tuple)) else th["plate"]
+    out.append(dim(pl, 1.6 if _is_dark(pl) else 0.9))
+    return out
+
+
+def _is_dark(c: str) -> bool:
+    r, g, b = draw.hex_rgb(c)
+    return (r + g + b) < 3 * 128
+
+
 def zoom_filter(zooms: List[dict], W: int, H: int, fps: float) -> str:
     """多段推近合成一条 zoompan。smooth 为缓入缓出，punch 为瞬切。"""
     zs, xs, ys, ws = [], [], [], []
@@ -523,9 +541,14 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             if L["plate"]:
                 p = L["plate"]
                 bleed = bool(ov.get("bleed"))
-                if bleed and th.get("bleed_bg") == "starfield":
-                    # 整屏断章换成星空跃迁背景（循环素材，按卡片时长截取）
-                    clip = fx.starfield(W, H, fps, th.get("accent", "#E60012"), th.get("accent2", "#FF6A1A"))
+                bleed_bg = ov.get("_bleed_bg") or th.get("bleed_bg")
+                if bleed and bleed_bg in ("starfield", "mesh"):
+                    # 整屏断章换成动态背景（循环素材，按卡片时长截取）：星空跃迁或网状渐层
+                    if bleed_bg == "mesh":
+                        clip = fx.mesh(W, H, fps, mesh_colors(th), float(th.get("mesh_seconds", 6.0)),
+                                       base=th["plate"][-1] if isinstance(th["plate"], (list, tuple)) else th["plate"])
+                    else:
+                        clip = fx.starfield(W, H, fps, th.get("accent", "#E60012"), th.get("accent2", "#FF6A1A"))
                     inputs.append(["-stream_loop", "-1", "-t", "%.3f" % dur, "-i", clip])
                     rec["layers"].append({"idx": idx, "x": "0", "y": "0", "t0": t0, "t1": t1, "scale": None,
                                           "di": p["di"], "do": p["do"], "fade": True,

@@ -138,6 +138,31 @@ def _outro(r, beats):
     return ov, [], {"fade": fade}
 
 
+@recipe("brand_open", "品牌片头：整屏网状渐层底＋大字品牌名／主题＋一行副标，2–3 秒，画面照常播（不动时间轴）",
+        ("text",), ("sub", "kicker", "logo", "dim", "bg"))
+def _brand_open(r, beats):
+    a, b = _t(r)
+    ov = [{"type": "title", "t": [a, b], "bleed": True, "text": r["text"], "sub": r.get("sub"),
+           "kicker": r.get("kicker"), "anim": "fade", "scale": 1.6, "align": "center", "lite": False,
+           "colors": {"muted": "@accent"}, "dim": r.get("dim", 0.92), "_bleed_bg": r.get("bg", "mesh")}]
+    if r.get("logo"):
+        ov.append({"type": "image", "t": [a, b], "file": r["logo"], "width": 0.26, "pos": "top"})
+    return ov, [], {}
+
+
+@recipe("brand_close", "品牌片尾：整屏网状渐层底＋一句收尾＋账号名，保持到片尾并淡出",
+        ("text",), ("sub", "logo", "fade", "dim", "bg"))
+def _brand_close(r, beats):
+    a, b = _t(r)
+    ov = [{"type": "title", "t": [a, b + 1.0], "bleed": True, "text": r["text"], "sub": r.get("sub"),
+           "anim": "fade", "scale": 1.6, "align": "center", "under_captions": True, "lite": False,
+           "colors": {"muted": "@accent"}, "dim": r.get("dim", 0.92), "_bleed_bg": r.get("bg", "mesh")}]
+    if r.get("logo"):
+        ov.append({"type": "image", "t": [a, b + 1.0], "file": r["logo"], "width": 0.26, "pos": "top"})
+    fade = float(r.get("fade", min(1.2, max(0.3, (b - a) * 0.4))))
+    return ov, [], {"fade": fade}
+
+
 @recipe("compare", "对比：上下两组，前一组淡色＋叉（以为／以前），后一组价值色＋勾（其实／现在），第二组晚一拍出现",
         ("left", "right"), ("kicker", "reveal", "pos"))
 def _compare(r, beats):

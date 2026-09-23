@@ -2,6 +2,6 @@
 
 Copyright (c) 2026 MR ONE (@mrone.ai). All rights reserved. 见 LICENSE.md。
 """
-__version__ = "1.0.29"
+__version__ = "1.0.30"
 
 from . import keys as _keys  # noqa: E402,F401  载入就把环境变量里的密钥移进内存（外部程序继承不到）

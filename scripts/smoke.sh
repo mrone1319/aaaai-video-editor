@@ -86,6 +86,7 @@ s["overlays"] = [{"type": "proof", "t": [1.2, 5.0], "file": "assets/shot.png", "
 s["overlays"] += [{"type": "gauge", "t": [14.2, 16.0], "kicker": "完成度", "value": 0.72, "label": "测试"},
                   {"type": "rank", "t": [16.2, 18.0], "title": "排行", "items": [{"label": "A", "value": 30}, {"label": "B", "value": 12}]},
                   {"type": "timeline", "t": [18.2, 20.0], "title": "流程", "items": [{"time": "09:00", "text": "拍"}, {"time": "10:00", "text": "发"}]}]
+s["recipes"] = [{"use": "brand_open", "t": [0.3, 2.4], "kicker": "测试", "text": "品牌片头", "sub": "@demo"}]
 s["transitions"] = [{"t": 6.0, "type": "whip"}]
 json.dump(s, open(S + "/c/storyboard.json", "w"), ensure_ascii=False)
 PYX

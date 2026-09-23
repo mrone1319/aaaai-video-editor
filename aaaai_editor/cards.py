@@ -538,9 +538,12 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         pl_ = th["plate"][-1] if isinstance(th["plate"], (list, tuple)) else th["plate"]
         dark = sum(int(pl_.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)) < 3 * 128
         if dark:   # 深色遮罩上的灰字看不清：提亮
-            th = dict(th, muted="#E4E4E7")
+            if "muted" not in (ov.get("colors") or {}):   # 卡片自己指定过就尊重它
+                th = dict(th, muted="#E4E4E7")
         else:      # 浅色风格：遮罩改用风格的深色（白色字幕也看得清），字换成底板的浅色
-            th = dict(th, scrim_color=th["text"], text=pl_, muted="#E4E4E7", accent=_lighten(th["accent"]),
+            th = dict(th, scrim_color=th["text"], text=pl_,
+                      muted=(ov.get("colors") or {}).get("muted") and th["muted"] or "#E4E4E7",
+                      accent=_lighten(th["accent"]),
                       value=_lighten(th.get("value") or th["accent"]),
                       hl=_lighten(th["accent"]) if th.get("hl") in (None, "@accent", th["accent"]) else th["hl"])
     # 字号与内距的基准：竖屏＝画面宽；横屏／方形按高度折算，卡片不会比画面还高
