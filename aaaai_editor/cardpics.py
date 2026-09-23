@@ -15,7 +15,8 @@ from . import cards, config, cover, draw, env, fonts, icons as icons_mod, richte
 
 SIZES = {"1350": (1080, 1350), "1080": (1080, 1080), "1920": (1080, 1920)}
 # 能出图卡的卡片：有内容、值得单独看的那几种（接管框、B-roll、装饰类不出）
-CARD_TYPES = ("title", "stat", "bullets", "quote", "rows", "compare", "icons", "step", "text")
+CARD_TYPES = ("title", "stat", "bullets", "quote", "rows", "compare", "icons", "step", "text",
+              "gauge", "rank", "timeline", "rating")
 
 
 def listing(sb: dict) -> List[dict]:
@@ -78,6 +79,20 @@ def one(sb: dict, ov: dict, W: int, H: int, work: str, bg_mode: str, out_path: s
         if L.get("shapes"):
             spec["shapes"] = [dict(sh, x=round(sh["x"] - p["x"], 1), y=round(sh["y"] - p["y"], 1))
                               for sh in L["shapes"]]
+        if L.get("shapes") is not None and L.get("arcs"):
+            spec["arcs"] = [dict(ac, cx=round(ac["cx"] - p["x"], 1), cy=round(ac["cy"] - p["y"], 1))
+                            for ac in L["arcs"]]
+        if L.get("stars"):
+            spec["stars"] = [dict(st_, cx=round(st_["cx"] - p["x"], 1), cy=round(st_["cy"] - p["y"], 1))
+                             for st_ in L["stars"]]
+        gg_ = L.get("gauge")
+        if gg_:    # 图卡是静态的：进度圈按最终值烤进底板（影片里它是会动的一层）
+            spec.setdefault("arcs", []).extend([
+                {"cx": round(gg_["cx"] - p["x"], 1), "cy": round(gg_["cy"] - p["y"], 1), "r": gg_["r"],
+                 "w": gg_["w"], "color": gg_["track"], "alpha": 0.24, "a0": -90.0, "a1": 270.0},
+                {"cx": round(gg_["cx"] - p["x"], 1), "cy": round(gg_["cy"] - p["y"], 1), "r": gg_["r"],
+                 "w": gg_["w"], "color": gg_["color"], "alpha": 1.0,
+                 "a0": -90.0, "a1": -90.0 + 360.0 * float(gg_["ratio"])}])
         baked = [ic for ic in loose if abs(ic["t0"] - 0.0) < 1e-6]
         loose = [ic for ic in loose if abs(ic["t0"] - 0.0) >= 1e-6]
         if baked:
@@ -99,6 +114,7 @@ def one(sb: dict, ov: dict, W: int, H: int, work: str, bg_mode: str, out_path: s
         if s_it.get("counter"):                      # 跳数卡：图卡只要终值
             c = dict(s_it.pop("counter"))
             s_it["text"] = c["prefix"] + cards.fmt_num(c["to"], c["style"], c["digits"]) + c["suffix"]
+            s_it.pop("unit", None)
             s_it["runs"] = None
         lines += richtext.dialogues(s_it, th, runs=s_it.get("runs"), fade_out=False)
     ass = os.path.join(work, "cardpic.ass")
