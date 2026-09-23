@@ -294,6 +294,29 @@ def blocks_gauge(ov, th, W) -> Tuple[List[dict], str]:
     return b, "fit"
 
 
+def blocks_rating(ov, th, W) -> Tuple[List[dict], str]:
+    """评分星：大数字＋「/ 5」＋一排星（支持半星）＋一行说明。"""
+    b = []
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="left", role="kicker"))
+    of = float(ov.get("of", 5))
+    v = min(of, max(0.0, float(ov.get("value", 0))))
+    num = _blk(("%.1f" % v).rstrip("0").rstrip("."), round(W * float(ov.get("scale", 1.0)) * 0.120),
+               th["text"], mono=True, align="left", gap=round(W * 0.012) if b else 0, role="number")
+    num["unit"] = " / %s" % (("%.1f" % of).rstrip("0").rstrip("."))
+    num["text"] = num["text"] + num["unit"]
+    num["unit_scale"] = 0.42
+    num["unit_color"] = th["accent"]
+    b.append(num)
+    b.append({"kind": "stars", "n": int(round(of)), "ratio": v / max(1e-9, of), "size": round(W * 0.052),
+              "gap": round(W * 0.020), "color": th["accent"], "track": th["muted"],
+              "delay": 0.0, "align": "left", "step": round(W * 0.014)})
+    if ov.get("label"):
+        b.append(_blk(ov["label"], round(W * 0.032), th["muted"], align="left",
+                      gap=round(W * 0.018), role="label"))
+    return b, "fit"
+
+
 def blocks_rank(ov, th, W) -> Tuple[List[dict], str]:
     """迷你排行榜：每条一行（名称＋数值），下面一条按占比长短的条。"""
     b = []
@@ -511,6 +534,7 @@ BUILDERS = {"compare": blocks_compare, "title": blocks_title, "stat": blocks_sta
             "quote": blocks_quote, "lower_third": blocks_lower_third, "avatar": blocks_avatar, "stamp": blocks_stamp,
             "text": blocks_text, "icons": blocks_icons, "rows": blocks_rows, "step": blocks_step,
             "gauge": blocks_gauge, "rank": blocks_rank, "timeline": blocks_timeline,
+            "rating": blocks_rating,
             "callout": blocks_stamp}   # callout＝画面上的小标注，版式与印章相同
 
 ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
@@ -519,7 +543,7 @@ ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
            "left": (0.0, 0.5), "right": (1.0, 0.5)}
 # 口播画面：卡片默认放上方，避开脸（人通常在画面中间）
 DEFAULT_POS = {"avatar": "bottom_left", "lower_third": "bottom_left", "stamp": "top_left", "title": "top", "quote": "top", "stat": "top", "bullets": "top",
-               "gauge": "top", "rank": "top", "timeline": "top",
+               "gauge": "top", "rank": "top", "timeline": "top", "rating": "top",
                "rows": "top", "compare": "top", "icons": "top"}
 
 
@@ -660,6 +684,8 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             return b["size"]
         if b["kind"] == "gauge":
             return b["size"]
+        if b["kind"] == "stars":
+            return b["size"]
         if b["kind"] == "rank":
             return len(b["items"]) * (b["lsz"] * 1.25 + b["bar"] + U * 0.026) - U * 0.026
         if b["kind"] == "timeline":
@@ -750,7 +776,10 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         else:
             plate = {"w": int(round(plate_w)), "h": int(round(plate_h)), "radius": th["radius"],
                      "fill": th["plate"], "alpha": th["plate_alpha"], "border": th["border"],
-                     "shadow": th["shadow"], "sheen": float(th.get("sheen", 0.05))}
+                     "shadow": th["shadow"], "sheen": float(th.get("sheen", 0.05)),
+                     "angle": th.get("gradient_angle", 35),
+                     # 浅色底板的噪点要更轻：浅色上颗粒本来就明显
+                     "grain": float(th.get("grain", 0.016 if _dark_plate(th, False) else 0.010))}
         sig = th.get("signature") or {}
         for k_ in ("pattern", "topbar", "corners"):   # 风格的签名底纹／顶条／角标：烤进底板
             if sig.get(k_):
@@ -765,6 +794,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     icons: List[dict] = []
     shapes: List[dict] = []
     arcs: List[dict] = []
+    stars: List[dict] = []
     if bleed_lite:
         bw = max(round(U * 0.10), 40)
         shapes.append({"x": W / 2.0 - bw / 2.0, "y": cur, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
@@ -791,6 +821,16 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             fw = max(h, cbox_w * min(1.0, max(0.02, b["ratio"])))
             shapes.append({"x": cbox_x, "y": cur, "w": fw, "h": h, "r": h / 2.0, "fill": b["color"]})
             cur += h
+            continue
+        if b["kind"] == "stars":   # 评分星：满星、半星、空星
+            sz = b["size"]
+            step = sz + b["step"]
+            sx = cbox_x if b["align"] != "center" else ccx - (b["n"] * step - b["step"]) / 2.0
+            filled = b["ratio"] * b["n"]
+            for i in range(b["n"]):
+                stars.append({"cx": sx + i * step + sz / 2.0, "cy": cur + sz / 2.0, "r": sz / 2.0,
+                              "frac": min(1.0, max(0.0, filled - i)), "color": b["color"], "track": b["track"]})
+            cur += sz
             continue
         if b["kind"] == "gauge":   # 进度圈：底轨＋强调色弧＋中间百分比
             sz = b["size"]
@@ -952,7 +992,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                               "y": int(round(y + b["size"] * 0.30)), "text": b["lead"],
                               "stroke": False, "role": "lead"})
             cur += b["size"] * lh_for(b["size"], U)
-    L = {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "arcs": arcs, "t": (t0, t1)}
+    L = {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "arcs": arcs, "stars": stars, "t": (t0, t1)}
     # 闪光：主卡（标题、数据、金句、片尾）进场时，主文字旁边闪出几颗四角星
     if (typ in ("title", "stat", "quote") or bleed_lite) and ov.get("chapter") is None \
             and ov.get("sparkle", th.get("sparkle", True)):

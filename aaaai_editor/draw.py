@@ -10,12 +10,13 @@ import hashlib
 import json
 import math
 import os
-from typing import Callable, Tuple
+import random
+from typing import Callable, Optional, Tuple
 
 from .png import write_rgba
 
 RGB = Tuple[int, int, int]
-PLATE_VER = "5"
+PLATE_VER = "6"
 
 
 def hex_rgb(s: str) -> RGB:
@@ -44,7 +45,8 @@ def _sdf(dx: float, dy: float, hw: float, hh: float, r: float) -> float:
 
 
 def paint(buf: bytearray, W: int, H: int, cx: float, cy: float, hw: float, hh: float,
-          r: float, color: Callable[[int], RGB], amax: float = 1.0, soft: float = 0.5) -> None:
+          r: float, color: Callable[[int], RGB], amax: float = 1.0, soft: float = 0.5,
+          color_xy: Optional[Callable[[int, int], RGB]] = None) -> None:
     """把一个圆角矩形按 source-over 混合进 buf。soft 为边缘羽化宽度（像素）。"""
     if amax <= 0:
         return
@@ -61,6 +63,23 @@ def paint(buf: bytearray, W: int, H: int, cx: float, cy: float, hw: float, hh: f
         row = y * W * 4
         xa = max(0, int(cx - hs_out - 1))
         xb = min(W - 1, int(cx + hs_out + 1))
+        if color_xy is not None:       # 斜向渐层：整段也要逐像素取色
+            for x in range(xa, xb + 1):
+                d = _sdf(x + 0.5 - cx, y + 0.5 - cy, hw, hh, r)
+                a = amax * min(1.0, max(0.0, (soft - d) / (2 * soft)))
+                if a <= 0.002:
+                    continue
+                pr, pg, pb = color_xy(x, y)
+                i = row + x * 4
+                if a >= 0.998:
+                    buf[i:i + 4] = bytes((pr, pg, pb, 255))
+                    continue
+                da = buf[i + 3] / 255.0
+                na = a + da * (1 - a)
+                for k, sc in enumerate((pr, pg, pb)):
+                    buf[i + k] = int(round((sc * a + buf[i + k] * da * (1 - a)) / na)) if na else 0
+                buf[i + 3] = int(round(na * 255))
+            continue
         # 整段常量 alpha：目标为空时直接写字节，省掉逐像素混合（投影最吃这一步）
         if hs_in > 0 and amax < 1.0:
             sa = max(xa, int(math.ceil(cx - hs_in)))
@@ -274,14 +293,50 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
             d = (BAYER[(y & 3) * 4 + (y >> 2 & 3)] / 16.0 - 0.5)
             return tuple(min(255, max(0, int(a_[i] + (b_[i] - a_[i]) * f + d))) for i in range(3))
 
+        ang = spec.get("angle")
+        gxy = None
+        if ang is not None:            # 斜向渐层：沿指定角度投影取色（90°＝原本的上下渐层）
+            th_ = math.radians(float(ang))
+            ux, uy = math.cos(th_), math.sin(th_)
+            xs = (cx - hw, cx + hw)
+            ys = (cy - hh, cy + hh)
+            ps = [x * ux + y * uy for x in xs for y in ys]
+            lo, span2 = min(ps), max(1e-6, max(ps) - min(ps))
+
+            def gxy(x, y, _st=stops, _u=(ux, uy), _lo=lo, _s=span2):
+                p = min(1.0, max(0.0, ((x + 0.5) * _u[0] + (y + 0.5) * _u[1] - _lo) / _s)) * (len(_st) - 1)
+                k = min(len(_st) - 2, int(p))
+                fk = p - k
+                a_, b_ = _st[k], _st[k + 1]
+                d = (BAYER[(y & 3) * 4 + (x & 3)] / 16.0 - 0.5)
+                return tuple(min(255, max(0, int(a_[i] + (b_[i] - a_[i]) * fk + d))) for i in range(3))
+
         bd = spec.get("border") or {}
         bw = float(bd.get("w", 0))
         if bw > 0:
             bc = hex_rgb(bd.get("color", "#ffffff"))
             paint(buf, W, H, cx, cy, hw, hh, r, lambda _y: bc, min(1.0, alpha + 0.08))
-            paint(buf, W, H, cx, cy, hw - bw, hh - bw, max(0.0, r - bw), grad, alpha)
+            paint(buf, W, H, cx, cy, hw - bw, hh - bw, max(0.0, r - bw), grad, alpha, color_xy=gxy)
         else:
-            paint(buf, W, H, cx, cy, hw, hh, r, grad, alpha)
+            paint(buf, W, H, cx, cy, hw, hh, r, grad, alpha, color_xy=gxy)
+
+    gn = float(spec.get("grain", 0.0))
+    if fill and gn > 0 and not sc:
+        # 细噪点：底板上一层极淡颗粒，近看有质感、远看察觉不到（也进一步压掉大色块的塑料感）
+        amp = max(1, int(round(gn * 255)))
+        rnd = random.Random(hash((w, h, int(gn * 1000))) & 0xFFFF)
+        for y in range(max(0, int(cy - hh)), min(H, int(cy + hh) + 1)):
+            hs = _halfspan(hw - 0.5, hh - 0.5, r, abs(y + 0.5 - cy))
+            if hs <= 0:
+                continue
+            row = y * W * 4
+            for x in range(max(0, int(cx - hs + 1)), min(W, int(cx + hs - 1))):
+                i = row + x * 4
+                if not buf[i + 3]:
+                    continue
+                n_ = rnd.randint(-amp, amp)
+                for k2 in range(3):
+                    buf[i + k2] = min(255, max(0, buf[i + k2] + n_))
 
     sheen = float(spec.get("sheen", 0.0))
     if fill and sheen > 0 and not sc:
@@ -408,6 +463,48 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
                 for k2 in range(3):
                     buf[i + k2] = int(round((col[k2] * a + buf[i + k2] * da * (1 - a)) / na)) if na else 0
                 buf[i + 3] = int(round(na * 255))
+
+    for st_ in spec.get("stars") or []:
+        # 评分星：满星实心、空星描边，半星按比例横向裁（4.6 分就是四颗满星＋一颗 60% 的星）
+        scx, scy = margin + st_["cx"], margin + st_["cy"]
+        rr = float(st_["r"])
+        frac = min(1.0, max(0.0, float(st_.get("frac", 1.0))))
+        fc = hex_rgb(st_.get("color", "#FFC933"))
+        tc = hex_rgb(st_.get("track", "#888890"))
+        pts = []
+        for i in range(10):
+            a_ = -math.pi / 2 + i * math.pi / 5
+            k = rr if i % 2 == 0 else rr * 0.45
+            pts.append((scx + k * math.cos(a_), scy + k * math.sin(a_)))
+        cut = scx - rr + 2 * rr * frac
+        y0 = max(0, int(scy - rr - 2)); y1 = min(H - 1, int(scy + rr + 2))
+        for y in range(y0, y1 + 1):
+            row = y * W * 4
+            for x in range(max(0, int(scx - rr - 2)), min(W - 1, int(scx + rr + 2)) + 1):
+                cov = 0.0
+                for oy in (0.25, 0.75):          # 2×2 超采样：星角不锯齿
+                    for ox in (0.25, 0.75):
+                        px_, py_ = x + ox, y + oy
+                        inside = False
+                        j = len(pts) - 1
+                        for i2 in range(len(pts)):
+                            xi, yi = pts[i2]
+                            xj, yj = pts[j]
+                            if (yi > py_) != (yj > py_) and px_ < (xj - xi) * (py_ - yi) / (yj - yi + 1e-9) + xi:
+                                inside = not inside
+                            j = i2
+                        if inside:
+                            cov += 0.25
+                if cov <= 0.004:
+                    continue
+                col = fc if x + 0.5 <= cut else tc
+                a = cov * (1.0 if x + 0.5 <= cut else float(st_.get("track_alpha", 0.30)))
+                i3 = row + x * 4
+                da = buf[i3 + 3] / 255.0
+                na = a + da * (1 - a)
+                for k2 in range(3):
+                    buf[i3 + k2] = int(round((col[k2] * a + buf[i3 + k2] * da * (1 - a)) / na)) if na else 0
+                buf[i3 + 3] = int(round(na * 255))
 
     # 卡片里的子形状（编号行卡的行底、编号方块）：同样烤进底板
     for sh in spec.get("shapes") or []:
