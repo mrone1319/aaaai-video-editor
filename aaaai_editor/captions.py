@@ -296,7 +296,8 @@ ONLIGHT_TEXT, ONLIGHT_EDGE = "&H161B1E&", "&HE7EFF4&"   # 纸面上的字幕：�
 def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean",
               highlight: Sequence[str] = (), margin_v: Optional[float] = None,
               size_scale: Optional[float] = None, hl_color: Optional[str] = None,
-              faces: Optional[list] = None, t_off: float = 0.0, onlight: Optional[list] = None) -> None:
+              faces: Optional[list] = None, t_off: float = 0.0, onlight: Optional[list] = None,
+              anim: str = "soft") -> None:
     """margin_v：字幕底边离画面底部的比例（storyboard 的 captions.margin_v 可覆盖；0.30≈画面 70% 处）；
     size_scale：字号倍率（captions.size_scale）。"""
     st = dict(STYLES[style])
@@ -333,6 +334,9 @@ def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean"
                 if a <= mid <= b and (bot < top or bot - cap_h > bottom):
                     txt = ("{\\1c%s\\3c%s}" % (ONLIGHT_TEXT, ONLIGHT_EDGE)) + txt.replace("{\\c}", "{\\c%s}" % ONLIGHT_TEXT)
                     break
+        if anim != "none":   # 出字微动效：轻轻淡入＋极小的放大（围绕底边中心，位置不会挪）
+            ms = min(130, max(60, int(round((e[1] - e[0]) * 1000))))
+            txt = "{\\fad(90,70)\\fscx96\\fscy96\\t(0,%d,\\fscx100\\fscy100)}" % ms + txt
         lines.append("Dialogue: 0,%s,%s,Cap,,0,0,%d,,%s" % (_ts(e[0]), _ts(e[1]), mv or 0, txt))
     with open(path, "w", encoding="utf-8") as f:
         f.write(head + "\n".join(lines) + "\n")

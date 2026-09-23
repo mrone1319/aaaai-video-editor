@@ -535,12 +535,16 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     baked = [ic for ic in loose if abs(ic["t0"] - t0) < 1e-6]
                     loose = [ic for ic in loose if abs(ic["t0"] - t0) >= 1e-6]
                     spec = {k: p[k] for k in ("w", "h", "radius", "fill", "alpha", "border", "shadow")}
+                    for k in ("sheen", "pattern", "topbar", "corners"):   # 顶部高光与风格签名底纹
+                        if p.get(k):
+                            spec[k] = p[k]
                     if p.get("scrim"):
                         spec["scrim"] = p["scrim"]
                     if baked:
                         spec["icons"] = [{"name": ic["name"], "x": round(ic["x"] - p["x"], 1),
                                           "y": round(ic["y"] - p["y"], 1), "size": ic["size"],
-                                          "color": ic["color"], "badge": ic.get("badge")} for ic in baked]
+                                          "color": ic["color"], "badge": ic.get("badge"),
+                                          "style": ic.get("style", "line")} for ic in baked]
                     if L.get("shapes"):
                         spec["shapes"] = [dict(sh, x=round(sh["x"] - p["x"], 1), y=round(sh["y"] - p["y"], 1))
                                           for sh in L["shapes"]]
@@ -574,10 +578,14 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": t0, "t1": t1,
                                           "scale": None, "di": p["di"], "do": p["do"], "fade": True})
                     idx += 1
-                    if th.get("laser") and ov.get("laser", typ in ("title", "stat")) and not pill:
-                        # 激光扫光：卡片落定后一道光带扫过，只在主卡（标题／数据）上
+                    sweep_cfg = (th.get("signature") or {}).get("sweep")
+                    if th.get("laser"):   # 旧写法：laser／laser_color 等同签名扫光
+                        sweep_cfg = {"color": th.get("laser_color", "#FFFFFF"), "peak": 0.30}
+                    if sweep_cfg and ov.get("laser", typ in ("title", "stat")) and not pill:
+                        # 签名扫光：卡片落定后一道光带扫过，只在主卡（标题／数据）上
                         pat, nfr = fx.sweep(p["w"], p["h"], float(p["radius"]), fps,
-                                            th.get("laser_color", "#FFFFFF"))
+                                            sweep_cfg.get("color", "#FFFFFF"),
+                                            float(sweep_cfg.get("peak", 0.22)))
                         st = t0 + p["di"]
                         inputs.append(["-framerate", str(fps), "-i", pat])
                         rec["layers"].append({"idx": idx, "x": "%d" % p["x"], "y": "%d" % p["y"], "t0": st,
@@ -621,7 +629,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 idx += 1
             for ic in loose:  # 错峰出现的图标：单独一层，跟着自己那一行的时间进场
                 png = icons.make_png(ic["name"], ic["size"], ic["color"], os.path.join(work, "plates"),
-                                     badge=ic.get("badge"))
+                                     badge=ic.get("badge"), style=ic.get("style", "line"))
                 it0 = ic["t0"]
                 inputs.append(["-loop", "1", "-t", "%.3f" % max(0.1, t1 - it0), "-i",
                                os.path.relpath(png, work)])

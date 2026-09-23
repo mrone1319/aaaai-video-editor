@@ -15,7 +15,7 @@ from typing import Callable, Tuple
 from .png import write_rgba
 
 RGB = Tuple[int, int, int]
-PLATE_VER = "3"
+PLATE_VER = "4"
 
 
 def hex_rgb(s: str) -> RGB:
@@ -303,6 +303,78 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
                 for k2 in range(3):
                     buf[i + k2] = min(255, int(buf[i + k2] + (255 - buf[i + k2]) * a))
 
+    pat = spec.get("pattern")
+    if pat and fill and not sc:
+        # 风格的签名底纹：网格／点阵／斜线，淡淡一层烤进底板（渲染时不额外花时间）
+        kind = pat.get("kind", "grid")
+        pc = hex_rgb(pat.get("color", "#FFFFFF"))
+        pa = float(pat.get("alpha", 0.05))
+        gs = max(6, int(pat.get("size", 28)))
+        th_ = max(1, int(pat.get("w", 1)))
+        x0, y0 = int(cx - hw), int(cy - hh)
+        for y in range(max(0, y0), min(H, int(cy + hh))):
+            hs = _halfspan(hw - 1.0, hh - 1.0, r, abs(y + 0.5 - cy))
+            if hs <= 0:
+                continue
+            xa, xb = max(0, int(cx - hs + 1)), min(W, int(cx + hs - 1))
+            row = y * W * 4
+            dy_ = (y - y0) % gs
+            for x in range(xa, xb):
+                dx_ = (x - x0) % gs
+                if kind == "grid":
+                    on = dy_ < th_ or dx_ < th_
+                elif kind == "dots":
+                    on = dy_ < th_ + 1 and dx_ < th_ + 1
+                else:                                  # diag：斜线
+                    on = ((x - x0) + (y - y0)) % gs < th_
+                if not on:
+                    continue
+                i = row + x * 4
+                if not buf[i + 3]:
+                    continue
+                for k2 in range(3):
+                    buf[i + k2] = min(255, max(0, int(buf[i + k2] + (pc[k2] - buf[i + k2]) * pa)))
+
+    tb = spec.get("topbar")
+    if tb and fill and not sc:   # 杂志风的顶部色条
+        bh_ = max(2, int(tb.get("h", 8)))
+        bc = hex_rgb(tb.get("color", "#000000"))
+        for y in range(max(0, int(cy - hh)), min(H, int(cy - hh) + bh_)):
+            hs = _halfspan(hw - 0.5, hh - 0.5, r, abs(y + 0.5 - cy))
+            if hs <= 0:
+                continue
+            row = y * W * 4
+            for x in range(max(0, int(cx - hs + 1)), min(W, int(cx + hs - 1))):
+                i = row + x * 4
+                if buf[i + 3]:
+                    buf[i:i + 3] = bytes(bc)
+
+    cn = spec.get("corners")
+    if cn and fill and not sc:   # 衬线风的四角标记
+        ln = max(8, int(cn.get("len", 26)))
+        cw_ = max(1, int(cn.get("w", 2)))
+        cc = hex_rgb(cn.get("color", "#000000"))
+        ca = float(cn.get("alpha", 0.45))
+        inset = int(cn.get("inset", 14))
+        for sx in (0, 1):
+            for sy in (0, 1):
+                bx = int(cx - hw + inset) if sx == 0 else int(cx + hw - inset - ln)
+                by = int(cy - hh + inset) if sy == 0 else int(cy + hh - inset - cw_)
+                for yy in range(by, min(H, by + cw_)):          # 横画
+                    for xx in range(max(0, bx), min(W, bx + ln)):
+                        i = (yy * W + xx) * 4
+                        if buf[i + 3]:
+                            for k2 in range(3):
+                                buf[i + k2] = int(buf[i + k2] + (cc[k2] - buf[i + k2]) * ca)
+                vy = int(cy - hh + inset) if sy == 0 else int(cy + hh - inset - ln)
+                vx = int(cx - hw + inset) if sx == 0 else int(cx + hw - inset - cw_)
+                for yy in range(max(0, vy), min(H, vy + ln)):   # 竖画
+                    for xx in range(max(0, vx), min(W, vx + cw_)):
+                        i = (yy * W + xx) * 4
+                        if buf[i + 3]:
+                            for k2 in range(3):
+                                buf[i + k2] = int(buf[i + k2] + (cc[k2] - buf[i + k2]) * ca)
+
     # 卡片里的子形状（编号行卡的行底、编号方块）：同样烤进底板
     for sh in spec.get("shapes") or []:
         scx, scy = margin + sh["x"] + sh["w"] / 2.0, margin + sh["y"] + sh["h"] / 2.0
@@ -320,7 +392,8 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
     for ic in spec.get("icons") or []:
         from . import icons as _icons
         _icons.paint(buf, W, H, ic["name"], margin + ic["x"], margin + ic["y"], ic["size"],
-                     ic["color"], float(ic.get("stroke", 2.0)), ic.get("badge"))
+                     ic["color"], float(ic.get("stroke", 2.0)), ic.get("badge"),
+                     ic.get("style", "line"), ic.get("tint"))
 
     write_rgba(path, W, H, buf)
     return path, margin

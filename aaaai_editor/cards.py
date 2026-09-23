@@ -151,9 +151,10 @@ def _icon_blk(ov, th, W, scale=0.085) -> Optional[dict]:
     """卡片顶部的主图标（可选实心圆底 icon_badge）。"""
     if not ov.get("icon"):
         return None
+    st = ov.get("icon_style") or th.get("icon_style") or "line"   # line｜duo｜bold（icon_badge＝实心圆底）
     return {"kind": "icon", "name": ov["icon"], "size": round(W * scale * float(ov.get("icon_scale", 1.0))),
             "color": th["on_accent"] if ov.get("icon_badge") else th["accent"],
-            "badge": th["accent"] if ov.get("icon_badge") else None,
+            "badge": th["accent"] if ov.get("icon_badge") else None, "style": st,
             "gap": 0, "align": ov.get("align", "center"), "delay": 0.0}
 
 
@@ -680,6 +681,13 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             plate = {"w": int(round(plate_w)), "h": int(round(plate_h)), "radius": th["radius"],
                      "fill": th["plate"], "alpha": th["plate_alpha"], "border": th["border"],
                      "shadow": th["shadow"], "sheen": float(th.get("sheen", 0.05))}
+        sig = th.get("signature") or {}
+        for k_ in ("pattern", "topbar", "corners"):   # 风格的签名底纹／顶条／角标：烤进底板
+            if sig.get(k_):
+                v = dict(sig[k_])
+                if k_ in ("topbar", "corners") and not v.get("color"):
+                    v["color"] = th["accent"]
+                plate[k_] = v
         plate.update({"x": int(round(px)), "y": int(round(py)), "dx": dx0, "dy": dy0,
                       "t0": t0, "t1": t1, "di": di, "do": DO, "curve": cv})
 
@@ -698,9 +706,10 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     ccx = cbox_x + cbox_w / 2.0
     common = {"t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0, "curve": cv}
 
-    def add_icon(name, x, y, size, color, badge, delay):
+    def add_icon(name, x, y, size, color, badge, delay, style=None):
         icons.append(dict(common, name=name, x=round(x, 1), y=round(y, 1), size=int(round(size)),
-                          color=color, badge=badge, t0=t0 + delay))
+                          color=color, badge=badge, t0=t0 + delay,
+                          style=style or ov.get("icon_style") or th.get("icon_style") or "line"))
 
     for b, ls in zip(blocks, lines_of):
         cur += b["gap"]
@@ -714,7 +723,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             continue
         if b["kind"] == "icon":
             x = ccx - b["size"] / 2.0 if b["align"] == "center" else cbox_x
-            add_icon(b["name"], x, cur, b["size"], b["color"], b.get("badge"), b["delay"])
+            add_icon(b["name"], x, cur, b["size"], b["color"], b.get("badge"), b["delay"], b.get("style"))
             cur += b["size"]
             continue
         if b["kind"] == "rows":
@@ -778,6 +787,10 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                   "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none" and not lite and ov.get("halo", True),
                   "soft": False, "hl": th.get("hl") if lite else None,
                   "role": b.get("role", "text"), "runs": b["_runs"][li]}
+            if ov.get("type_in") and b.get("role") in ("title", "heading", "quote", "free", "text"):
+                it["type_in"] = True
+                it["type_speed"] = float(ov.get("type_speed", 0.055))
+                it["t0"] = t0 + b["delay"] + li * float(ov.get("type_speed", 0.055)) * len(ls[li - 1] if li else "")
             for k_ in ("unit", "unit_scale", "unit_color"):
                 if b.get(k_) is not None and li == len(ls) - 1:
                     it[k_] = b[k_]

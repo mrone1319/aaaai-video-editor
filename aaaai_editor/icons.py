@@ -211,10 +211,28 @@ def _hex(c: str) -> Tuple[int, int, int]:
 
 
 def paint(buf: bytearray, W: int, H: int, name: str, x: float, y: float, size: float,
-          color: str, stroke: float = 2.0, badge: Optional[str] = None) -> None:
-    """把图标按 source-over 画进 RGBA 画布。badge 给颜色时先画一个实心圆底。"""
+          color: str, stroke: float = 2.0, badge: Optional[str] = None, style: str = "line",
+          tint: Optional[str] = None) -> None:
+    """把图标按 source-over 画进 RGBA 画布。
+
+    style：line＝描边（默认）；duo＝同色半透明圆底＋描边（双色感）；bold＝笔画加粗，远看更实。
+    badge 给颜色时先画一个实心圆底（solid 风格）。
+    """
     ops = ICONS[resolve(name)]
     cr, cg, cb = _hex(color)
+    if style == "duo" and not badge:
+        tr, tg, tb = _hex(tint or color)
+        R = size / 2.0
+        cx, cy = x + R, y + R
+        for py in range(max(0, int(y)), min(H, int(y + size) + 1)):
+            for px in range(max(0, int(x)), min(W, int(x + size) + 1)):
+                a = min(1.0, max(0.0, 0.5 - (math.hypot(px + 0.5 - cx, py + 0.5 - cy) - R)))
+                if a > 0:
+                    _blend(buf, (py * W + px) * 4, tr, tg, tb, a * 0.20)
+        pad = size * 0.17
+        x, y, size = x + pad, y + pad, size - 2 * pad
+    elif style == "bold":
+        stroke = stroke * 1.45
     if badge:
         br, bg, bb = _hex(badge)
         R = size / 2.0
@@ -253,14 +271,14 @@ def _blend(buf, i, r, g, b, a) -> None:
 
 
 def make_png(name: str, size: int, color: str, cache_dir: str, stroke: float = 2.0,
-             badge: Optional[str] = None) -> str:
+             badge: Optional[str] = None, style: str = "line") -> str:
     """单独的图标 PNG（给需要错峰出现、不能烤进底板的图标用）。"""
     os.makedirs(cache_dir, exist_ok=True)
-    key = hashlib.sha1(repr((resolve(name), size, color, stroke, badge)).encode()).hexdigest()[:16]
+    key = hashlib.sha1(repr((resolve(name), size, color, stroke, badge, style)).encode()).hexdigest()[:16]
     p = os.path.join(cache_dir, "icon_%s.png" % key)
     if not os.path.isfile(p):
         buf = bytearray(size * size * 4)
-        paint(buf, size, size, name, 0, 0, size, color, stroke, badge)
+        paint(buf, size, size, name, 0, 0, size, color, stroke, badge, style)
         write_rgba(p, size, size, buf)
     return p
 

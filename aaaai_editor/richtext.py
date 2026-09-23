@@ -182,6 +182,22 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
         body = (_esc(raw[:-len(unit)])
                 + "{\\fs%.1f\\c%s}%s" % (em * win * us, _c(it.get("unit_color") or th["accent"]), _esc(unit)))
 
+    if it.get("type_in") and an == 7 and raw:
+        # 逐字打出：左对齐的卡片专用（置中会一边长一边挪，不好看）。每个字一行 Dialogue
+        step = float(it.get("type_speed", 0.055))
+        out = []
+        n_ = len(raw)
+        for k in range(1, n_ + 1):
+            a_ = t_in + step * (k - 1)
+            b_ = t_in + step * k if k < n_ else t_end
+            if b_ - a_ < 0.004:
+                continue
+            tags = list(base) + ["\\pos(%.1f,%.1f)" % (x, y)]
+            if k == n_ and do > 0:
+                tags.append("\\fad(0,%d)" % int(round(do * 1000)))
+            out.append("Dialogue: 0,%s,%s,C,,0,0,0,,{%s}%s" % (_ts(a_), _ts(b_), "".join(tags), _esc(raw[:k])))
+        return out
+
     fl = it.get("float")
 
     def float_y(t):   # 与 overlays.float_expr 同一条曲线
