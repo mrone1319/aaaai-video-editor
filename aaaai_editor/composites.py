@@ -69,7 +69,7 @@ def _proof(ov: dict, sb: dict, W: int, H: int, win: Optional[dict]) -> List[dict
             "sfx": ov.get("sfx"), "sfx_at": ov.get("sfx_at")}]
     bottom = H * top + h + 2 * border
     if ov.get("kicker"):
-        out.append({"type": "text", "t": [t0, t1], "text": ov["kicker"], "_xy": [cx, top - 0.028], "scale": 0.8,
+        out.append({"_aux": True, "type": "text", "t": [t0, t1], "text": ov["kicker"], "_xy": [cx, top - 0.028], "scale": 0.8,
                     "color": "@muted" if not win or win.get("bg") != "paper" else ON_PAPER["muted"], "anim": "fade"})
     if ov.get("pill"):
         out.append({"type": "stamp", "t": [t0 + 0.15, t1], "text": ov["pill"], "_xy": [cx, (bottom - H * 0.018) / H],
@@ -96,7 +96,7 @@ def _flow(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
     top = float(ov.get("top", PANEL_TOP + (0.04 if ov.get("kicker") else 0.0)))
     out = []
     if ov.get("kicker"):
-        out.append({"type": "text", "t": [t0, t1], "text": ov["kicker"], "_xy": [0.5, top - 0.035], "scale": 0.9,
+        out.append({"_aux": True, "type": "text", "t": [t0, t1], "text": ov["kicker"], "_xy": [0.5, top - 0.035], "scale": 0.9,
                     "color": "@muted" if not win or win.get("bg") != "paper" else ON_PAPER["muted"], "anim": "fade"})
     for i, s in enumerate(steps):
         at = float(s.get("at", t0 + 0.25 * i))
@@ -130,7 +130,7 @@ def _cta(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
                         "scale": float(ov.get("keyword_scale", 2.2)), "anim": "pop", "_raw": True,
                         "sfx": ov.get("sfx"), "sfx_at": ca if ov.get("sfx") else None})
         if ov.get("badge"):
-            out.append({"type": "text", "t": [ca + 0.3, t1], "text": ov["badge"], "_xy": [0.5, top + 0.235],
+            out.append({"_aux": True, "type": "text", "t": [ca + 0.3, t1], "text": ov["badge"], "_xy": [0.5, top + 0.235],
                         "scale": 0.85, "anim": "fade",
                         "color": "@muted" if not win or win.get("bg") != "paper" else ON_PAPER["muted"]})
         return out
@@ -140,7 +140,7 @@ def _cta(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
     bw = float(ov.get("box_width", 0.815))            # 评论框宽（相对画面宽）
     bh = bw * W * 0.148 / H                           # 高：照手机输入框的比例
     by = float(ov.get("box_y", top + 0.196))
-    out.append({"type": "text", "t": [ca - 0.25, t1], "text": hint, "_xy": [0.5, by - 0.032], "scale": 0.82,
+    out.append({"_aux": True, "type": "text", "t": [ca - 0.25, t1], "text": hint, "_xy": [0.5, by - 0.032], "scale": 0.82,
                 "anim": "fade", "color": "#FFFFFF" if not win or win.get("bg") != "paper" else ON_PAPER["text"]})
     # 关键词一个字一个字打出来：每个字一层，位置按实际字宽往右长（不是整块居中跳动）
     from . import cards
@@ -153,7 +153,7 @@ def _cta(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
     done = ca + step * n
     for i in range(n):
         w_i = cards.est_w(kw[:i + 1], fs)
-        out.append({"type": "text", "t": [ca + step * i, t1], "text": kw[:i + 1],
+        out.append({"_aux": True, "type": "text", "t": [ca + step * i, t1], "text": kw[:i + 1],
                     "_xy": [tx + w_i / 2.0 / W, by + bh * 0.20], "role": "title", "scale": ts,
                     "anim": "none", "halo": False, "color": ON_PAPER["text"], "_raw": True,
                     "sfx": ov.get("type_sfx", "click"), "sfx_at": ca + step * i})
@@ -162,7 +162,7 @@ def _cta(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
                 "send_at": done + 0.12, "caret_x": caret, "caret_h": fs * 1.16 / H,
                 "sfx": ov.get("sfx"), "sfx_at": done + 0.12})
     if ov.get("badge"):
-        out.append({"type": "text", "t": [done + 0.45, t1], "text": ov["badge"], "_xy": [0.5, by + bh + 0.022],
+        out.append({"_aux": True, "type": "text", "t": [done + 0.45, t1], "text": ov["badge"], "_xy": [0.5, by + bh + 0.022],
                     "scale": 0.88, "anim": "fade",
                     "color": "#FFFFFF" if not win or win.get("bg") != "paper" else ON_PAPER["text"]})
     return out

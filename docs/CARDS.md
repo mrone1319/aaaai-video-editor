@@ -56,6 +56,13 @@
 `smooth` 缓入缓出，`punch` 瞬切瞬回。多段会合成一条 `zoompan`，互不打架。
 推近只作用于底片，卡片不会跟着放大。
 
+## 图卡（卡片出成静态图）
+
+`aaaai-editor cardpics <storyboard> --list` 列出片里能出图卡的卡片，`--pick 1,3` 出图。
+版式与成片里的卡片完全一致，背景默认取原片干净帧（压暗一点托住文字），也可 `--bg blur`／`--bg solid`。
+尺寸 `--size 1350`（小红书／IG，默认）、`1080`（方版）、`1920`（直版），可逗号多选；横版片按原比例出。
+成品放 `out/图卡NN_宽x高.png`，同时复制一份到「成品」文件夹。跳数卡在图卡上直接显示终值。
+
 ## 风格
 
 `~/.aaaai-editor/bin/aaaai-editor themes` 看全部风格与字体（详见 `docs/STYLE.md`）。想改配色／圆角／投影：在 `~/.aaaai-editor/themes/` 放一个继承现有风格的 json

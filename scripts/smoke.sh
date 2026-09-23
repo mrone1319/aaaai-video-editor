@@ -57,6 +57,8 @@ t music-ab    "$A" music-ab "$SB" --at 1 --dur 5
 t denoise-ab  "$A" denoise-ab "$SB" --at 1 --dur 5
 t framing     "$A" framing "$SB" --at 3
 t cover-frames "$A" cover-frames "$SB" --n 4
+t cardpics-l  "$A" cardpics "$SB" --list
+t cardpics    "$A" cardpics "$SB" --pick 1 --size 1350,1080 --bg blur
 t cover       "$A" cover "$SB" --pick 2 --kicker "测试 · 封面" --text "冒烟测试" --sub "第三行"
 t cover-2line "$A" cover "$SB" --at 3 --text "这是一个比较长的封面标题测试" --layout center
 t phone       "$A" phone "$SB"

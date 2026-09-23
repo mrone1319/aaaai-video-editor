@@ -161,6 +161,23 @@ def cmd_tools(a) -> int:
     elif k == "framing":
         print("🖼 %s（1.00x 是原构图；选定后写进 storyboard 的 framing）"
               % T.framing_sheet(a.storyboard, a.at, [float(x) for x in a.levels.split(",")], a.cy))
+    elif k == "cardpics":
+        from . import cardpics as CP, config, render as R
+        if a.list:
+            items = CP.listing(R.load_storyboard(a.storyboard))
+            if not items:
+                print("这支片里没有可以出图卡的卡片（数据卡、清单卡、金句卡…）")
+            for i, ov in enumerate(items, start=1):
+                print("%2d  %-9s %5.1f–%4.1f 秒  %s" % (i, ov["type"], ov["t"][0], ov["t"][1], CP._label(ov)))
+            print("挑几张：cardpics <storyboard> --pick 1,3 [--size 1350,1080] [--bg frame|blur|solid]")
+            return
+        pick = [int(x) for x in str(a.pick).split(",") if x.strip().isdigit()] if a.pick else None
+        files, warns = CP.make(a.storyboard, tuple(str(a.size).split(",")), pick, a.bg)
+        ex = config.get("exports_dir")
+        for f in files:
+            print(("📦 成品：%s" if ex and f.startswith(ex) else "🖼 %s") % f)
+        for w in warns:
+            print("⚠️ " + w)
     elif k == "cover-frames":
         from . import cover as C
         sheet, items = C.candidates(a.storyboard, a.n)
@@ -542,6 +559,13 @@ def main(argv=None) -> int:
     t.add_argument("storyboard"); t.add_argument("--at", type=float, default=3.0)
     t.add_argument("--levels", default="1.0,1.15,1.3,1.45"); t.add_argument("--cy", type=float, default=0.4)
     t.set_defaults(fn=cmd_tools, tool="framing")
+    t = sub.add_parser("cardpics", help="图卡：把片里的卡片出成静态图（发图文用），默认 1080×1350")
+    t.add_argument("storyboard")
+    t.add_argument("--list", action="store_true", help="先看这支片有哪些卡片可以出图卡")
+    t.add_argument("--pick", help="要哪几张，例 1,3（不写就全部）")
+    t.add_argument("--size", default="1350", help="1350（小红书／IG）｜1080（方版）｜1920（直版），可逗号多选")
+    t.add_argument("--bg", default="frame", choices=["frame", "blur", "solid"], help="背景：原片干净帧／模糊帧／纯色")
+    t.set_defaults(fn=cmd_tools, tool="cardpics")
     t = sub.add_parser("cover-frames", help="挑候选封面画面（从原片取、没有字幕），拼成编号总表给用户选")
     t.add_argument("storyboard"); t.add_argument("--n", type=int, default=8)
     t.set_defaults(fn=cmd_tools, tool="cover-frames")

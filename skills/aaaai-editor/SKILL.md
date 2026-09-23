@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.26"
+  version: "1.0.27"
 ---
 
 # aaaai-editor 影片总监
@@ -222,6 +222,8 @@ check-sync 两关：逐句能量检查（出字时有人声、没早出、剪点
 ```bash
 "$A" render "$P/storyboard.json"                 # → $P/out/final.mp4（>90 秒自动分段）
 "$A" proof "$P/storyboard.json" --final          # 看成品的帧（卡片要看成品，不只看预览）
+"$A" cardpics "$P/storyboard.json" --list        # 图卡（可选）：片里的卡片出成静态图，发图文轮播用
+"$A" cardpics "$P/storyboard.json" --pick 1,3    # 默认 1080×1350；--size 1080／1920；--bg frame｜blur｜solid
 "$A" cover-frames "$P/storyboard.json"           # 封面候选帧 → work/cover_candidates.png（编号 1–8，原片干净帧、没有字幕）
 "$A" cover "$P/storyboard.json" --pick <编号> --kicker "<小标>" --text "<大标题>" --sub "<第三行>"   # 横版片出 1920×1080
 "$A" phone "$P/storyboard.json"                  # 用户要在手机上看才做（≤30MB，不是交付物）
@@ -242,7 +244,7 @@ render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP，**同
 报告成片路径、封面、时长、响度实测、用了哪些卡片、B-roll 花了多少（`broll_plan.json` 的 spent）与署名、哪些没验证；频道档案有归档规则就照做。
 然后问用户要不要交给 social-content-pipeline；同意就调用该 skill，args **以唤醒词开头**：
 ```
-启动内容生产线：<主题一句话>。客户：<品牌或频道名>。成片：<P>/out/final.mp4；封面：<P>/out/cover_*.png；逐字稿：<P>/work/captions.json；风格：<风格名>
+启动内容生产线：<主题一句话>。客户：<品牌或频道名>。成片：<P>/out/final.mp4；封面：<P>/out/cover_*.png；图卡（有做才写）：<P>/out/图卡*.png；逐字稿：<P>/work/captions.json；风格：<风格名>
 ```
 
 ## B-roll 流程（选配；每一步都可跳过）
