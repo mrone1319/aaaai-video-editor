@@ -27,6 +27,11 @@
 {"type":"stat",   "t":[5,8], "kicker":"每天省下", "value":3, "unit":"小时", "label":"一条片从 3 小时变 5 分钟",
                   "bar":0.82}   // unit：单位小一号、用强调色；bar：量感条（也可写 "of":总量 自动算占比）
 {"type":"bullets","t":[9,14],"items":["转录成文字","剪掉停顿","加字幕和配乐"], "stagger":0.16}
+{"type":"gauge",  "t":[1,4], "kicker":"完成度", "value":0.72, "label":"第一版已经剪完"}   // 或 "value":18,"of":25
+{"type":"rank",   "t":[4,8], "kicker":"平台", "title":"哪个平台最好使",
+                  "items":[{"label":"小红书","value":4200},{"label":"抖音","value":3100},{"label":"IG","value":1500}]}
+{"type":"timeline","t":[8,12],"kicker":"流程", "title":"一条片怎么走",
+                  "items":[{"time":"09:00","text":"拍素材"},{"time":"09:30","text":"AI 剪好初版"},{"time":"10:00","text":"发布"}]}
 {"type":"quote",  "t":[2,6], "text":"不要用随机抖动假装人味", "by":"剪辑笔记"}
 {"type":"lower_third","t":[1,4],"name":"Alex Chen","role":"内容创作者"}
 {"type":"avatar", "t":[1,4], "file":"assets/me.jpg", "name":"Alex Chen", "role":"内容创作者", "focus":[0.5,0.4]}
@@ -40,6 +45,9 @@
   会在最下面画一条量感条，占比一眼看得出来。
 - `stat` 的数字用等宽字体，计数时不会左右跳动。计数被摊成最多 20 个区间，
   所以千分位、前后缀都能正常显示（ffmpeg 表达式做不到千分位）。
+- `gauge` 进度圈：`value` 写 0–1，或写 `value` ＋ `of`（总量）自动算；`center` 可自订圈里的字，`size` 改大小。
+- `rank` 迷你排行榜：每条 `label` ＋ `value`，条长按最大值等比；`suffix` 给单位，单条可写 `color`。
+- `timeline` 时间轴：每条 `time` ＋ `text`，左边自动连成一条轴；`stagger` 控制一条条出现的间隔。
 - `callout`（画面上的小标注）与 `stamp` 同一种版式，写哪个都行。
 - `clip` 吃带透明通道的片段（ProRes 4444 `.mov` 或 VP9-alpha `.webm`），
   可以直接放 `motion-graphic-video-editor` 输出的 MG 成品。

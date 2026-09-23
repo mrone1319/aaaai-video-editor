@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.28"
+  version: "1.0.29"
 ---
 
 # aaaai-editor 影片总监
@@ -157,6 +157,9 @@ P=$("$A" new <主题英文短名>)
 | 秀证据（收入、后台数据、订单、评价截图） | **卡片收合**：`takeover`（`"bg":"paper"`）＋ `proof` 证据截图卡（截图放 `assets/`；`pill` 日期胶囊、`stamp` 金额印章对准说出数字那刻 `stamp_at`，可配 `"stamp_sfx":"coin"`） |
 | 讲自己的流程（拍→剪→赚） | 接管期间放 `flow` 工作流步骤卡，每步 `at` 对准台词，最后一张自动强调色 |
 | 开头／金句要抓人 | 卡片加 `"type_in": true` 逐字打出（左对齐最好看），别整支片都用 |
+| 讲进度／完成度 | `gauge` 进度圈（`value` 0–1 或 `value`＋`of`） |
+| 比高低、排名次 | `rank` 迷你排行榜（条长自动按最大值等比） |
+| 讲流程、讲一天怎么过 | `timeline` 时间轴（每条 `time`＋`text`） |
 | 数据要有份量 | `stat` 写 `unit`（单位自动小一号、用强调色）；有总量就写 `of`（或 `bar` 0–1），自动画量感条 |
 | 结尾要观众留言／私信 | 最后一个 `takeover` 写 `"hold":true` 停到片尾 ＋ `cta` 行动号召卡（`question_at`／`cta_at` 对准台词），不用再加 `outro`；`keyword` 只写观众要打的那两三个字（评论框会一个字一个字打出来），别写成「留言「XX」」 |
 | 达成里程碑、庆祝 | `confetti` 拉炮彩带（可配 `"sfx":"confetti"`） |

@@ -83,6 +83,9 @@ s["overlays"] = [{"type": "proof", "t": [1.2, 5.0], "file": "assets/shot.png", "
                  {"type": "flow", "t": [9.2, 11.0], "kicker": "流程", "steps": [{"icon": "camera", "top": "拍", "big": "3 分钟", "at": 9.3}, {"icon": "money", "top": "赚", "big": "进账", "at": 10.0}]},
                  {"type": "cta", "t": [11.0, 14.0], "hold": True, "question": "怎么**入门**", "keyword": "留言", "badge": "发给你", "sfx": "ding"},
                  {"type": "cta", "t": [8.2, 9.0], "question": "旧版**药丸**", "keyword": "工具", "style": "pill"}]
+s["overlays"] += [{"type": "gauge", "t": [14.2, 16.0], "kicker": "完成度", "value": 0.72, "label": "测试"},
+                  {"type": "rank", "t": [16.2, 18.0], "title": "排行", "items": [{"label": "A", "value": 30}, {"label": "B", "value": 12}]},
+                  {"type": "timeline", "t": [18.2, 20.0], "title": "流程", "items": [{"time": "09:00", "text": "拍"}, {"time": "10:00", "text": "发"}]}]
 s["transitions"] = [{"t": 6.0, "type": "whip"}]
 json.dump(s, open(S + "/c/storyboard.json", "w"), ensure_ascii=False)
 PYX

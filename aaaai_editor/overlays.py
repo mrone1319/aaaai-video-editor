@@ -545,6 +545,9 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                                           "y": round(ic["y"] - p["y"], 1), "size": ic["size"],
                                           "color": ic["color"], "badge": ic.get("badge"),
                                           "style": ic.get("style", "line")} for ic in baked]
+                    if L.get("arcs"):
+                        spec["arcs"] = [dict(ac, cx=round(ac["cx"] - p["x"], 1), cy=round(ac["cy"] - p["y"], 1))
+                                        for ac in L["arcs"]]
                     if L.get("shapes"):
                         spec["shapes"] = [dict(sh, x=round(sh["x"] - p["x"], 1), y=round(sh["y"] - p["y"], 1))
                                           for sh in L["shapes"]]

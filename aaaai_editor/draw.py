@@ -15,7 +15,7 @@ from typing import Callable, Tuple
 from .png import write_rgba
 
 RGB = Tuple[int, int, int]
-PLATE_VER = "4"
+PLATE_VER = "5"
 
 
 def hex_rgb(s: str) -> RGB:
@@ -374,6 +374,40 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
                         if buf[i + 3]:
                             for k2 in range(3):
                                 buf[i + k2] = int(buf[i + k2] + (cc[k2] - buf[i + k2]) * ca)
+
+    # 圆弧（进度圈）：按角度切一段圆环
+    for ac in spec.get("arcs") or []:
+        acx, acy = margin + ac["cx"], margin + ac["cy"]
+        rr, tw = float(ac["r"]), float(ac["w"])
+        col = hex_rgb(ac.get("color", "#FFFFFF"))
+        a0 = math.radians(float(ac.get("a0", -90.0)))
+        a1 = math.radians(float(ac.get("a1", 270.0)))
+        al = float(ac.get("alpha", 1.0))
+        y0 = max(0, int(acy - rr - tw)); y1 = min(H - 1, int(acy + rr + tw) + 1)
+        for y in range(y0, y1 + 1):
+            dy = y + 0.5 - acy
+            for x in range(max(0, int(acx - rr - tw)), min(W - 1, int(acx + rr + tw)) + 1):
+                dx = x + 0.5 - acx
+                d = abs(math.hypot(dx, dy) - rr) - tw / 2.0
+                if d > 0.7:
+                    continue
+                ang = math.atan2(dy, dx)
+                while ang < a0:
+                    ang += 2 * math.pi
+                if ang > a1:                       # 端点做个圆头，收尾不会切得死板
+                    e = min(abs(ang - a1), abs(ang - a0 - 2 * math.pi)) * rr
+                    if e > tw / 2.0:
+                        continue
+                    d = max(d, math.hypot(e - tw / 2.0, 0))
+                a = al * min(1.0, max(0.0, 0.5 - d))
+                if a <= 0.004:
+                    continue
+                i = (y * W + x) * 4
+                da = buf[i + 3] / 255.0
+                na = a + da * (1 - a)
+                for k2 in range(3):
+                    buf[i + k2] = int(round((col[k2] * a + buf[i + k2] * da * (1 - a)) / na)) if na else 0
+                buf[i + 3] = int(round(na * 255))
 
     # 卡片里的子形状（编号行卡的行底、编号方块）：同样烤进底板
     for sh in spec.get("shapes") or []:

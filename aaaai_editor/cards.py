@@ -16,6 +16,11 @@ PAD = 0.050        # 卡片内边距（相对宽）
 LH = 1.34          # 行高倍数（基准）
 
 
+def _dark_plate(th: dict, lite: bool) -> bool:
+    pl = th["plate"][-1] if isinstance(th["plate"], (list, tuple)) else th["plate"]
+    return lite or sum(int(pl.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4)) < 3 * 128
+
+
 def lh_for(size: float, U: float) -> float:
     """行高按字号收放：大标题收紧（松了显得散），小字放宽（挤了不好读）。"""
     r = size / max(1.0, float(U))
@@ -269,6 +274,59 @@ def blocks_stat(ov, th, W) -> Tuple[List[dict], str]:
     return b, "fit"
 
 
+def blocks_gauge(ov, th, W) -> Tuple[List[dict], str]:
+    """进度圈：一圈强调色弧线＋中间百分比＋下方说明。写 value（0–1）或 value＋of。"""
+    b = []
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="center", role="kicker"))
+    v = float(ov.get("value", 0))
+    if ov.get("of"):
+        v = v / max(1e-9, float(ov["of"]))
+    v = min(1.0, max(0.0, v))
+    size = round(W * float(ov.get("size", 0.34)))
+    b.append({"kind": "gauge", "size": size, "ratio": v, "color": th["accent"],
+              "track": th.get("row") or "#FFFFFF", "text": ov.get("center", "%d%%" % round(v * 100)),
+              "text_color": th["text"], "gap": round(W * 0.022) if b else 0, "delay": 0.0,
+              "align": "center", "mono": True})
+    if ov.get("label"):
+        b.append(_blk(ov["label"], round(W * 0.034), th["muted"], align="center",
+                      gap=round(W * 0.016), role="label"))
+    return b, "fit"
+
+
+def blocks_rank(ov, th, W) -> Tuple[List[dict], str]:
+    """迷你排行榜：每条一行（名称＋数值），下面一条按占比长短的条。"""
+    b = []
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="left", role="kicker"))
+    if ov.get("title"):
+        b.append(_blk(ov["title"], round(W * 0.054), th["text"], align="left",
+                      gap=round(W * 0.012) if b else 0, role="heading"))
+    items = [it if isinstance(it, dict) else {"label": str(it), "value": 0} for it in ov.get("items", [])]
+    mx_ = max([abs(float(it.get("value", 0))) for it in items] + [1e-9])
+    b.append({"kind": "rank", "items": items, "max": mx_, "suffix": ov.get("suffix", ""),
+              "delays": _at(items, ov, _stagger([it.get("label", "") for it in items], ov.get("stagger", 0.14))),
+              "gap": round(W * 0.030) if b else 0, "delay": 0.0, "align": "left",
+              "lsz": round(W * 0.040), "vsz": round(W * 0.044), "bar": max(4, round(W * 0.010))})
+    return b, "full"
+
+
+def blocks_timeline(ov, th, W) -> Tuple[List[dict], str]:
+    """时间轴：左边一条竖轴，每个节点一个点，右边写时间与内容。"""
+    b = []
+    if ov.get("kicker"):
+        b.append(_blk(ov["kicker"], round(W * 0.028), th["accent"], mono=True, align="left", role="kicker"))
+    if ov.get("title"):
+        b.append(_blk(ov["title"], round(W * 0.054), th["text"], align="left",
+                      gap=round(W * 0.012) if b else 0, role="heading"))
+    items = [it if isinstance(it, dict) else {"text": str(it)} for it in ov.get("items", [])]
+    b.append({"kind": "timeline", "items": items,
+              "delays": _at(items, ov, _stagger([it.get("text", "") for it in items], ov.get("stagger", 0.16))),
+              "gap": round(W * 0.030) if b else 0, "delay": 0.0, "align": "left",
+              "tsz": round(W * 0.030), "csz": round(W * 0.042), "dot": max(8, round(W * 0.016))})
+    return b, "full"
+
+
 def _stagger(items: List[str], mode) -> List[float]:
     """错峰出现的延迟。数字＝固定间隔；"auto"＝按上一条的字数决定（读得完再出下一条），
     这是「内容驱动」的节奏——不是随机抖动，也不是机械等距。"""
@@ -452,6 +510,7 @@ def blocks_compare(ov, th, W) -> Tuple[List[dict], str]:
 BUILDERS = {"compare": blocks_compare, "title": blocks_title, "stat": blocks_stat, "bullets": blocks_bullets,
             "quote": blocks_quote, "lower_third": blocks_lower_third, "avatar": blocks_avatar, "stamp": blocks_stamp,
             "text": blocks_text, "icons": blocks_icons, "rows": blocks_rows, "step": blocks_step,
+            "gauge": blocks_gauge, "rank": blocks_rank, "timeline": blocks_timeline,
             "callout": blocks_stamp}   # callout＝画面上的小标注，版式与印章相同
 
 ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
@@ -460,6 +519,7 @@ ANCHORS = {"center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
            "left": (0.0, 0.5), "right": (1.0, 0.5)}
 # 口播画面：卡片默认放上方，避开脸（人通常在画面中间）
 DEFAULT_POS = {"avatar": "bottom_left", "lower_third": "bottom_left", "stamp": "top_left", "title": "top", "quote": "top", "stat": "top", "bullets": "top",
+               "gauge": "top", "rank": "top", "timeline": "top",
                "rows": "top", "compare": "top", "icons": "top"}
 
 
@@ -595,6 +655,12 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             return sum(b["_row_h"]) + b["_rgap"] * (len(b["_rows"]) - 1)
         if b["kind"] == "bar":
             return b["size"]
+        if b["kind"] == "gauge":
+            return b["size"]
+        if b["kind"] == "rank":
+            return len(b["items"]) * (b["lsz"] * 1.25 + b["bar"] + U * 0.026) - U * 0.026
+        if b["kind"] == "timeline":
+            return len(b["items"]) * (b["tsz"] * 1.15 + b["csz"] * 1.25 + U * 0.024) - U * 0.024
         return len(ls) * b["size"] * lh_for(b["size"], U)
 
     photo_sz = round(U * float(ov.get("photo_size", 0.15))) if typ == "avatar" else 0
@@ -695,6 +761,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     items: List[dict] = []
     icons: List[dict] = []
     shapes: List[dict] = []
+    arcs: List[dict] = []
     if bleed_lite:
         bw = max(round(U * 0.10), 40)
         shapes.append({"x": W / 2.0 - bw / 2.0, "y": cur, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
@@ -721,6 +788,65 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             fw = max(h, cbox_w * min(1.0, max(0.02, b["ratio"])))
             shapes.append({"x": cbox_x, "y": cur, "w": fw, "h": h, "r": h / 2.0, "fill": b["color"]})
             cur += h
+            continue
+        if b["kind"] == "gauge":   # 进度圈：底轨＋强调色弧＋中间百分比
+            sz = b["size"]
+            gx = ccx - sz / 2.0
+            r_ = sz / 2.0 - max(6, U * 0.012)
+            w_ = max(6, U * 0.016)
+            arcs.append({"cx": gx + sz / 2.0, "cy": cur + sz / 2.0, "r": r_, "w": w_,
+                         "color": b["track"], "alpha": 0.24, "a0": -90.0, "a1": 270.0})
+            arcs.append({"cx": gx + sz / 2.0, "cy": cur + sz / 2.0, "r": r_, "w": w_,
+                         "color": b["color"], "alpha": 1.0, "a0": -90.0, "a1": -90.0 + 360.0 * b["ratio"]})
+            csz = round(sz * 0.30)
+            items.append(dict(common, size=csz, color=b["text_color"], mono=True, t0=t0,
+                              y=int(round(cur + sz / 2.0 - csz * 0.62)), stroke=False, soft=False,
+                              text=b["text"], cx=int(round(gx + sz / 2.0)), role="number"))
+            cur += sz
+            continue
+        if b["kind"] == "rank":    # 排行榜：一行名称＋数值，下面一条按占比的长条
+            lsz, vsz, bh_ = b["lsz"], b["vsz"], b["bar"]
+            for i, it_ in enumerate(b["items"]):
+                d = b["delays"][i]
+                items.append(dict(common, size=lsz, color=th["text"], mono=False, t0=t0 + d,
+                                  y=int(round(cur)), stroke=False, soft=bool(lite), text=it_.get("label", ""),
+                                  x=int(round(cbox_x)), role="row_title"))
+                val = "%s%s" % (fmt_num(float(it_.get("value", 0)), it_.get("format", "comma"),
+                                        int(it_.get("digits", 0))), it_.get("suffix", b["suffix"]))
+                items.append(dict(common, size=vsz, color=th["accent"], mono=True, t0=t0 + d,
+                                  y=int(round(cur - (vsz - lsz) * 0.2)), stroke=False, soft=bool(lite), text=val,
+                                  x=int(round(cbox_x + cbox_w - est_w(val, vsz, True))), role="number"))
+                by_ = cur + lsz * 1.25
+                ratio = min(1.0, max(0.03, abs(float(it_.get("value", 0))) / b["max"]))
+                shapes.append({"x": cbox_x, "y": by_, "w": cbox_w, "h": bh_, "r": bh_ / 2.0,
+                               "fill": "#FFFFFF" if _dark_plate(th, lite) else "#000000", "alpha": 0.14})
+                shapes.append({"x": cbox_x, "y": by_, "w": max(bh_, cbox_w * ratio), "h": bh_, "r": bh_ / 2.0,
+                               "fill": it_.get("color") or th["accent"]})
+                cur = by_ + bh_ + U * 0.026
+            cur -= U * 0.026
+            continue
+        if b["kind"] == "timeline":   # 时间轴：左边竖轴＋节点圆点，右边时间与内容
+            tsz, csz, dot = b["tsz"], b["csz"], b["dot"]
+            rail_x = cbox_x + dot / 2.0 - max(3, U * 0.004) / 2.0
+            top_y = cur + tsz * 0.5
+            tx = cbox_x + dot + U * 0.030
+            first = cur
+            for i, it_ in enumerate(b["items"]):
+                d = b["delays"][i]
+                shapes.append({"x": cbox_x, "y": cur + tsz * 0.15, "w": dot, "h": dot, "r": dot / 2.0,
+                               "fill": it_.get("color") or th["accent"]})
+                if it_.get("time"):
+                    items.append(dict(common, size=tsz, color=th["accent"], mono=True, t0=t0 + d,
+                                      y=int(round(cur)), stroke=False, soft=bool(lite), text=str(it_["time"]),
+                                      x=int(round(tx)), role="badge"))
+                items.append(dict(common, size=csz, color=th["text"], mono=False, t0=t0 + d,
+                                  y=int(round(cur + tsz * 1.15)), stroke=False, soft=bool(lite),
+                                  text=it_.get("text", ""), x=int(round(tx)), role="row_title"))
+                cur += tsz * 1.15 + csz * 1.25 + U * 0.024
+            cur -= U * 0.024
+            rail_h = max(0.0, cur - first - csz * 0.5)
+            shapes.insert(0, {"x": rail_x, "y": top_y, "w": max(3, U * 0.004), "h": rail_h,
+                              "r": 1.5, "fill": th["accent"], "alpha": 0.32})
             continue
         if b["kind"] == "icon":
             x = ccx - b["size"] / 2.0 if b["align"] == "center" else cbox_x
@@ -823,7 +949,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                               "y": int(round(y + b["size"] * 0.30)), "text": b["lead"],
                               "stroke": False, "role": "lead"})
             cur += b["size"] * lh_for(b["size"], U)
-    L = {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "t": (t0, t1)}
+    L = {"plate": plate, "items": items, "icons": icons, "shapes": shapes, "arcs": arcs, "t": (t0, t1)}
     # 闪光：主卡（标题、数据、金句、片尾）进场时，主文字旁边闪出几颗四角星
     if (typ in ("title", "stat", "quote") or bleed_lite) and ov.get("chapter") is None \
             and ov.get("sparkle", th.get("sparkle", True)):
