@@ -32,6 +32,8 @@ def load_storyboard(path: str) -> dict:
             sb.setdefault(k, v)
     base = os.path.dirname(os.path.abspath(path))
     sb["_base"] = base
+    from . import icons as _icons
+    _icons.set_project(base)   # 项目自己的图标（assets/icons/、assets/）优先于套件图标库
     sb["source"] = os.path.normpath(os.path.join(base, sb["source"]))
     sb["output"]["path"] = os.path.normpath(os.path.join(base, sb["output"]["path"]))
     if sb.get("music"):

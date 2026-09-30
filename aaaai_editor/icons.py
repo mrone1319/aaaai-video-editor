@@ -124,15 +124,114 @@ ALIASES = {"twitter": "x", "x-twitter": "x", "coin": "token", "chain": "chainlin
            "bulb": "idea", "security": "shield", "people": "users", "launch": "rocket"}
 
 
-def resolve(name: str) -> str:
+# ---------------------------------------------------------------- 图标库（图片）
+# 查找顺序：项目自己的 assets/icons/ → 项目 assets/ → 内建（程序画的）→ 套件图标库 assets/icons/。
+# 项目里放同名图片可以覆盖内建图标；套件库只补内建没有的名字，内建图标的外观不会被意外换掉。
+LIB = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icons")
+EXTS = (".png",)
+_PROJECT: List[str] = []
+_CACHE: Dict[Tuple[str, int], Tuple[bytes, bool]] = {}
+
+
+def set_project(base: Optional[str]) -> None:
+    """读 storyboard 时调用：项目自己的图标（assets/icons/、assets/）优先。"""
+    _PROJECT[:] = [os.path.join(base, "assets", "icons"), os.path.join(base, "assets")] if base else []
+
+
+def _file_in(dirs: List[str], name: str) -> Optional[str]:
+    for d in dirs:
+        for ext in EXTS:
+            f = os.path.join(d, name + ext)
+            if os.path.isfile(f):
+                return f
+    return None
+
+
+def lookup(name: str) -> Tuple[str, str]:
+    """→ ("file", 路径) 或 ("vec", 内建名)。找不到就报错，列出能用的名字。"""
+    f = _file_in(_PROJECT, name)
+    if f:
+        return "file", f
     n = ALIASES.get(name, name)
-    if n not in ICONS:
-        raise KeyError("没有这个图标：%s（可用：%s）" % (name, " ".join(sorted(ICONS))))
-    return n
+    if n in ICONS:
+        return "vec", n
+    f = _file_in([LIB], name)
+    if f:
+        return "file", f
+    raise KeyError("没有这个图标：%s（可用：%s）" % (name, " ".join(list_icons())))
+
+
+def resolve(name: str) -> str:
+    kind, ref = lookup(name)
+    return ref
+
+
+def library() -> List[str]:
+    """图片图标的名字：套件库＋当前项目。"""
+    out = set()
+    for d in [LIB] + _PROJECT:
+        if os.path.isdir(d):
+            for f in os.listdir(d):
+                b, e = os.path.splitext(f)
+                if e.lower() in EXTS and not b.startswith("."):
+                    out.add(b)
+    return sorted(out)
 
 
 def list_icons() -> List[str]:
-    return sorted(ICONS)
+    return sorted(set(ICONS) | set(library()))
+
+
+def _load(path: str, size: int) -> Tuple[bytes, bool]:
+    """图片图标 → size×size 的 RGBA（等比缩进正方形、透明补边）＋是不是单色图标。"""
+    st = os.stat(path)
+    key = (path + ":%d" % st.st_mtime_ns, size)
+    if key in _CACHE:
+        return _CACHE[key]
+    import subprocess
+    from . import env
+    raw = subprocess.run(
+        [env.ffmpeg(), "-v", "error", "-i", path, "-vf",
+         "scale=%d:%d:force_original_aspect_ratio=decrease:flags=lanczos,format=rgba,"
+         "pad=%d:%d:(ow-iw)/2:(oh-ih)/2:color=black@0" % (size, size, size, size),
+         "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "rgba", "-"],
+        capture_output=True).stdout
+    if len(raw) < size * size * 4:
+        raise KeyError("图标图片读不了：%s" % path)
+    # 单色图标（黑／白／灰的剪影）跟着风格染色；有颜色的 logo 保留原色
+    spread, n = 0, 0
+    for i in range(0, len(raw), 4 * 7):
+        if raw[i + 3] > 40:
+            n += 1
+            if max(raw[i:i + 3]) - min(raw[i:i + 3]) > 36:
+                spread += 1
+    mono = n == 0 or spread / float(n) < 0.06
+    _CACHE[key] = (raw, mono)
+    return _CACHE[key]
+
+
+def _paint_file(buf: bytearray, W: int, H: int, path: str, x: float, y: float, size: float,
+                color: str) -> None:
+    sz = max(4, int(round(size)))
+    raw, mono = _load(path, sz)
+    cr, cg, cb = _hex(color)
+    x0, y0 = int(round(x)), int(round(y))
+    for j in range(sz):
+        py = y0 + j
+        if not 0 <= py < H:
+            continue
+        for i in range(sz):
+            px = x0 + i
+            if not 0 <= px < W:
+                continue
+            k = (j * sz + i) * 4
+            a = raw[k + 3] / 255.0
+            if a <= 0.003:
+                continue
+            if mono:
+                _blend(buf, (py * W + px) * 4, cr, cg, cb, a)
+            else:
+                _blend(buf, (py * W + px) * 4, raw[k], raw[k + 1], raw[k + 2], a)
 
 
 # ---------------------------------------------------------------- 距离场
@@ -218,7 +317,7 @@ def paint(buf: bytearray, W: int, H: int, name: str, x: float, y: float, size: f
     style：line＝描边（默认）；duo＝同色半透明圆底＋描边（双色感）；bold＝笔画加粗，远看更实。
     badge 给颜色时先画一个实心圆底（solid 风格）。
     """
-    ops = ICONS[resolve(name)]
+    kind, ref = lookup(name)
     cr, cg, cb = _hex(color)
     if style == "duo" and not badge:
         tr, tg, tb = _hex(tint or color)
@@ -244,6 +343,10 @@ def paint(buf: bytearray, W: int, H: int, name: str, x: float, y: float, size: f
                     _blend(buf, (py * W + px) * 4, br, bg, bb, a)
         pad = size * 0.22
         x, y, size = x + pad, y + pad, size - 2 * pad
+    if kind == "file":       # 图片图标：单色的染成风格色，彩色 logo 保留原色
+        _paint_file(buf, W, H, ref, x, y, size, color)
+        return
+    ops = ICONS[ref]
     k = 24.0 / size          # 像素 → 图标单位
     for py in range(max(0, int(y)), min(H, int(math.ceil(y + size)))):
         uy = (py + 0.5 - y) * k
@@ -274,7 +377,9 @@ def make_png(name: str, size: int, color: str, cache_dir: str, stroke: float = 2
              badge: Optional[str] = None, style: str = "line") -> str:
     """单独的图标 PNG（给需要错峰出现、不能烤进底板的图标用）。"""
     os.makedirs(cache_dir, exist_ok=True)
-    key = hashlib.sha1(repr((resolve(name), size, color, stroke, badge, style)).encode()).hexdigest()[:16]
+    kind, ref = lookup(name)
+    ver = os.stat(ref).st_mtime_ns if kind == "file" else 0   # 图片换了，缓存跟着失效
+    key = hashlib.sha1(repr((ref, ver, size, color, stroke, badge, style)).encode()).hexdigest()[:16]
     p = os.path.join(cache_dir, "icon_%s.png" % key)
     if not os.path.isfile(p):
         buf = bytearray(size * size * 4)

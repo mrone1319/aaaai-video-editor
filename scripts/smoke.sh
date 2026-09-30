@@ -87,6 +87,12 @@ s["overlays"] += [{"type": "gauge", "t": [14.2, 16.0], "kicker": "完成度", "v
                   {"type": "rank", "t": [16.2, 18.0], "title": "排行", "items": [{"label": "A", "value": 30}, {"label": "B", "value": 12}]},
                   {"type": "timeline", "t": [18.2, 20.0], "title": "流程", "items": [{"time": "09:00", "text": "拍"}, {"time": "10:00", "text": "发"}]},
                   {"type": "rating", "t": [20.2, 22.0], "kicker": "评价", "value": 4.6, "label": "测试"}]
+os.makedirs(S + "/c/assets/icons", exist_ok=True)   # 项目图标库：一张单色图片图标
+subprocess.run(["ffmpeg" if not os.path.exists("/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg") else "/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg",
+                "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=white@1:s=128x128,format=rgba",
+                "-frames:v", "1", S + "/c/assets/icons/smoke-icon.png"], check=True)
+s["overlays"].append({"type": "icons", "t": [22.2, 24.0], "title": "图标库",
+                      "items": [{"icon": "rocket", "label": "内建"}, {"icon": "smoke-icon", "label": "图片"}]})
 s["recipes"] = [{"use": "brand_open", "t": [0.3, 2.4], "kicker": "测试", "text": "品牌片头", "sub": "@demo"}]
 s["transitions"] = [{"t": 6.0, "type": "whip"}]
 json.dump(s, open(S + "/c/storyboard.json", "w"), ensure_ascii=False)

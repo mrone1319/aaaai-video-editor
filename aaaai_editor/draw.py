@@ -209,7 +209,16 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
     spec: w,h,radius,fill(单色或[上,下]),alpha,border{w,color},shadow{soft,alpha,dy}
     """
     # 画法改了就把 PLATE_VER 加一：旧缓存自动失效
-    key = hashlib.sha1((PLATE_VER + json.dumps(spec, sort_keys=True, ensure_ascii=False)).encode()).hexdigest()[:16]
+    ver = ""
+    if spec.get("icons"):   # 烤进底板的图片图标：图片换了，缓存也要跟着失效
+        from . import icons as _ic
+        for ic in spec["icons"]:
+            try:
+                kind, ref = _ic.lookup(ic["name"])
+                ver += "%s:%d;" % (ref, os.stat(ref).st_mtime_ns) if kind == "file" else ref + ";"
+            except (KeyError, OSError):
+                pass
+    key = hashlib.sha1((PLATE_VER + ver + json.dumps(spec, sort_keys=True, ensure_ascii=False)).encode()).hexdigest()[:16]
     os.makedirs(cache_dir, exist_ok=True)
     path = os.path.join(cache_dir, "plate_%s.png" % key)
     sh = spec.get("shadow") or {}

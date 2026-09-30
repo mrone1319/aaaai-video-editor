@@ -53,6 +53,10 @@
 - `gauge` 进度圈：`value` 写 0–1，或写 `value` ＋ `of`（总量）自动算；`center` 可自订圈里的字，`size` 改大小。
 - `rank` 迷你排行榜：每条 `label` ＋ `value`，条长按最大值等比；`suffix` 给单位，单条可写 `color`。
 - `timeline` 时间轴：每条 `time` ＋ `text`，左边自动连成一条轴；`stagger` 控制一条条出现的间隔。
+- **图标库**：`icon` 除了内建的 45 个，也能直接写图片图标的名字。
+  通用的放套件 `assets/icons/`（随套件发给所有用户），只给某支片用的放 `项目/assets/icons/`。
+  PNG 透明底、英文小写文件名＝图标名；单色剪影自动染成风格强调色，彩色 logo 保留原色。
+  查找顺序：项目 → 内建 → 套件库（项目同名会覆盖内建；套件库不会换掉内建图标）。规格见 `assets/icons/README.md`。
 - `callout`（画面上的小标注）与 `stamp` 同一种版式，写哪个都行。
 - `clip` 吃带透明通道的片段（ProRes 4444 `.mov` 或 VP9-alpha `.webm`），
   可以直接放 `motion-graphic-video-editor` 输出的 MG 成品。

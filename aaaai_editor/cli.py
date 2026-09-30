@@ -229,9 +229,12 @@ def cmd_icons(a) -> int:
     if a.sheet:
         n = icons.sheet(os.path.abspath(a.sheet))
         print("✅ %d 个图标 → %s" % (n, os.path.abspath(a.sheet)))
-    names = icons.list_icons()
-    print("图标（%d）：%s" % (len(names), " ".join(names)))
+    names = sorted(icons.ICONS)
+    print("内建图标（%d）：%s" % (len(names), " ".join(names)))
     print("别名：%s" % " ".join("%s→%s" % kv for kv in sorted(icons.ALIASES.items())))
+    lib = icons.library()
+    print("图标库（套件 assets/icons/，%d）：%s" % (len(lib), " ".join(lib) if lib else "（还没有）"))
+    print("加图标：通用的放套件 assets/icons/，只给某支片用的放 项目/assets/icons/；PNG 透明底、英文小写文件名＝图标名")
     return 0
 
 
