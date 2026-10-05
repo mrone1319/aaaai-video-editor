@@ -5,7 +5,7 @@ import hashlib
 import json
 import subprocess
 import os
-from typing import List, Optional
+from typing import Tuple, List, Optional
 
 from . import captions, env, overlays, recipes, segment, theme
 from .timeline import Timeline
@@ -67,11 +67,32 @@ def _hl_color(sb: dict) -> Optional[str]:
         return None
 
 
+def _abx(c) -> Tuple[float, float, float]:
+    """剪辑段 → (起, 止, 倍速)。没有变速的段只有 (起, 止)，倍速是 1。"""
+    return float(c[0]), float(c[1]), (float(c[2]) if len(c) > 2 else 1.0)
+
+
+def _atempo(x: float) -> str:
+    """变速的声音：atempo 每一级只接受 0.5～2，超出就串几级。倍速 1 回传空字串（和以前一样）。"""
+    if abs(x - 1.0) < 1e-6:
+        return ""
+    out = []
+    while x > 2.0:
+        out.append("atempo=2.0")
+        x /= 2.0
+    while x < 0.5:
+        out.append("atempo=0.5")
+        x /= 0.5
+    out.append("atempo=%.4f" % x)
+    return "," + ",".join(out)
+
+
 def _seek_inputs(cuts, source: str) -> List[str]:
     """每个剪辑段各开一次素材、从段头附近开始解码（-ss 放在 -i 前面＝精确跳转）。
     只解码用得到的部分：素材常有一半以上被剪掉，整支解码是渲染最花时间的一步。"""
     args: List[str] = []
-    for a, b in cuts:
+    for c in cuts:
+        a, b, _x = _abx(c)
         args += ["-ss", "%.3f" % a, "-t", "%.3f" % (b - a + 1.0), "-i", source]
     return args
 
@@ -117,14 +138,16 @@ def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
         parts = ["[0:v]%s%s,split=%d%s" % (pre, fit, n, "".join("[s%d]" % i for i in range(n)))]
     else:   # 每段一个已跳转的输入（见 _seek_inputs）：时间从 0 起算
         parts = ["[%d:v]%s%s[s%d]" % (seek_base + i, pre, fit, i) for i in range(n)]
-    for i, (a, b) in enumerate(cuts):
+    for i, c in enumerate(cuts):
         # 每段先转到目标帧率再锁死帧数：不然每个剪辑点的取整误差会一路累积，
         # 长片到后面字幕就和画面对不上了
-        k = max(1, int(round((b - a) * fps)))
+        a, b, x = _abx(c)
+        k = max(1, int(round((b - a) / x * fps)))
         ta, tb = (a, b) if seek_base is None else (0.0, b - a)
-        parts.append("[s%d]trim=start=%.3f:end=%.3f,setpts=PTS-STARTPTS,fps=%s,"
+        sp = "setpts=PTS-STARTPTS" if abs(x - 1.0) < 1e-6 else "setpts=(PTS-STARTPTS)/%.4f" % x   # 变速
+        parts.append("[s%d]trim=start=%.3f:end=%.3f,%s,fps=%s,"
                      "tpad=stop_mode=clone:stop_duration=0.5,trim=end_frame=%d,"
-                     "setpts=PTS-STARTPTS[v%d]" % (i, ta, tb, fps, k, i))
+                     "setpts=PTS-STARTPTS[v%d]" % (i, ta, tb, sp, fps, k, i))
     parts.append("%sconcat=n=%d:v=1:a=0[cat]" % ("".join("[v%d]" % i for i in range(n)), n))
     tail = "null"
     if nframes:
@@ -155,19 +178,26 @@ def denoise_filter(sb: dict) -> str:
     return "highpass=f=70,afftdn=nr=%.1f:nf=%.1f" % (max(1.0, min(40.0, nr)), nf)
 
 
-def _voice_graph(cuts, has_audio: bool = True, denoise: str = "") -> str:
+def _voice_graph(cuts, has_audio: bool = True, denoise: str = "", fps: float = 0.0) -> str:
     if not has_audio:   # 素材没有音轨（屏幕录制、动画片）：补一条等长静音，后面照常混配乐
-        total = sum(b - a for a, b in cuts)
+        total = sum((_abx(c)[1] - _abx(c)[0]) / _abx(c)[2] for c in cuts)
         return "anullsrc=r=48000:cl=stereo,atrim=duration=%.3f[voice]" % total
     parts = []
     src = "[0:a]"
     if denoise:   # 整条音轨先降噪再切段：降噪器要连续的声音才估得准噪声
         parts.append("[0:a]%s,asplit=%d%s" % (denoise, len(cuts), "".join("[dn%d]" % i for i in range(len(cuts)))))
-    for i, (a, b) in enumerate(cuts):
-        d = b - a
+    for i, c in enumerate(cuts):
+        a, b, x = _abx(c)
+        d = (b - a) / x
         src = ("[dn%d]" % i) if denoise else "[0:a]"
-        parts.append(src + "atrim=start=%.3f:end=%.3f,asetpts=PTS-STARTPTS,afade=t=in:d=%s,afade=t=out:st=%.3f:d=%s[a%d]"
-                     % (a, b, FADE, max(0.0, d - FADE), FADE, i))
+        tempo = _atempo(x)
+        if len(c) > 2:   # 有变速的片：每段声音补齐到和画面一样的整帧长度（atempo 尾巴会少几十毫秒），
+            # 不然整片声音比画面短、封装时 -shortest 会把画面尾巴截掉几帧
+            dq = max(1, round(d * fps)) / fps if fps else d
+            tempo += ",apad=whole_dur=%.4f,atrim=end=%.4f" % (dq, dq)
+            d = dq
+        parts.append(src + "atrim=start=%.3f:end=%.3f,asetpts=PTS-STARTPTS%s,afade=t=in:d=%s,afade=t=out:st=%.3f:d=%s[a%d]"
+                     % (a, b, tempo, FADE, max(0.0, d - FADE), FADE, i))
     n = len(cuts)
     parts.append("%sconcat=n=%d:v=0:a=1[voice]" % ("".join("[a%d]" % i for i in range(n)), n))
     return ";".join(parts)
@@ -262,7 +292,8 @@ def _prepare(sb_path: str, proxy: bool = False) -> dict:
         raise env.ToolError("storyboard.cuts 是空的")
     out = sb["output"]
     w, h, fps = int(out["width"]), int(out["height"]), out["fps"]
-    tl = Timeline(cuts, fps)
+    tl = Timeline(cuts, fps, sb.get("speed"))
+    cuts = tl.segments()   # 有变速：段在变速边界切开、带倍速；没有就和以前完全一样
     if proxy:  # 预览：短边减半（保持偶数），只为看版面与节奏
         w, h = max(2, (w // 2) & ~1), max(2, (h // 2) & ~1)
         out = dict(out, path=os.path.splitext(out["path"])[0] + "_preview.mp4")
@@ -370,7 +401,7 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
     fx_items = [x for x in sfx_mod.collect(sb) if x[0] < tl.duration]
     if fx_items:
         print("🔔 音效 %d 个" % len(fx_items))
-    audio, rep = loud.master(sb["source"], _voice_graph(cuts, info.get("has_audio", True), dn), tl.duration, work, target,
+    audio, rep = loud.master(sb["source"], _voice_graph(cuts, info.get("has_audio", True), dn, fps), tl.duration, work, target,
                              music=mu, fade=fade, sfx=fx_items,
                              sfx_gain=sfx_mod.gain_for((sb.get("sfx_level") or None)))
     print("🔊 响度 %.1f LUFS・真峰值 %.1f dBTP（人声 %+.1fdB%s，迭代 %d 次）"
@@ -401,7 +432,7 @@ def master_audio_cached(c: dict) -> str:
     """整片混音（人声降噪＋配乐闪避＋音效＋响度），按会影响声音的设定做缓存。
     「渲染一段」从它截取，所以单段听到的就是成片的声音。在 work/studio/audio 里做，不会和正式渲染互相覆盖。"""
     from . import loud, sfx as sfx_mod
-    sb, cuts, tl, info = c["sb"], c["cuts"], c["tl"], c["info"]
+    sb, cuts, tl, info, fps = c["sb"], c["cuts"], c["tl"], c["info"], c["fps"]
     mu = sb.get("music")
     fade = float((sb.get("ending") or {}).get("fade", 0) or 0)
     dn = denoise_filter(sb) if info.get("has_audio", True) else ""
@@ -414,7 +445,7 @@ def master_audio_cached(c: dict) -> str:
     cached = os.path.join(d, "mix_%s.m4a" % key)
     if os.path.isfile(cached):
         return cached
-    audio, _rep = loud.master(sb["source"], _voice_graph(cuts, info.get("has_audio", True), dn), tl.duration, d,
+    audio, _rep = loud.master(sb["source"], _voice_graph(cuts, info.get("has_audio", True), dn, fps), tl.duration, d,
                               float(sb["loudness"]), music=mu, fade=fade, sfx=fx_items,
                               sfx_gain=sfx_mod.gain_for((sb.get("sfx_level") or None)))
     env.run([env.ffmpeg(), "-y", "-v", "error", "-i", audio, "-c:a", "aac", "-b:a", "128k", cached])
@@ -488,7 +519,7 @@ def preview_subs(sb_path: str, t_from: Optional[float] = None, t_to: Optional[fl
     频道教训（ep05）：为了确认字幕对时重渲完整成片 5 次＝75 分钟；这支约一分钟就能给用户看。"""
     sb = load_storyboard(sb_path)
     fps = sb["output"]["fps"]
-    tl_full = Timeline([tuple(c) for c in sb["cuts"]], fps)
+    tl_full = Timeline([tuple(c) for c in sb["cuts"]], fps, sb.get("speed"))
     a = max(0.0, t_from or 0.0)
     b = min(tl_full.duration, t_to if t_to is not None else tl_full.duration)
     cuts = tl_full.source_ranges(a, b)
@@ -510,7 +541,7 @@ def preview_subs(sb_path: str, t_from: Optional[float] = None, t_to: Optional[fl
     info = env.probe(sb["source"])
     g = _video_base(cuts, w, h, fps, False, None, sb.get("framing"), bool(info.get("hdr")))
     g += ";[base]%sformat=yuv420p[v]" % (("subtitles=filename=%s," % ass) if ass else "")
-    g += ";" + _voice_graph(cuts, info.get("has_audio", True), denoise_filter(sb) if info.get("has_audio", True) else "") \
+    g += ";" + _voice_graph(cuts, info.get("has_audio", True), denoise_filter(sb) if info.get("has_audio", True) else "", fps) \
         + ";[voice]aformat=channel_layouts=stereo[a]"
     out = os.path.splitext(sb["output"]["path"])[0] + "_subs.mp4"
     os.makedirs(os.path.dirname(out), exist_ok=True)

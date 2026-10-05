@@ -52,21 +52,36 @@ let pngBusy = false, idleTimer = null;
 
 // ------------------------------------------------------------------ 时间轴换算（与引擎 timeline.py 相同）
 function TL() {
+  // cuts／off／len：原本的剪辑段（剪辑点编辑用）；pcs：按变速区间切开的小段（换算时间、播放用；与引擎 timeline.py 同一套）
   const cuts = (S.sb.cuts || []).map((c) => [+c[0], +c[1]]);
-  const off = []; let acc = 0;
-  for (const [a, b] of cuts) { off.push(acc); acc += b - a; }
+  const regs = (S.sb.speed || []).map((r) => [+r.s[0], +r.s[1], Math.max(0.25, Math.min(4, +r.x || 1))]).filter((r) => r[1] > r[0] && Math.abs(r[2] - 1) > 1e-6);
+  const pcs = [], off = [], len = []; let acc = 0;
+  cuts.forEach(([a, b], ci) => {
+    off.push(acc);
+    const pts = [...new Set([a, b, ...regs.flatMap((r) => [r[0], r[1]]).filter((x) => x > a && x < b)])].sort((u, v) => u - v);
+    for (let k = 0; k + 1 < pts.length; k++) {
+      const u = pts[k], v = pts[k + 1]; if (v - u < 1e-6) continue;
+      const m = (u + v) / 2, r = regs.find((r_) => r_[0] <= m && m < r_[1]), x = r ? r[2] : 1;
+      pcs.push({ a: u, b: v, x, ci, off: acc }); acc += (v - u) / x;
+    }
+    len.push(acc - off[ci]);
+  });
+  const find = (t) => { for (let p = 0; p < pcs.length; p++) { const q = pcs[p], L = (q.b - q.a) / q.x; if (t < q.off + L || p === pcs.length - 1) return p; } return 0; };
   return {
-    cuts, off, dur: acc,
+    cuts, off, len, pcs, dur: acc, varied: pcs.some((q) => q.x !== 1),
+    end(i) { return off[i] + len[i]; },
     toSrc(t) {
-      for (let i = 0; i < cuts.length; i++) { const L = cuts[i][1] - cuts[i][0]; if (t < off[i] + L || i === cuts.length - 1) return { src: cuts[i][0] + Math.min(L, Math.max(0, t - off[i])), i }; }
-      return { src: 0, i: 0 };
+      if (!pcs.length) return { src: 0, i: 0, p: 0 };
+      const p = find(t), q = pcs[p], L = (q.b - q.a) / q.x;
+      return { src: q.a + Math.min(L, Math.max(0, t - q.off)) * q.x, i: q.ci, p };
     },
     clip(a, b) {
       const out = [];
-      cuts.forEach(([ca, cb], i) => { const lo = Math.max(a, ca), hi = Math.min(b, cb); if (hi > lo) out.push([off[i] + lo - ca, off[i] + hi - ca]); });
+      for (const q of pcs) { const lo = Math.max(a, q.a), hi = Math.min(b, q.b); if (hi > lo) out.push([q.off + (lo - q.a) / q.x, q.off + (hi - q.a) / q.x]); }
+      for (let k = out.length - 1; k > 0; k--) if (Math.abs(out[k][0] - out[k - 1][1]) < 1e-6) { out[k - 1][1] = out[k][1]; out.splice(k, 1); }   // 同一刀里的变速小段合回一段
       return out;
     },
-    toOut(s) { for (let i = 0; i < cuts.length; i++) if (s >= cuts[i][0] - 1e-6 && s <= cuts[i][1] + 1e-6) return off[i] + s - cuts[i][0]; return null; },
+    toOut(s_) { for (const q of pcs) if (s_ >= q.a - 1e-6 && s_ <= q.b + 1e-6) return q.off + (s_ - q.a) / q.x; return null; },
   };
 }
 let T = null;
@@ -478,12 +493,13 @@ function togglePlay() {
 }
 function loop() {
   if (!playing) return;
-  // 按「现在播到第几刀」换算时间：同一段原片出现两次（开头预告）也不会跳回去
-  const i = T.toSrc(tOut).i, c = T.cuts[i];
-  if (c && video.currentTime >= c[1] - 0.02) {   // 一刀播完跳到下一刀
-    if (i + 1 < T.cuts.length) { video.currentTime = T.cuts[i + 1][0]; tOut = T.off[i + 1] + 0.001; }
+  // 按「现在播到哪一小段」换算时间：同一段原片出现两次（开头预告）也不会跳回去；变速段改播放速度
+  const p = T.toSrc(tOut).p, q = T.pcs[p];
+  if (q && video.playbackRate !== q.x) video.playbackRate = q.x;
+  if (q && video.currentTime >= q.b - 0.02) {   // 这一段播完：接下一段（同一刀里相连的变速段不用跳）
+    if (p + 1 < T.pcs.length) { const nq = T.pcs[p + 1]; if (Math.abs(nq.a - q.b) > 0.05) video.currentTime = nq.a; tOut = nq.off + 0.001; video.playbackRate = nq.x; }
     else { togglePlay(); return; }
-  } else if (c && video.currentTime >= c[0] - 0.1) tOut = T.off[i] + Math.max(0, video.currentTime - c[0]);
+  } else if (q && video.currentTime >= q.a - 0.1) tOut = q.off + Math.max(0, video.currentTime - q.a) / q.x;
   if (stopAt !== null && tOut >= stopAt) { stopAt = null; togglePlay(); return; }
   tick();
   const sc = $("tlScroll"), x = tOut * pps;
@@ -538,7 +554,10 @@ function renderTimeline() {
       (S.sb.sfx || []).forEach((x, i) => { h += block("sx", i, +x.t, +x.t + 0.01, "音效 " + (x.sound || "pop")); });
     }
     if (t.key === "cap") pieces().forEach((pc, i) => { for (const o of capSegs(pc)) h += block("cap", i, o[0], o[1], plain(hl(pc)), undefined, isBad(o[0], o[1])); });
-    if (t.key === "cut") T.cuts.forEach((c, i) => { h += block("cut", i, T.off[i], T.off[i] + c[1] - c[0], "原片 " + fmt(c[0]).slice(0, 5) + "–" + fmt(c[1]).slice(0, 5)); });
+    if (t.key === "cut") T.cuts.forEach((c, i) => {
+      const xs = [...new Set(T.pcs.filter((q) => q.ci === i && q.x !== 1).map((q) => q.x))];
+      h += block("cut", i, T.off[i], T.end(i), "原片 " + fmt(c[0]).slice(0, 5) + "–" + fmt(c[1]).slice(0, 5) + (xs.length ? "　变速 " + xs.map((x) => x + "×").join("、") : ""));
+    });
     if (t.key === "voice") h += '<div class="tl-block aud" style="left:0;width:' + D * pps + 'px"><canvas class="wave" id="wave" width="' + Math.max(1, Math.round(D * pps)) + '" height="26"></canvas></div>';
     if (t.key === "music") { const mu = S.sb.music; h += mu ? '<div class="tl-block aud music" style="left:0;width:' + D * pps + 'px;height:22px;line-height:22px">配乐 ' + esc(String(mu.file || "").replace(/^bgm:/, "")) + "　" + (mu.db ?? -18) + " dB" + (mu.duck ? " · 人声出现时自动闪避" : "") + "</div>" : ""; }
     h += "</div>";
@@ -579,7 +598,7 @@ function rangeOf() {
   if (sel.k === "ov" || sel.k === "rc" || sel.k === "zm") return [+o.t[0], +o.t[1]];
   if (sel.k === "sx") return [Math.max(0, +o.t - 0.5), Math.min(T.dur, +o.t + 1)];
   if (sel.k === "cap") return capOut(o);
-  if (sel.k === "cut") return [T.off[sel.i], T.off[sel.i] + o[1] - o[0]];
+  if (sel.k === "cut") return [T.off[sel.i], T.end(sel.i)];
   return null;
 }
 
@@ -630,7 +649,7 @@ $("tlInner").addEventListener("pointermove", (e) => {
     if (tdrag.mode === "l") c[0] = r2(Math.max(0, Math.min(c[1] - 0.2, c[0] + d)));
     else c[1] = r2(Math.min(P.srcDur, Math.max(c[0] + 0.2, c[1] + d)));
     S.sb.cuts = tdrag.orig.map((x, j) => (j === tdrag.i ? c : x)); T = TL();
-    renderTimeline(); seek(tdrag.mode === "l" ? T.off[tdrag.i] : T.off[tdrag.i] + c[1] - c[0] - 0.05);
+    renderTimeline(); seek(tdrag.mode === "l" ? T.off[tdrag.i] : T.end(tdrag.i) - 0.05);
     toast("原片 " + fmt(c[0]) + " – " + fmt(c[1]) + "（放开后字卡会跟着换算）");
     return;
   }
@@ -802,6 +821,10 @@ function renderInspector() {
     h += '<h3><span class="tag" style="background:var(--cut-t)">画面</span>第 ' + (sel.i + 1) + " 段</h3>";
     h += '<p class="hint">原片 ' + fmt(o[0]) + " – " + fmt(o[1]) + "（" + (o[1] - o[0]).toFixed(2) + " 秒），成片从 " + fmt(T.off[sel.i]) + " 开始。</p>";
     if (!RO) h += '<div class="row2">' + inp("c_a", "原片入点（秒）", "num", o[0]) + inp("c_b", "原片出点（秒）", "num", o[1]) + "</div>";
+    const xs = [...new Set(T.pcs.filter((q) => q.ci === sel.i).map((q) => q.x))], cur = xs.length === 1 ? String(xs[0]) : "";
+    h += '<div class="field"><label for="c_speed">这一段的速度（声音会一起变快变慢、音高不变）</label><select id="c_speed"' + (RO ? " disabled" : "") + ">" +
+      (cur ? "" : '<option value="" selected>混合（段里有不同速度）</option>') + [["0.5", "0.5×（慢动作）"], ["0.75", "0.75×"], ["1", "1×（原速）"], ["1.25", "1.25×"], ["1.5", "1.5×"], ["2", "2×（快一倍）"], ["3", "3×"]]
+        .map(([v, lb]) => '<option value="' + v + '"' + (v === cur ? " selected" : "") + ">" + lb + "</option>").join("") + '</select><p class="hint" style="margin:0">只要一部分变速：先在播放头按 <span class="kbd">S</span> 切开，再选那一段。字卡会跟着换算。</p></div>';
     h += '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="audIn"' + (sel.i ? "" : " disabled") + '>▶ 试听入点（前后 2 秒）</button><button class="btn sm" id="audOut"' + (sel.i + 1 < T.cuts.length ? "" : " disabled") + ">▶ 试听出点</button>" +
       (RO ? "" : '<button class="btn danger sm" id="cutDel">删除这段</button>') + "</div>";
     h += '<p class="hint">时间轴上拖这一段的<b>两端</b>＝修剪入点／出点（字卡会自动跟着换算）；<span class="kbd">S</span> 在播放头切开；讲错的句子也可以到<b>逐字稿</b>里删。</p>';
@@ -815,6 +838,8 @@ function renderInspector() {
     if (ai) ai.onclick = () => playRange(T.off[i] - 2, T.off[i] + 2);
     if (ao) ao.onclick = () => playRange(T.off[i + 1] - 2, T.off[i + 1] + 2);
     if (cd) cd.onclick = deleteSel;
+    const cs = $("c_speed");
+    if (cs) cs.onchange = () => { if (cs.value) recut({ speed: [T.cuts[i][0], T.cuts[i][1], +cs.value] }, (r) => "这一段改成 " + cs.value + "×，片长 " + fmt(r.duration) + "；字卡已跟着换算。"); };
     for (const id of ["c_a", "c_b"]) {
       const x = $(id); if (!x) continue;
       x.onchange = async () => {

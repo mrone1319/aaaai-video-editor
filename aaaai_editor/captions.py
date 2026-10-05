@@ -164,6 +164,14 @@ def to_events(pcs: List[dict], tl: Timeline) -> list:
             if b - a >= 0.15:
                 ev.append((a, b, pc["text"], extra))
     ev.sort(key=lambda e: (e[0], e[1], e[2]))
+    if getattr(tl, "varied", False):   # 变速边界把一句切成前后相连的两段：合回一句（不然出字动效会在中间重来一次）
+        merged: list = []
+        for e in ev:
+            if merged and merged[-1][2] == e[2] and abs(merged[-1][1] - e[0]) < 0.02:
+                merged[-1] = (merged[-1][0], e[1], e[2], merged[-1][3])
+            else:
+                merged.append(e)
+        ev = merged
     return ev
 
 

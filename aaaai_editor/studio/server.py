@@ -122,7 +122,7 @@ class Studio:
                 self.note("自动字幕：%s" % e)
         out = raw.get("output") or {}
         fps = float(out.get("fps", 30))
-        dur = Timeline([tuple(c) for c in raw.get("cuts") or []], fps).duration if raw.get("cuts") else 0.0
+        dur = Timeline([tuple(c) for c in raw.get("cuts") or []], fps, raw.get("speed")).duration if raw.get("cuts") else 0.0
         styles = {}
         for name in theme.all_themes(d):
             try:
@@ -190,10 +190,15 @@ class Studio:
         sb = body["storyboard"]
         fps = float((sb.get("output") or {}).get("fps", 30))
         old_cuts = [(float(a), float(b)) for a, b in sb["cuts"]]
-        old = Timeline(old_cuts, fps)
+        old = Timeline(old_cuts, fps, sb.get("speed"))
         st = sb.setdefault("studio", {})
         removed = [tuple(x) for x in st.get("removed") or []]
-        if body.get("set") is not None:   # 拖剪辑点、切开：整组换成新的剪辑点
+        if body.get("speed") is not None:   # 变速：剪辑点不变，换算时间用新的变速清单
+            from ..edit import merge_speed
+            sa, sb_, sx = body["speed"]
+            new_speed = merge_speed(sb.get("speed"), float(sa), float(sb_), float(sx))
+            new_cuts = list(old_cuts)
+        elif body.get("set") is not None:   # 拖剪辑点、切开：整组换成新的剪辑点
             new_cuts = [(round(float(a), 3), round(float(b), 3)) for a, b in body["set"] if float(b) - float(a) >= 0.1]
         elif body.get("remove"):
             rm = [(float(a), float(b)) for a, b in body["remove"]]
@@ -211,7 +216,8 @@ class Studio:
             removed = [r for r in removed if not any(abs(r[0] - x[0]) < 1e-3 and abs(r[1] - x[1]) < 1e-3 for x in add)]
         if not new_cuts:
             raise ValueError("至少要留一段画面")
-        new = Timeline(new_cuts, fps)
+        speed_now = new_speed if body.get("speed") is not None else sb.get("speed")
+        new = Timeline(new_cuts, fps, speed_now)
 
         def m(t: float) -> float:
             src = old.to_source(t)
@@ -239,6 +245,11 @@ class Studio:
         if isinstance(sb.get("cover"), dict) and isinstance(sb["cover"].get("at"), (int, float)):
             sb["cover"]["at"] = m(float(sb["cover"]["at"]))
         sb["cuts"] = [[round(a, 3), round(b, 3)] for a, b in new_cuts]
+        if body.get("speed") is not None:
+            if speed_now:
+                sb["speed"] = speed_now
+            else:
+                sb.pop("speed", None)
         st["removed"] = [[round(a, 3), round(b, 3)] for a, b in removed]
         if not st["removed"]:
             del st["removed"]
@@ -353,7 +364,7 @@ class Studio:
         from .. import faces, render
         from ..timeline import Timeline
         sb = render.load_storyboard(self.sbp(i))
-        tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+        tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
         fc = faces.track(sb, tl, int(sb["output"]["width"]), int(sb["output"]["height"]))
         return {"step": faces.STEP, "faces": [[t, list(b) if b else None] for t, b in fc]}
 
@@ -538,7 +549,7 @@ class Studio:
         from ..timeline import Timeline
         sbp = self.sbp(i)
         sb = render.load_storyboard(sbp)
-        tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+        tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
         items = []
         cap = sb["captions"]
         tr = os.path.join(sb["_base"], cap.get("transcript", "work/transcript.json"))

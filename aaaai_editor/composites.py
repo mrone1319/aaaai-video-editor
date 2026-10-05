@@ -201,7 +201,7 @@ def expand(sb: dict) -> dict:
     if not ovs:
         return sb
     W, H = int(sb["output"]["width"]), int(sb["output"]["height"])
-    total = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"]).duration if sb.get("cuts") else None
+    total = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed")).duration if sb.get("cuts") else None
     for o in ovs:   # hold：接管一直停到片尾（行动号召收尾）
         if o.get("type") == "frame" and o.get("hold") and total:
             o["t"] = [float(o["t"][0]), round(total, 3)]

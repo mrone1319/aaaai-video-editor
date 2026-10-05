@@ -436,7 +436,7 @@ def cmd_cues(a) -> int:
         raise env.ToolError("缺少转录文件 %s（先跑 aaaai-editor transcribe）" % tr)
     segs = json.load(open(tr, encoding="utf-8"))["segments"]
     pcs, track = cp.load_pieces(sb, segs, cp.fit(sb))
-    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
     print("成片时长 %.2fs（%s）" % (tl.duration, "手改字幕轨" if track else "自动字幕"))
     for a_, b_, t, ex in cp.to_events(pcs, tl):
         print("[%6.2f – %6.2f] %s%s" % (a_, b_, t, ("  | " + ex["en"]) if ex.get("en") else ""))
@@ -516,6 +516,14 @@ def cmd_hook(a) -> int:
     if r.get("tail_missing"):
         print("⚠️ 句尾好像被切掉了（原话最后几个字没听到）：用 listen 听一下，必要时改用 --from/--to 给原片秒数。")
     print("卡片／推近的时间已跟着换算。开头那几秒原本的标题卡，现在排在 hook 之后——看预览决定要不要挪到 0 秒。")
+    return 0
+
+
+def cmd_speed(a) -> int:
+    from . import edit
+    r = edit.set_speed(a.storyboard, a.range[0], a.range[1], a.x)
+    print("✅ 原片 %.2f–%.2f 秒改成 %.2g 倍速；成片现在 %.1f 秒（%s %.1f 秒），字卡已跟着换算"
+          % (a.range[0], a.range[1], a.x, r["duration"], "少了" if r["saved"] >= 0 else "多了", abs(r["saved"])))
     return 0
 
 
@@ -777,6 +785,11 @@ def main(argv=None) -> int:
     hk.add_argument("--mode", choices=["teaser", "move"], default="teaser")
     hk.add_argument("--suggest", nargs="?", type=int, const=3, default=0, help="只列出最适合当开头的几句（默认 3 句），不改 storyboard")
     hk.set_defaults(fn=cmd_hook)
+    spd = sub.add_parser("speed", help="一段变速：原片 开始 结束 秒改成 x 倍速（2＝快一倍、0.5＝慢动作、1＝恢复），字卡跟着换算")
+    spd.add_argument("storyboard")
+    spd.add_argument("--range", nargs=2, type=float, required=True, metavar=("原片开始", "原片结束"))
+    spd.add_argument("--x", type=float, required=True, help="倍速 0.25～4")
+    spd.set_defaults(fn=cmd_speed)
     td = sub.add_parser("tidy", help="找口头禅（嗯、呃…）与 NG（讲错重讲），列出来；--apply 套用")
     td.add_argument("storyboard"); td.add_argument("--lang", default="auto")
     td.add_argument("--apply", nargs="?", const="all", help="all 或编号，例：--apply 1,3,5")

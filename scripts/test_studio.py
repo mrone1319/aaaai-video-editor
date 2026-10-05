@@ -375,6 +375,35 @@ def main():
     check("有移动路径的卡渲染得出来", ok6, rp6)
     store.write(sbp, sb0, source="test")
 
+    print("== 阶段 5 第三批：变速")
+    from aaaai_editor.timeline import Timeline as TLc
+    from aaaai_editor import edit as ED
+    sp = [{"s": [2.0, 4.0], "x": 2.0}, {"s": [6.0, 7.0], "x": 0.5}]
+    tv = TLc([(0.0, 8.0)], 30, sp)
+    check("变速：时间轴在区间边界切开、长度对", tv.rates == [1.0, 2.0, 1.0, 0.5, 1.0] and abs(tv.duration - 8.0) < 1e-6,
+          "%s %s" % (tv.rates, tv.duration))
+    check("变速：成片↔原片换算来回一致", abs(tv.to_source(tv.clip(3.0, 3.001)[0][0]) - 3.0) < 1e-3 and abs(tv.clip(6.5, 6.6)[0][0] - 6.0) < 1e-3)
+    check("不写变速＝和以前一样", TLc([(0.0, 8.0)], 30).segments() == [(0.0, 8.0)] and not TLc([(0.0, 8.0)], 30).varied)
+    check("变速清单合并（改一段、取消一段）", ED.merge_speed(sp, 3.0, 5.0, 1.0) == [{"s": [2.0, 3.0], "x": 2.0}, {"s": [6.0, 7.0], "x": 0.5}])
+    s7 = json.loads(json.dumps(sb0))
+    s7["overlays"] = [dict(s7["overlays"][0], t=[5.0, 6.0])]
+    store.write(sbp, s7, source="test")
+    r7 = ED.set_speed(sbp, 2.0, 4.0, 2.0)
+    j7 = json.load(open(sbp))
+    check("set_speed：片长变短、后面的字卡往前", abs(r7["duration"] - 7.0) < 0.05 and abs(j7["overlays"][0]["t"][0] - 4.0) < 0.02
+          and j7["speed"] == [{"s": [2.0, 4.0], "x": 2.0}], "%s %s" % (r7, j7["overlays"][0]["t"]))
+    try:
+        rp7 = R.render_range(sbp, 1.0, 5.0)
+        inf7 = env.probe(rp7)
+        ok7 = abs(inf7["duration"] - 4.0) < 0.15
+    except Exception as e:   # noqa: BLE001
+        ok7, inf7 = False, str(e)
+    check("变速片渲染一段：长度对", ok7, str(inf7)[:200])
+    c, r, _ = req(B + "api/recut", {"storyboard": json.load(open(sbp)), "speed": [2.0, 4.0, 1.0]})
+    check("Studio 改速度（恢复原速）：字卡换算回去、清掉变速", c == 200 and "speed" not in r["storyboard"]
+          and abs(r["storyboard"]["overlays"][0]["t"][0] - 5.0) < 0.02, str(r)[:300])
+    store.write(sbp, sb0, source="test")
+
     print("== 体检与诊断")
     c, r, _ = req(B + "api/check", {"p": pid})
     check("体检回传清单", c == 200 and isinstance(r.get("items"), list), str(r)[:300])

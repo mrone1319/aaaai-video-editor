@@ -155,10 +155,10 @@ def hook(sb_path: str, text: Optional[str] = None, a: Optional[float] = None, b:
     a, b = _snap(src, float(a), float(b))
     fps = sb.get("output", {}).get("fps", 30)
     old_cuts = [tuple(c) for c in sb["cuts"]]
-    old = Timeline(old_cuts, fps)
+    old = Timeline(old_cuts, fps, sb.get("speed"))
     body = old_cuts if mode == "teaser" else _subtract(old_cuts, [(a, b)])
     new_cuts = [(a, b)] + body
-    new = Timeline(new_cuts, fps)
+    new = Timeline(new_cuts, fps, sb.get("speed"))
     lead = new.lengths[0]
     _remap(sb, old, new, skip_first=lead)
     sb["cuts"] = [[round(x, 3), round(y, 3)] for x, y in new_cuts]
@@ -232,7 +232,7 @@ def suggest_hooks(sb_path: str, n: int = 3) -> List[dict]:
     sb = _load(sb_path)
     cuts = [tuple(c) for c in sb["cuts"]]
     ps = [p for p in _pieces(sb_path) if _kept(p["s"][0], p["s"][1], cuts) > 0.3]
-    tl = Timeline(cuts, sb.get("output", {}).get("fps", 30))
+    tl = Timeline(cuts, sb.get("output", {}).get("fps", 30), sb.get("speed"))
     env_ = audio.envelope(_source(sb, sb_path))
     cands = []
     for i in range(len(ps)):
@@ -414,7 +414,7 @@ def detect(sb_path: str, lang: str = "auto") -> List[dict]:
                 merged[-1] = p if (p["s"][1] - p["s"][0]) > (merged[-1]["s"][1] - merged[-1]["s"][0]) else merged[-1]
             continue
         merged.append(p)
-    tl = Timeline(cuts, sb.get("output", {}).get("fps", 30))
+    tl = Timeline(cuts, sb.get("output", {}).get("fps", 30), sb.get("speed"))
     for k, p in enumerate(merged, 1):
         p["id"] = k
         hit = tl.clip(p["s"][0], p["s"][1])
@@ -422,6 +422,38 @@ def detect(sb_path: str, lang: str = "auto") -> List[dict]:
         p["len"] = round(p["s"][1] - p["s"][0], 2)
     json.dump(merged, open(os.path.join(work, "tidy.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     return merged
+
+
+def merge_speed(speed: Optional[list], a: float, b: float, x: float) -> list:
+    """在变速清单里设定原片 [a, b] 的倍速（x＝1 就是取消）：先把这段从旧区间扣掉，再加上新的。"""
+    out = []
+    for r in speed or []:
+        ra, rb, rx = float(r["s"][0]), float(r["s"][1]), float(r.get("x", 1.0))
+        for u, v in ((ra, min(rb, a)), (max(ra, b), rb)):
+            if v - u >= 0.05:
+                out.append({"s": [round(u, 3), round(v, 3)], "x": rx})
+    if abs(x - 1.0) > 1e-6:
+        out.append({"s": [round(a, 3), round(b, 3)], "x": round(max(0.25, min(4.0, x)), 3)})
+    return sorted(out, key=lambda r: r["s"][0])
+
+
+def set_speed(sb_path: str, a: float, b: float, x: float) -> dict:
+    """原片 [a, b] 改成 x 倍速（0.25～4；1＝恢复原速）。字卡、推近、配方、音效的成片时间跟着换算（和 tidy 同一套）。"""
+    if b <= a:
+        raise env.ToolError("区间不对：%.2f–%.2f" % (a, b))
+    sb = _load(sb_path)
+    fps = sb.get("output", {}).get("fps", 30)
+    cuts = [tuple(c) for c in sb["cuts"]]
+    old = Timeline(cuts, fps, sb.get("speed"))
+    sp = merge_speed(sb.get("speed"), a, b, x)
+    new = Timeline(cuts, fps, sp)
+    _remap(sb, old, new)
+    if sp:
+        sb["speed"] = sp
+    else:
+        sb.pop("speed", None)
+    _save(sb_path, sb, "speed")
+    return {"duration": round(new.duration, 2), "saved": round(old.duration - new.duration, 2), "speed": sp}
 
 
 def apply(sb_path: str, ids: Optional[List[int]] = None) -> dict:
@@ -432,9 +464,9 @@ def apply(sb_path: str, ids: Optional[List[int]] = None) -> dict:
     sb = _load(sb_path)
     fps = sb.get("output", {}).get("fps", 30)
     old_cuts = [tuple(c) for c in sb["cuts"]]
-    old = Timeline(old_cuts, fps)
+    old = Timeline(old_cuts, fps, sb.get("speed"))
     new_cuts = _subtract(old_cuts, [tuple(p["s"]) for p in pick])
-    new = Timeline(new_cuts, fps)
+    new = Timeline(new_cuts, fps, sb.get("speed"))
     lead = 0.0
     if sb.get("hook") and sb["hook"].get("source") and new_cuts and \
             abs(new_cuts[0][0] - sb["hook"]["source"][0]) < 1e-3:

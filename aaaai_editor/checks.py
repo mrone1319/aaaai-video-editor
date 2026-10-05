@@ -72,7 +72,7 @@ def quick(sb_path: str) -> None:
     if not cap.get("enabled") or not os.path.isfile(tr_path):
         return
     doc = json.load(open(tr_path, encoding="utf-8"))
-    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
     pcs, _track = captions.load_pieces(sb, doc["segments"], captions.fit(sb))
     probs, notes = energy(sb, tl, captions.to_events(pcs, tl))
     if probs:
@@ -94,7 +94,7 @@ def sync(sb_path: str, tolerance: float = 0.4, keep: bool = True) -> int:
     if not os.path.isfile(tr_path):
         raise env.ToolError("缺少转录文件 %s（先跑 aaaai-editor transcribe）" % tr_path)
     doc = json.load(open(tr_path, encoding="utf-8"))
-    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
     pcs, _track = captions.load_pieces(sb, doc["segments"], captions.fit(sb))
     events = captions.to_events(pcs, tl)
     if not events:

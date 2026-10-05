@@ -106,7 +106,7 @@ def music_ab(sb_path: str, at: float, dur: float, dbs: List[float]) -> List[str]
     sb = render.load_storyboard(sb_path)
     if not sb.get("music"):
         raise env.ToolError("storyboard 没有 music，先选一首（aaaai-editor bgm 看常备配乐）")
-    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
     b = min(tl.duration, at + dur)
     cuts = tl.source_ranges(at, b)
     outs = []
@@ -127,7 +127,7 @@ def denoise_ab(sb_path: str, at: float, dur: float, levels: List[str]) -> List[s
     """同一段、不降噪／几种降噪强度各出一支 MP3，让用户听完再定（降噪太重声音会发闷）。"""
     from . import loud
     sb = render.load_storyboard(sb_path)
-    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
     b = min(tl.duration, at + dur)
     cuts = tl.source_ranges(at, b)
     outs = []
@@ -166,7 +166,7 @@ def framing_sheet(sb_path: str, at: float, levels: List[float], cy: float = 0.4)
     sb = render.load_storyboard(sb_path)
     o = sb["output"]
     W, H = int(o["width"]), int(o["height"])
-    tl = Timeline([tuple(c) for c in sb["cuts"]], o["fps"])
+    tl = Timeline([tuple(c) for c in sb["cuts"]], o["fps"], sb.get("speed"))
     ts = tl.to_source(min(at, tl.duration - 0.05))
     d = os.path.join(sb["_base"], "work")
     ins, parts = [], []

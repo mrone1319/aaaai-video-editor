@@ -39,7 +39,7 @@ def _hdr(sb: dict) -> bool:
 
 def clean_frame(sb: dict, t: float, W: int, H: int, out: str) -> str:
     """成片时间 t 的画面，但从原片取：套用同样的剪辑、推近与 HDR 调色，没有字幕、卡片。"""
-    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
     st = tl.to_source(max(0.0, min(t, tl.duration - 0.05)))
     pre, fit = render.frame_chain(W, H, sb.get("framing"), _hdr(sb))
     env.run([env.ffmpeg(), "-y", "-v", "error", "-ss", "%.3f" % st, "-i", sb["source"], "-frames:v", "1",
@@ -67,7 +67,7 @@ def candidates(sb_path: str, n: int = 8) -> Tuple[str, List[dict]]:
     from . import faces as faces_mod
     sb = render.load_storyboard(sb_path)
     fps = sb["output"]["fps"]
-    tl = Timeline([tuple(c) for c in sb["cuts"]], fps)
+    tl = Timeline([tuple(c) for c in sb["cuts"]], fps, sb.get("speed"))
     ow, oh = int(sb["output"]["width"]), int(sb["output"]["height"])
     try:
         fc = {round(t, 2): f for t, f in faces_mod.track(sb, tl, ow, oh)}

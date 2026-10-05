@@ -48,7 +48,8 @@ def track(sb: dict, tl, W: int, H: int) -> List[Tuple[float, Optional[Tuple[floa
     fr = sb.get("framing") or {}
     sw = 144
     sh = int(round(sw * H / float(W))) & ~1
-    key = hashlib.sha1(json.dumps([os.path.abspath(src), st.st_size, st.st_mtime_ns, tl.cuts, fr, W, H, STEP, 1])
+    key = hashlib.sha1(json.dumps([os.path.abspath(src), st.st_size, st.st_mtime_ns,
+                                  [tl.cuts, tl.rates] if getattr(tl, "varied", False) else tl.cuts, fr, W, H, STEP, 1])
                        .encode()).hexdigest()[:16]
     cache = os.path.join(sb["_base"], "work", "faces_%s.json" % key)
     if os.path.isfile(cache):
@@ -62,10 +63,11 @@ def track(sb: dict, tl, W: int, H: int) -> List[Tuple[float, Optional[Tuple[floa
     else:
         vf = "scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d" % (sw, sh, sw, sh)
     out: List[Tuple[float, Optional[Tuple[float, float]]]] = []
-    for (ca, _cb), off, ln in zip(tl.cuts, tl.offsets, tl.lengths):
-        n = max(1, int(ln / STEP))
-        raw = subprocess.run([env.ffmpeg(), "-v", "error", "-ss", "%.3f" % (ca + STEP / 2), "-t", "%.3f" % ln, "-i", src,
-                              "-vf", "fps=%.3f,%s" % (1.0 / STEP, vf), "-frames:v", str(n), "-f", "rawvideo",
+    rates = getattr(tl, "rates", None) or [1.0] * len(tl.cuts)
+    for (ca, _cb), off, ln, x in zip(tl.cuts, tl.offsets, tl.lengths, rates):
+        n = max(1, int(ln / STEP))   # 变速段：成片每 STEP 秒＝原片 STEP×倍速 秒
+        raw = subprocess.run([env.ffmpeg(), "-v", "error", "-ss", "%.3f" % (ca + STEP * x / 2), "-t", "%.3f" % (ln * x), "-i", src,
+                              "-vf", "fps=%.3f,%s" % (1.0 / (STEP * x), vf), "-frames:v", str(n), "-f", "rawvideo",
                               "-pix_fmt", "bgra", "-"], capture_output=True).stdout
         k = len(raw) // (sw * sh * 4)
         if not k:
