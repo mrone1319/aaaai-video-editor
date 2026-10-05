@@ -404,6 +404,34 @@ def main():
           and abs(r["storyboard"]["overlays"][0]["t"][0] - 5.0) < 0.02, str(r)[:300])
     store.write(sbp, sb0, source="test")
 
+    print("== 界面语言（中文／English）")
+    import re as _re
+    from html.parser import HTMLParser
+    c1, js1, _ = req(B + "i18n.js")
+    c2, js2, _ = req(B + "i18n-data.js")
+    check("语言档案拿得到", c1 == 200 and c2 == 200)
+    data = json.loads((js2 if isinstance(js2, str) else js2.decode("utf-8")).split("=", 1)[1].strip().rstrip(";"))
+    check("对照表结构", all(k in data for k in ("dict", "full", "patterns", "punct", "blocks")) and len(data["dict"]) > 1000)
+    RUN = _re.compile(r"[\u4e00-\u9fff\u3400-\u4dbf]+")
+    runs = set()
+    def _add(t):
+        for m in RUN.finditer(_re.sub(r"<[^<>]{0,400}?>", " ", t)):
+            runs.add(m.group(0))
+    web = os.path.join(ROOT, "aaaai_editor", "studio", "web")
+    src = _re.sub(r"(?m)^\s*//.*$", "", open(os.path.join(web, "app.js"), encoding="utf-8").read())
+    for m in _re.finditer(r'"((?:[^"\\\n]|\\.)*)"|\'((?:[^\'\\\n]|\\.)*)\'', src):
+        _add(next(g for g in m.groups() if g is not None))
+    class _H(HTMLParser):
+        def handle_data(self, d_):
+            _add(d_)
+        def handle_starttag(self, tag, attrs):
+            for k_, v_ in attrs:
+                if k_ in ("title", "placeholder", "aria-label") and v_:
+                    _add(v_)
+    _H().feed(open(os.path.join(web, "index.html"), encoding="utf-8").read())
+    miss = sorted(r for r in runs if r not in data["dict"] and r not in data["full"])
+    check("界面上每段中文都有英文（新加的字要补进 i18n-data.js）", not miss, " | ".join(miss[:30]))
+
     print("== 体检与诊断")
     c, r, _ = req(B + "api/check", {"p": pid})
     check("体检回传清单", c == 200 and isinstance(r.get("items"), list), str(r)[:300])

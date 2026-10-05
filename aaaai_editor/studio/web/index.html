@@ -40,7 +40,8 @@
 <main class="home" id="home" hidden>
   <header class="home-hd">
     <div class="home-brand"><span class="mark" aria-hidden="true"></span><div><h1>aaaai-editor <span>Studio</span></h1><div class="sub" id="homeSub">选一个项目开始剪辑</div></div></div>
-    <button class="btn" id="adoptBtn" title="把别处做好的影片接进来：转录、字幕、响度、封面"><svg class="ic"><use href="#i-import"/></svg>接入影片</button>
+    <div style="display:flex;gap:8px;align-items:center"><div class="seg lang" role="group" aria-label="界面语言" data-noi18n><button class="btn" data-lang="zh" title="中文界面">中</button><button class="btn" data-lang="en" title="English interface">EN</button></div>
+    <button class="btn" id="adoptBtn" title="把别处做好的影片接进来：转录、字幕、响度、封面"><svg class="ic"><use href="#i-import"/></svg>接入影片</button></div>
   </header>
   <div class="grid" id="grid"></div>
 </main>
@@ -64,6 +65,7 @@
     </div>
     <button class="btn" id="renderRange" title="只渲染选中的那一段（或播放头前后），几秒钟看到引擎的真样子（R）"><svg class="ic"><use href="#i-film"/></svg>渲染这一段</button>
     <button class="btn primary" id="export" title="按目前的剪辑表出正式成片"><svg class="ic"><use href="#i-export"/></svg>出片</button>
+    <div class="seg lang" role="group" aria-label="界面语言" data-noi18n><button class="btn" data-lang="zh" title="中文界面">中</button><button class="btn" data-lang="en" title="English interface">EN</button></div>
     <button class="btn ghost icon" id="more" title="快捷键、历史版本、诊断报告" aria-label="更多"><svg class="ic"><use href="#i-more"/></svg></button>
   </header>
 
@@ -132,6 +134,8 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="modal" id="modal" hidden><div class="box" id="modalBox" role="dialog" aria-modal="true"></div></div>
+<script src="i18n-data.js"></script>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

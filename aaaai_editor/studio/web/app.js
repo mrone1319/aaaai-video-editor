@@ -1192,9 +1192,9 @@ function renderSettings() {
     sfield("captions.style", "字幕样式", "select", capOpts) +
     '<div class="row2">' + sfield("captions.margin_v", "离底部（0.1–0.5）", "num") + sfield("captions.size_scale", "字号倍率", "num") + "</div>" +
     '<p class="hint" style="margin:-4px 0 0">离底部默认 0.30（画面约 70% 处）；字号倍率默认 1。</p>' +
-    sfield("captions.anim", "出字动效", "select", [["", "轻轻淡入（默认）"], ["none", "不要"]]) +
-    sfield("captions.avoid_face", "字幕避开脸", "jsel", [["", "开（默认）"], ["false", "关"]]) + "</fieldset>" +
-    '<fieldset><legend>字卡</legend>' + sfield("avoid_face", "字卡自动避开脸", "jsel", [["", "开（默认）"], ["false", "关"]], "手动拖过位置的字卡不会被自动挪。") + "</fieldset>" +
+    sfield("captions.anim", "出字动效", "select", [["", "轻轻淡入（默认）"], ["none", "无"]]) +
+    sfield("captions.avoid_face", "字幕避开脸", "jsel", [["", "开（默认）"], ["true", "开"], ["false", "关"]]) + "</fieldset>" +
+    '<fieldset><legend>字卡</legend>' + sfield("avoid_face", "字卡自动避开脸", "jsel", [["", "开（默认）"], ["true", "开"], ["false", "关"]], "手动拖过位置的字卡不会被自动挪。") + "</fieldset>" +
     '<fieldset><legend>声音</legend>' + sfield("music.file", "配乐", "select", bgm) +
     '<div class="row2">' + sfield("music.db", "配乐音量（dB）", "num") + sfield("music.duck", "人声出现时压低", "jsel", [["true", "压低"], ["false", "不压"], ["", "默认"]]) + "</div>" +
     '<div class="row2">' + sfield("music.fade_in", "配乐淡入（秒）", "num") + sfield("music.fade_out", "配乐淡出（秒）", "num") + "</div>" +
@@ -1769,6 +1769,13 @@ document.addEventListener("keydown", (e) => {
 });
 
 function renderAll() { renderTimeline(); renderStage(); renderInspector(); renderTranscript(); renderSettings(); if (!$("pane-chk").hidden) renderChecks(false); tick(); }
+
+// ------------------------------------------------------------------ 界面语言（i18n.js 负责翻译；这里只接按钮）
+document.querySelectorAll(".seg.lang [data-lang]").forEach((b) => {
+  b.classList.toggle("cur", b.dataset.lang === (window.STUDIO_LANG || "zh"));
+  b.setAttribute("aria-pressed", String(b.dataset.lang === (window.STUDIO_LANG || "zh")));
+  b.onclick = () => { if (b.dataset.lang !== window.STUDIO_LANG && window.setStudioLang) window.setStudioLang(b.dataset.lang); };
+});
 
 // ------------------------------------------------------------------ 路由
 async function route() {

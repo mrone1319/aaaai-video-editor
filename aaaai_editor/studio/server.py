@@ -967,7 +967,7 @@ def _handler(studio: Studio):
             try:
                 if r in ("", "index.html"):
                     return self._file(os.path.join(WEB, "index.html"))
-                if r in ("app.js", "app.css"):
+                if r in ("app.js", "app.css", "i18n.js", "i18n-data.js"):
                     return self._file(os.path.join(WEB, r))
                 if r.startswith("fonts/"):
                     from .. import fonts

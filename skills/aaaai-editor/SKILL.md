@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.7.1"
+  version: "1.8.0"
 ---
 
 # aaaai-editor 影片总监
@@ -320,6 +320,7 @@ render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP，**同
 - 用户说「改好了」：先 `"$A" patch "$P/storyboard.json"` 看最新内容，再照常 preview／抽帧看画面（铁律 2）。
 - 原片不见了的项目只能看不能改；遇到问题请用户点界面右上「⋯ → 诊断报告」复制给你（不含影片与密钥）。
 - 不要替用户关掉 Studio；密钥永远不经过 Studio。
+- 界面有「中／EN」切换（右上角）。改了 Studio 界面上的中文字，要把对应英文补进 `aaaai_editor/studio/web/i18n-data.js`（`test_studio.py` 会检查有没有漏）。
 
 ## 在 Windows 上
 
