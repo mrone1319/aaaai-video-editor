@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.36"
+  version: "1.1.0"
 ---
 
 # aaaai-editor 影片总监
@@ -296,6 +296,22 @@ render 会印出响度与真峰值：应在 -14 ±0.1 LUFS、≤ -1 dBTP，**同
   绝对不要叫用户把密钥贴进聊天，也不要把密钥写进命令或文件。
 - 图片／图标素材：`/media-use`（HeyGen）。
 
+## Studio 图形剪辑界面（用户想自己动手调）
+
+用户说「打开剪辑界面／Studio」「我想自己拖拖看」「给我时间轴」，或要做很多零碎微调时，开 Studio：
+```bash
+"$A" studio "$P" --no-open      # 用 Bash 的 run_in_background 跑（它会一直开着）；不写 "$P" 就是项目首页
+```
+- 从输出读 `STUDIO_URL <网址>` 那一行，**在应用内浏览器打开**（Claude 桌面版：Browser 面板 `preview_start` 带 url）；
+  没有应用内浏览器的环境就不加 `--no-open`，它会开系统浏览器。已经开着就沿用同一个（命令会直接给网址）。
+- 网址只有这台电脑能开（127.0.0.1＋随机通行码）；不要把网址贴到别处。
+- Studio 能做：拖字卡／字幕的时间与长短、改所有文字与数值、**逐字稿删一句＝剪掉那段**（后面的字卡自动往前）、
+  体检（对时、字幕太长、字卡压脸、响度，红点可点）、渲染一段、出片。改完自动存进剪辑表（经存取口、带版本检查）。
+- **Studio 开着时你改剪辑表一律用 `patch`**（铁律 5c）：界面每 2 秒同步一次；两边同时改会跳冲突提示，不会互相覆盖。
+- 用户说「改好了」：先 `"$A" patch "$P/storyboard.json"` 看最新内容，再照常 preview／抽帧看画面（铁律 2）。
+- 原片不见了的项目只能看不能改；遇到问题请用户点界面右上「⋯ → 诊断报告」复制给你（不含影片与密钥）。
+- 不要替用户关掉 Studio；密钥永远不经过 Studio。
+
 ## 在 Windows 上
 
 Windows 版用 `install.ps1`（双击 `Install-Windows.cmd`）安装；命令、storyboard、流程都一样，差别只有：
@@ -334,6 +350,7 @@ Windows 版用 `install.ps1`（双击 `Install-Windows.cmd`）安装；命令、
 | 字幕压到脸 | 默认已避脸；仍压到就调 `captions.margin_v` |
 | 卡片别晃／别闪 | `"float": false`／`"sparkle": false` |
 | 结尾太突然 | `outro` 配方或 `"ending": {"fade": 1.2}` |
+| 想自己拖拉、一句句删、看时间轴 | 开 Studio（见上） |
 
 改完只需重跑 `preview`／`render`；转录、人像遮罩、卡片底板都有缓存。
 用户说「发布了」：频道档案有「发布之后」就照做（清可重算的中间产物，素材与 work/*.json 不动）。

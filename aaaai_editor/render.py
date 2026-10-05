@@ -247,7 +247,10 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
         venc = hw_encoder()
     else:
         venc = ["-c:v", "libx264", "-preset", "slow", "-crf", "15"]
-    env.run(args + ["-filter_complex", ";".join(parts), "-map", "[vout]", "-an"]
+    prog = []
+    if os.environ.get("AAAAI_PROGRESS_DIR"):   # Studio 显示真实进度用：每段写一个进度文件（不影响输出）
+        prog = ["-progress", os.path.join(os.environ["AAAAI_PROGRESS_DIR"], "p_%09d.txt" % int(round(t0 * 1000)))]
+    env.run(args + prog + ["-filter_complex", ";".join(parts), "-map", "[vout]", "-an"]
             + venc + ["-movflags", "+faststart", out], cwd=work)
 
 
@@ -443,6 +446,20 @@ def render_range(sb_path: str, a: float, b: float, out_path: Optional[str] = Non
     return out_path
 
 
+def proxy_path(sb_path: str, height: int = 960, sb: Optional[dict] = None, info: Optional[dict] = None) -> str:
+    """代理影片的路径（不产生；用来判断是否已经有了）。"""
+    sb = sb or load_storyboard(sb_path)
+    out = sb["output"]
+    W, H = int(out["width"]), int(out["height"])
+    ph = max(2, int(height) & ~1)
+    pw = max(2, int(round(W * ph / float(H))) & ~1)
+    info = info if info is not None else env.probe(sb["source"])
+    st = os.stat(sb["source"])
+    key = hashlib.sha1(json.dumps([sb["source"], st.st_size, st.st_mtime_ns, pw, ph, sb.get("framing"),
+                                   bool(info.get("hdr"))], sort_keys=True).encode()).hexdigest()[:16]
+    return os.path.join(_studio_dir(os.path.join(sb["_base"], "work")), "proxy_%s.mp4" % key)
+
+
 def proxy_source(sb_path: str, height: int = 960) -> str:
     """Studio 播放用的代理影片：整支原片转成低分辨率（构图与成片相同：同样的推近与裁切），
     界面按剪辑点跳着播，所以改剪辑点不必重新转。按原片与构图设定缓存。"""
@@ -452,11 +469,7 @@ def proxy_source(sb_path: str, height: int = 960) -> str:
     ph = max(2, int(height) & ~1)
     pw = max(2, int(round(W * ph / float(H))) & ~1)
     info = env.probe(sb["source"])
-    st = os.stat(sb["source"])
-    key = hashlib.sha1(json.dumps([sb["source"], st.st_size, st.st_mtime_ns, pw, ph, sb.get("framing"),
-                                   bool(info.get("hdr"))], sort_keys=True).encode()).hexdigest()[:16]
-    sd = _studio_dir(os.path.join(sb["_base"], "work"))
-    p = os.path.join(sd, "proxy_%s.mp4" % key)
+    p = proxy_path(sb_path, height, sb, info)
     if os.path.isfile(p):
         return p
     pre, fit = frame_chain(pw, ph, sb.get("framing"), bool(info.get("hdr")))

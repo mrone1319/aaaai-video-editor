@@ -28,27 +28,40 @@ def _starts_here(e, ts: float) -> bool:
     return peak > e.voice_thr and peak - dip >= 8.0
 
 
-def energy(sb: dict, tl: Timeline, events) -> Tuple[List[str], List[str]]:
-    """逐句能量检查＋剪点审计（只看原片能量包络，几秒就完）。回传 (问题, 提示)。"""
+def energy_items(sb: dict, tl: Timeline, events) -> List[dict]:
+    """逐句能量检查＋剪点审计（只看原片能量包络，几秒就完）。回传结构化结果（Studio 用）。
+    t＝成片时间（剪点类的是原片时间，另给 src）；level＝problem｜note。"""
     e = audio.envelope(sb["source"])
-    probs, notes = [], []
+    out: List[dict] = []
     for a_, b_, txt, _ex in events:
         ts = tl.to_source(a_)
         if not e.voiced(ts, ts + 0.6):
-            probs.append("  %6.2fs 出字时没有人声（%.1fdB）「%s」" % (a_, e.level(ts, ts + 0.6), txt[:18]))
+            out.append({"level": "problem", "kind": "silent", "t": a_, "text": txt,
+                        "msg": "  %6.2fs 出字时没有人声（%.1fdB）「%s」" % (a_, e.level(ts, ts + 0.6), txt[:18])})
             continue
         o = e.onset_after(ts, limit=1.2)
         if o is not None and o - ts > 0.35 and not e.voiced(ts, ts + 0.1):
-            probs.append("  %6.2fs 字幕比开口早 %.2fs「%s」" % (a_, o - ts, txt[:18]))
+            out.append({"level": "problem", "kind": "early", "t": a_, "text": txt,
+                        "msg": "  %6.2fs 字幕比开口早 %.2fs「%s」" % (a_, o - ts, txt[:18])})
     for j in audio.junctions(e, tl.cuts):
         if j["tail_bad"]:
-            probs.append("  剪点 %.2fs 切在尾音上（最后 50ms 还有 %.1fdB）——这段最后一个字会被截" % (j["b"], j["tail"]))
+            out.append({"level": "problem", "kind": "tail", "src": j["b"],
+                        "msg": "  剪点 %.2fs 切在尾音上（最后 50ms 还有 %.1fdB）——这段最后一个字会被截" % (j["b"], j["tail"])})
         if j["head_bad"]:
-            probs.append("  剪点 %.2fs 咬到字头（前 30ms 已有 %.1fdB）" % (j["a"], j["head"]))
+            out.append({"level": "problem", "kind": "head", "src": j["a"],
+                        "msg": "  剪点 %.2fs 咬到字头（前 30ms 已有 %.1fdB）" % (j["a"], j["head"])})
         if j["cont"] and not j["tail_bad"]:
-            notes.append("  剪点 %.2fs 之后原片紧接着还有人声（%.1fdB）——字可能没讲完；若是故意砍掉后面的话可忽略"
-                         % (j["b"], j["after"]))
-    return probs, notes
+            out.append({"level": "note", "kind": "cont", "src": j["b"],
+                        "msg": "  剪点 %.2fs 之后原片紧接着还有人声（%.1fdB）——字可能没讲完；若是故意砍掉后面的话可忽略"
+                               % (j["b"], j["after"])})
+    return out
+
+
+def energy(sb: dict, tl: Timeline, events) -> Tuple[List[str], List[str]]:
+    """逐句能量检查＋剪点审计。回传 (问题, 提示)（文字版，命令行用）。"""
+    items = energy_items(sb, tl, events)
+    return ([x["msg"] for x in items if x["level"] == "problem"],
+            [x["msg"] for x in items if x["level"] == "note"])
 
 
 def quick(sb_path: str) -> None:

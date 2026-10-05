@@ -6,7 +6,7 @@ import json
 import os
 import sys
 
-from . import __version__, autocut, checks, env, icons, recipes, render, showcase, store, theme, transcribe
+from . import __version__, autocut, checks, config, env, icons, recipes, render, showcase, store, theme, transcribe
 
 
 def cmd_new(a) -> int:
@@ -235,6 +235,46 @@ def _jval(s: str):
         return json.loads(s)
     except ValueError:
         return s
+
+
+def cmd_studio(a) -> int:
+    """打开 Studio 图形剪辑界面（本机网页）。已经开着就沿用同一个，只回传网址。"""
+    from .studio import server
+    target = None
+    if a.target:
+        t = os.path.abspath(os.path.expanduser(a.target))
+        d = os.path.dirname(t) if os.path.isfile(t) else t
+        if not os.path.isfile(os.path.join(d, "storyboard.json")):
+            print("❌ %s 里没有 storyboard.json" % d)
+            return 1
+        target = d
+    url = server.running_url()
+    if url:
+        if target:
+            # 已开着的 Studio 会扫描项目文件夹；不在里面的项目用新的一个来开
+            root = os.path.realpath(config.get("projects_dir") or "")
+            if not root or not os.path.realpath(target).startswith(root + os.sep):
+                url = None
+        if url:
+            if target:
+                url += "#p=" + server.Studio.pid(target)
+            print("STUDIO_URL %s" % url)
+            print("✅ Studio 已在运行，在浏览器打开上面的网址")
+            return 0
+    st = server.Studio(a.port)
+    if target:
+        st.register(target)
+    url = st.url + ("#p=" + server.Studio.pid(target) if target else "")
+    print("STUDIO_URL %s" % url, flush=True)
+    print("✅ Studio 已启动（只有这台电脑能打开；按 Ctrl+C 结束）", flush=True)
+    if not a.no_open:
+        import webbrowser
+        webbrowser.open(url)
+    try:
+        st.serve()
+    except KeyboardInterrupt:
+        pass
+    return 0
 
 
 def cmd_patch(a) -> int:
@@ -655,6 +695,11 @@ def main(argv=None) -> int:
     pt.add_argument("--source", default="claude", help="改动来源，记在 work/edits.log")
     pt.add_argument("--show", action="store_true", help="只列出内容与版本")
     pt.set_defaults(fn=cmd_patch)
+    so = sub.add_parser("studio", help="打开图形剪辑界面（本机网页，拖拉字卡与字幕、逐字稿剪片、体检、渲染一段）")
+    so.add_argument("target", nargs="?", help="项目文件夹或其中的 storyboard.json；不写＝打开项目首页")
+    so.add_argument("--port", type=int, default=0, help="指定端口（默认随机）")
+    so.add_argument("--no-open", action="store_true", help="不自动开浏览器（Claude 会在应用内浏览器打开）")
+    so.set_defaults(fn=cmd_studio)
     ic = sub.add_parser("icons", help="列出图标；--sheet 输出总表图")
     ic.add_argument("--sheet")
     ic.set_defaults(fn=cmd_icons)

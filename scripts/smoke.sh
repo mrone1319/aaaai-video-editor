@@ -113,6 +113,8 @@ sb = json.load(open(sys.argv[2]))
 ov = next(o for o in sb["overlays"] if o["type"] in ("title", "stat", "bullets"))
 c = cardpics.card_png(sys.argv[2], ov); assert os.path.getsize(c) > 1000, c
 PYS
+t studio-tests python3 "$ROOT/scripts/test_studio.py"
+t studio-help "$A" studio --help
 echo "== B-roll（不花钱的部分）与 MCP"
 t broll-status "$A" broll status
 t mcp python3 - "$A" <<'PY'
