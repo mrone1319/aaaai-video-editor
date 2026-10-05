@@ -265,7 +265,8 @@ def face_lift(ov: dict, th: dict, W: int, H: int, fps: float, faces) -> dict:
     """上方的卡片（标题、数据、清单、金句…）若在它出现期间压到眼睛，整张往上挪；挪到顶还压到就提醒。
     头顶、帽子被遮罩盖到一点没关系，眼睛不行：护住「头顶～下巴」的 30% 以下。"""
     if not faces or ov.get("behind_subject") or ov.get("bleed") or ov.get("chapter") is not None \
-            or ov.get("avoid_face") is False or ov.get("type") in cards.LOWER_TYPES or not cards.is_lite(ov, th):
+            or ov.get("avoid_face") is False or ov.get("type") in cards.LOWER_TYPES or not cards.is_lite(ov, th) \
+            or ov.get("xy"):   # 用户亲手放的位置不自动挪
         return ov
     pos = ov.get("pos")
     if pos and cards.ANCHORS.get(pos, (0.5, 0.5))[1] > 0.0:

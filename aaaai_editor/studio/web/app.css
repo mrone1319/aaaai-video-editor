@@ -99,7 +99,9 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .card.lower .role { font-size: 3.1cqw; color: var(--style-accent, #FFC933); margin-top: .6cqw; font-weight: 700; text-shadow: 0 .3cqw .8cqw #000; }
 .card.recipe .tag, .card.other .tag { display: inline-block; font-size: 3cqw; background: rgba(161,90,203,.9); color: #fff; padding: .5cqw 1.6cqw; border-radius: 1cqw; margin-bottom: 1.4cqw; }
 .card.sel { outline: 1.5px dashed var(--accent); outline-offset: .8cqw; }
+.card.hid { pointer-events: none; outline: none !important; }
 .card.hid > * { visibility: hidden; }
+.stage video { transition: transform .25s ease; }
 .cap { position: absolute; left: 6%; right: 6%; text-align: center; color: #fff; cursor: pointer; }
 .cap .zh { font-weight: 900; font-size: 4.6cqw; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0 .4cqw .8cqw rgba(0,0,0,.6); }
 .cap .en { font-weight: 700; font-size: 3.1cqw; margin-top: .6cqw; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
@@ -108,7 +110,7 @@ button, select, input, textarea { font: inherit; color: inherit; }
 /* 右栏 */
 .side { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); overflow: hidden; }
 .tabs { display: flex; border-bottom: 1px solid var(--line); }
-.tabs button { flex: 1; background: none; border: 0; border-bottom: 2px solid transparent; padding: 9px 4px; cursor: pointer; color: var(--muted); }
+.tabs button { flex: 1; background: none; border: 0; border-bottom: 2px solid transparent; padding: 9px 2px; font-size: 12.5px; cursor: pointer; color: var(--muted); }
 .tabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); font-weight: 700; }
 .tabs button .n { font-size: 10.5px; margin-left: 4px; padding: 0 5px; border-radius: 8px; background: var(--bad); color: #fff; }
 .pane { overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
@@ -183,6 +185,43 @@ legend { font-size: 11px; color: var(--muted); padding: 0 4px; }
 .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); pointer-events: none; z-index: 5; }
 .playhead::before { content: ""; position: absolute; top: 0; left: -6px; border: 7px solid transparent; border-top-color: var(--accent); }
 .rangebox { position: absolute; top: 26px; bottom: 0; background: rgba(255,201,51,.08); border-left: 1px dashed var(--accent); border-right: 1px dashed var(--accent); pointer-events: none; z-index: 1; }
+
+/* 阶段 2：选取框、拖拉、叠层 */
+.hit { position: absolute; cursor: move; }
+.selbox { position: absolute; border: 1.5px dashed var(--accent); pointer-events: auto; cursor: move; z-index: 6; }
+.selbox .hd { position: absolute; right: -7px; bottom: -7px; width: 14px; height: 14px; background: var(--accent); border: 2px solid #111; border-radius: 3px; cursor: nwse-resize; }
+.selbox .lbl { position: absolute; left: -1px; top: -20px; font-size: 10.5px; background: var(--accent); color: var(--accent-ink); padding: 1px 6px; border-radius: 3px; white-space: nowrap; }
+.guides { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+.guides .safe { position: absolute; border: 1px dashed rgba(61,220,132,.9); }
+.guides .capline { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(78,123,214,.95); }
+.guides .face { position: absolute; left: 0; right: 0; background: rgba(255,90,90,.14); border-top: 1px solid rgba(255,90,90,.8); border-bottom: 1px solid rgba(255,90,90,.8); }
+.guides .eye { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255,90,90,.9); }
+.guides .plat { position: absolute; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.45); border-radius: 6px; }
+.guides .tag { position: absolute; font-size: 10px; color: #fff; background: rgba(0,0,0,.6); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.sep { width: 1px; align-self: stretch; background: var(--line); margin: 0 2px; }
+.toggle[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 22%, var(--panel-2)); border-color: var(--accent); }
+.menu-wrap { position: relative; }
+.menu { position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 30; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px; min-width: 200px; max-height: 60vh; overflow: auto; box-shadow: 0 12px 32px rgba(0,0,0,.35); display: grid; }
+.menu button { text-align: left; background: none; border: 0; padding: 6px 10px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; }
+.menu button:hover, .menu button:focus-visible { background: var(--panel-2); }
+.menu button small { color: var(--muted); }
+.menu .grp { font-size: 10.5px; color: var(--muted); padding: 6px 10px 2px; letter-spacing: .06em; }
+.tl-block.zm { background: #7A55C9; }
+.tl-block.sx { background: #D9773A; width: 10px !important; margin-left: -5px; padding: 0; border-radius: 50%; height: 14px; top: 10px; }
+.tl-block.sx::before, .tl-block.sx::after { display: none; }
+.asset { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px; border: 1px solid var(--line); border-radius: 8px; }
+.asset .th { width: 56px; height: 56px; border-radius: 6px; background: var(--stage-bg) center / cover no-repeat; display: grid; place-items: center; font-size: 18px; overflow: hidden; }
+.asset .th video { width: 100%; height: 100%; object-fit: cover; }
+.asset .nm { font-size: 12px; overflow-wrap: anywhere; }
+.asset .acts { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 14px; text-align: center; color: var(--muted); }
+.drop.on { border-color: var(--accent); color: var(--fg); }
+.tool { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 6px; }
+.tool .it { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: start; font-size: 12.5px; line-height: 1.5; }
+.tour { display: grid; gap: 10px; }
+.tour .dots { display: flex; gap: 6px; }
+.tour .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.tour .dots i.on { background: var(--accent); }
 
 /* 工作进度、提示、对话框 */
 .job { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-size: 12px; }

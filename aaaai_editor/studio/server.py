@@ -29,6 +29,7 @@ from .. import __version__, config, env, store
 
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
 MAX_BODY = 20 * 1024 * 1024
+MAX_UPLOAD = 4 * 1024 * 1024 * 1024
 STATE = config.path("studio.json")      # 正在跑的 Studio（让第二次启动直接沿用）
 
 
@@ -247,9 +248,114 @@ class Studio:
 
     # ------------------------------------------------------------ 字卡真样子
     def card(self, body: dict) -> dict:
-        from .. import cardpics
-        png = cardpics.card_png(self.sbp(body["p"]), body["overlay"], int(body.get("height", 960)))
-        return {"url": self.rel_url(body["p"], png)}
+        from .. import cardpics, cards, render, theme
+        sbp = self.sbp(body["p"])
+        ov = body["overlay"]
+        png = cardpics.card_png(sbp, ov, int(body.get("height", 960)))
+        box = None
+        try:   # 字卡占的范围（相对画面），画面上的选取框与拖拉用
+            sb = render.load_storyboard(sbp)
+            W, H = int(sb["output"]["width"]), int(sb["output"]["height"])
+            th = theme.theme(ov.get("style") or sb.get("style"), sb["_base"], sb.get("brand"))
+            L = cards.layout(dict(ov, anim="fade", t=[0.0, 9.0], sparkle=False, float=False), th, W, H,
+                             float(sb["output"]["fps"]))
+            x, y, w, h = L["_box"]
+            box = [round(x / W, 4), round(y / H, 4), round(w / W, 4), round(h / H, 4)]
+        except Exception as e:   # noqa: BLE001
+            self.note("字卡范围：%s" % e)
+        return {"url": self.rel_url(body["p"], png), "box": box}
+
+    # ------------------------------------------------------------ 设定页用的清单
+    def options(self, i: str) -> dict:
+        from .. import captions, cards, icons, render, sfx, tools
+        sb = render.load_storyboard(self.sbp(i))
+        try:
+            captions.resolve_style(sb)
+        except Exception:   # noqa: BLE001
+            pass
+        return {"bgm": [[n, d] for n, d in tools.bgm_list()],
+                "caption_styles": sorted(captions.STYLES),
+                "caption_style_now": sb["captions"].get("style"),
+                "icons": sorted(set(icons.ICONS) | set(icons.ALIASES) | set(icons.library())),
+                "safe": {"top": cards.TOP_M, "bottom": cards.BOT_M, "side": cards.MARGIN_X},
+                "sounds": sorted(sfx.SOUNDS)}
+
+    # ------------------------------------------------------------ 素材面板
+    ASSET_EXT = {".png": "image", ".jpg": "image", ".jpeg": "image", ".webp": "image",
+                 ".mp4": "video", ".mov": "video", ".m4v": "video", ".webm": "video",
+                 ".mp3": "audio", ".m4a": "audio", ".wav": "audio"}
+
+    def assets(self, i: str) -> dict:
+        d = self.projects[i]
+        root = os.path.join(d, "assets")
+        out = []
+        if os.path.isdir(root):
+            for dp, dns, fns in os.walk(root):
+                dns[:] = [x for x in dns if not x.startswith(".")]
+                if dp.count(os.sep) - root.count(os.sep) > 2:
+                    continue
+                for f in sorted(fns):
+                    kind = self.ASSET_EXT.get(os.path.splitext(f)[1].lower())
+                    if not kind or f.startswith("."):
+                        continue
+                    full = os.path.join(dp, f)
+                    rel = os.path.relpath(full, d).replace(os.sep, "/")
+                    out.append({"path": rel, "name": f, "kind": kind, "size": os.path.getsize(full),
+                                "url": "f/%s/%s" % (i, rel), "icon": rel.startswith("assets/icons/")})
+        return {"assets": out}
+
+    def upload(self, i: str, name: str, rfile, n: int) -> dict:
+        """把用户拖进来的文件放进 项目/assets/（只收图片、影片、声音；同名不覆盖，自动加编号）。"""
+        base = os.path.basename(name.replace("\\", "/")).strip()
+        stem, ext = os.path.splitext(base)
+        if not stem or ext.lower() not in self.ASSET_EXT:
+            raise ValueError("只收图片（png／jpg／webp）、影片（mp4／mov）、声音（mp3／m4a／wav）")
+        stem = re.sub(r"[\\/:*?\"<>|\x00-\x1f]", "_", stem)[:80]
+        d = os.path.join(self.projects[i], "assets")
+        os.makedirs(d, exist_ok=True)
+        path, k = os.path.join(d, stem + ext.lower()), 2
+        while os.path.exists(path):
+            path, k = os.path.join(d, "%s-%d%s" % (stem, k, ext.lower())), k + 1
+        tmp = path + ".part"
+        left = n
+        with open(tmp, "wb") as f:
+            while left > 0:
+                chunk = rfile.read(min(1 << 20, left))
+                if not chunk:
+                    break
+                f.write(chunk)
+                left -= len(chunk)
+        if left:
+            os.remove(tmp)
+            raise ValueError("上传中断")
+        os.replace(tmp, path)
+        rel = os.path.relpath(path, self.projects[i]).replace(os.sep, "/")
+        return {"path": rel, "url": "f/%s/%s" % (i, rel)}
+
+    # ------------------------------------------------------------ 脸的位置（安全区叠层用）
+    def faces(self, i: str) -> dict:
+        from .. import faces, render
+        from ..timeline import Timeline
+        sb = render.load_storyboard(self.sbp(i))
+        tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
+        fc = faces.track(sb, tl, int(sb["output"]["width"]), int(sb["output"]["height"]))
+        return {"step": faces.STEP, "faces": [[t, list(b) if b else None] for t, b in fc]}
+
+    # ------------------------------------------------------------ 口误清理、开头钩子（引擎命令，直接写剪辑表）
+    def tidy(self, body: dict) -> dict:
+        from .. import edit
+        sbp = self.sbp(body["p"])
+        if body.get("apply") is not None:
+            return edit.apply(sbp, [int(x) for x in body["apply"]] or None) if body["apply"] else {"removed": 0}
+        return {"items": edit.detect(sbp)}
+
+    def hook(self, body: dict) -> dict:
+        from .. import edit
+        sbp = self.sbp(body["p"])
+        if body.get("text") or body.get("a") is not None:
+            r = edit.hook(sbp, text=body.get("text"), a=body.get("a"), b=body.get("b"), mode=body.get("mode") or "teaser")
+            return {k: (list(v) if isinstance(v, tuple) else v) for k, v in r.items()}
+        return {"items": edit.suggest_hooks(sbp, int(body.get("n", 3)))}
 
     # ------------------------------------------------------------ 体检
     def check(self, i: str) -> dict:
@@ -645,6 +751,12 @@ def _handler(studio: Studio):
                 if r == "api/schema":
                     from .. import schema
                     return self._json(schema.as_dict())
+                if r == "api/options":
+                    return self._json(studio.options(q["p"][0]))
+                if r == "api/assets":
+                    return self._json(studio.assets(q["p"][0]))
+                if r == "api/faces":
+                    return self._json(studio.faces(q["p"][0]))
                 if r == "api/peaks":
                     return self._json(studio.peaks(q["p"][0]))
                 if r == "api/job":
@@ -662,12 +774,26 @@ def _handler(studio: Studio):
             if r is None:
                 return self._404()
             n = int(self.headers.get("Content-Length") or 0)
+            if r == "api/upload":   # 素材：原始内容直接写进 项目/assets/，不经过 JSON
+                try:
+                    if n > MAX_UPLOAD:
+                        self.close_connection = True   # 没读完的内容不能留在连线上
+                        return self._json({"error": "文件太大（上限 4 GB）"}, 413)
+                    return self._json(studio.upload(_q["p"][0], unquote(_q["name"][0]), self.rfile, n))
+                except (KeyError, ValueError, OSError) as e:
+                    self.close_connection = True
+                    return self._json({"error": str(e)}, 400)
             if n > MAX_BODY:
+                self.close_connection = True
                 return self._json({"error": "内容太大"}, 413)
             try:
                 body = json.loads(self.rfile.read(n).decode("utf-8") or "{}")
                 if r == "api/save":
                     return self._json(studio.save(body))
+                if r == "api/tidy":
+                    return self._json(studio.tidy(body))
+                if r == "api/hook":
+                    return self._json(studio.hook(body))
                 if r == "api/recut":
                     return self._json(studio.recut(body))
                 if r == "api/card":

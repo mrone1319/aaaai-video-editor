@@ -39,6 +39,8 @@
         <div class="scrim" id="scrim"></div>
         <div class="truelook" id="truelook"></div>
         <div id="layer"></div>
+        <div class="guides" id="guides"></div>
+        <div id="selLayer"></div>
         <span class="badge" id="badge">近似预览</span>
         <div class="wait" id="wait" hidden></div>
       </div>
@@ -48,10 +50,14 @@
         <button role="tab" id="tab-insp" aria-selected="true" data-pane="insp">属性</button>
         <button role="tab" id="tab-tr" aria-selected="false" data-pane="tr">逐字稿</button>
         <button role="tab" id="tab-chk" aria-selected="false" data-pane="chk">体检<span class="n" id="chkN" hidden></span></button>
+        <button role="tab" id="tab-ast" aria-selected="false" data-pane="ast">素材</button>
+        <button role="tab" id="tab-set" aria-selected="false" data-pane="set">设定</button>
       </div>
       <div class="pane" id="pane-insp" role="tabpanel" aria-labelledby="tab-insp"></div>
       <div class="pane" id="pane-tr" role="tabpanel" aria-labelledby="tab-tr" hidden></div>
       <div class="pane" id="pane-chk" role="tabpanel" aria-labelledby="tab-chk" hidden></div>
+      <div class="pane" id="pane-ast" role="tabpanel" aria-labelledby="tab-ast" hidden></div>
+      <div class="pane" id="pane-set" role="tabpanel" aria-labelledby="tab-set" hidden></div>
     </aside>
   </section>
 
@@ -59,6 +65,17 @@
     <button class="btn" id="play" title="播放／暂停（空格）">▶ 播放</button>
     <button class="btn sm" id="mute" title="声音开关（M）">🔇</button>
     <span class="tc" id="tc">00:00.00</span>
+    <div class="menu-wrap"><button class="btn" id="addCardBtn" aria-haspopup="true" title="在播放头加一张字卡">＋ 字卡</button><div class="menu" id="cardMenu" hidden></div></div>
+    <div class="menu-wrap"><button class="btn" id="addFxBtn" aria-haspopup="true" title="在播放头加推近、彩带、音效">＋ 特效</button><div class="menu" id="fxMenu" hidden></div></div>
+    <button class="btn" id="delBtn" title="删除选中的字卡／特效（Delete）">删除</button>
+    <span class="sep"></span>
+    <button class="btn sm toggle" id="tgSafe" aria-pressed="false" title="显示安全区（G）">安全区</button>
+    <button class="btn sm toggle" id="tgFace" aria-pressed="false" title="显示脸的位置">脸</button>
+    <label class="chip" for="platSel">平台
+      <select id="platSel" style="background:none;border:0;padding:0 2px;">
+        <option value="">不显示</option><option value="douyin">抖音／TikTok</option><option value="reels">IG Reels</option><option value="shorts">YouTube Shorts</option><option value="xhs">小红书</option>
+      </select>
+    </label>
     <span class="hint" id="roNote" hidden></span>
     <span class="spacer"></span>
     <label class="zoom" for="zoom">缩放 <input id="zoom" type="range" min="6" max="120" value="18"></label>

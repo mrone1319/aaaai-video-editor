@@ -66,6 +66,34 @@ TRUE_LOOK = ("title", "stat", "bullets", "quote", "lower_third", "stamp", "callo
              "compare", "gauge", "rank", "timeline", "rating")
 
 
+# Studio「＋ 字卡」新增时的起始内容（之后在属性面板改）；顺序＝选单顺序
+NEW = [
+    ("常用", [("title", {"kicker": "小标", "text": "新的**标题**"}, "小标＋大标题"),
+              ("stat", {"kicker": "数据", "value": 50, "unit": "倍", "label": "说明一行"}, "大数字＋单位"),
+              ("bullets", {"title": "三个重点", "items": ["第一点", "第二点", "第三点"]}, "一条条出现"),
+              ("quote", {"text": "一句值得记住的话", "by": "出处"}, "金句"),
+              ("lower_third", {"name": "名字", "role": "头衔"}, "名字＋头衔")]),
+    ("数据", [("gauge", {"kicker": "完成度", "value": 0.72, "label": "说明一行", "count": True}, "会动的百分比"),
+              ("rating", {"kicker": "评价", "value": 4.5, "of": 5, "label": "说明一行"}, "支持半星"),
+              ("rank", {"title": "排行", "items": [{"label": "第一名", "value": 90}, {"label": "第二名", "value": 70},
+                                                   {"label": "第三名", "value": 45}]}, "横条排行"),
+              ("compare", {"left": {"title": "以前", "items": ["慢", "贵"]}, "right": {"title": "现在", "items": ["快", "便宜"]}},
+               "以前 vs 现在")]),
+    ("排版", [("rows", {"title": "标题", "items": [{"title": "第一行", "desc": "说明"}, {"title": "第二行", "desc": "说明"}]},
+               "编号行"),
+              ("icons", {"title": "标题", "items": [{"icon": "bolt", "label": "快"}, {"icon": "shield", "label": "稳"},
+                                                    {"icon": "heart", "label": "好用"}]}, "图标格"),
+              ("timeline", {"title": "时间轴", "items": [{"time": "2024", "text": "开始"}, {"time": "2026", "text": "现在"}]},
+               "节点"),
+              ("text", {"text": "一行字"}, "纯文字"),
+              ("stamp", {"text": "重点"}, "印章"),
+              ("callout", {"text": "看这里"}, "标注")]),
+    ("互动", [("cta", {"question": "你最想学**哪一个**？", "keyword": "工具", "badge": "留言领取"}, "评论框打字"),
+              ("countdown", {"from": 3}, "3、2、1")]),
+]
+NEW_LEN = {"cta": 6.0, "countdown": 3.0, "stamp": 2.0, "callout": 2.0, "lower_third": 3.0}
+
+
 def as_dict() -> dict:
     """给界面用的 JSON：{cards: {type: {name, fields}}, common, true_look, recipes}。"""
     from . import recipes
@@ -77,4 +105,5 @@ def as_dict() -> dict:
         req, opt = r.get("required", ()), r.get("optional", ())
         rec[name] = {"name": name, "desc": r.get("desc", ""), "required": list(req), "optional": list(opt)}
     return {"cards": {k: {"name": v[0], "fields": f(v[1])} for k, v in CARDS.items()},
-            "common": f(COMMON), "true_look": list(TRUE_LOOK), "recipes": rec}
+            "common": f(COMMON), "true_look": list(TRUE_LOOK), "recipes": rec,
+            "new": [[g, [[t, d, h] for t, d, h in items]] for g, items in NEW], "new_len": NEW_LEN}

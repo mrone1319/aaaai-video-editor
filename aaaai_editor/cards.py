@@ -733,9 +733,13 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         top_m, bot_m = round(H * float(ov.get("_top_m", TOP_M))), round(H * BOT_M)   # _top_m：避脸时往上挪
         px = mx + ax * (W - 2 * mx - plate_w)
         py = top_m + ay * (H - top_m - bot_m - plate_h)
-        if ov.get("_xy"):   # 指定位置：[水平中心, 上缘]（相对画面宽／高）——组合卡片与卡片接管的面板区用
-            px = min(max(0.0, float(ov["_xy"][0]) * W - plate_w / 2.0), W - plate_w)
-            py = float(ov["_xy"][1]) * H - (pad if mode == "none" else 0)   # 无底板的字：上缘就是字的上缘
+        xy = ov.get("_xy") or ov.get("xy")   # 指定位置：[水平中心, 上缘]（相对画面宽／高）
+        if xy:   # _xy：组合卡片与卡片接管的面板区用；xy：用户在 Studio 拖到的位置
+            px = min(max(0.0, float(xy[0]) * W - plate_w / 2.0), W - plate_w)
+            py = float(xy[1]) * H - (pad if mode == "none" else 0)   # 无底板的字：上缘就是字的上缘
+            if not ov.get("_xy"):   # 用户拖的：不出画面、左右留安全边
+                px = min(max(float(mx), px), max(float(mx), W - mx - plate_w))
+                py = min(max(0.0, py), H - plate_h)
         cbox_x = px + pad
         cur = py + pad
 
@@ -751,6 +755,8 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         sc_col = th.get("scrim_color") or (pl[-1] if isinstance(pl, (list, tuple)) else pl)
         chap = ov.get("chapter") is not None
         mid = bool(ov.get("_mid"))   # 避脸：人坐得高，卡片改放在下巴下面，遮罩只包住字、上下渐淡，不压脸
+        if ov.get("xy") and not ov.get("_xy") and typ not in LOWER_TYPES and not chap and py > H * 0.30:
+            mid = True   # 用户拖到画面中下段：遮罩只包住字，不从画面顶端一路压下来
         if chap:
             band = H
         elif mid:
@@ -1035,6 +1041,8 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     # 悬浮呼吸：进场落定后整张卡轻轻上下浮动（整屏章节／片尾不浮）
     if ov.get("float", th.get("float", True)) and mode != "bleed" and ov.get("chapter") is None and t1 - t0 > 1.2:
         L["float"] = {"a": max(2.0, round(U * 0.0036, 1)), "p": 3.2, "s": round(t0 + di + 0.05, 3)}
+    L["_box"] = [round(px if mode != "bleed" else 0), round(py if mode != "bleed" else 0),
+                 round(plate_w), round(plate_h)]   # 字卡占的范围（Studio 画选取框用；渲染不读）
     if photo_sz:
         L["photo"] = {"file": ov.get("file", ""), "x": round(cbox_x), "y": round(py + pad + (body_h - photo_sz) / 2.0),
                       "size": photo_sz, "ring": th["accent"], "focus": float(ov.get("focus", 0.35)),

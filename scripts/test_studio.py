@@ -30,8 +30,9 @@ def check(name, cond, detail=""):
         print("  ❌ %s %s" % (name, detail))
 
 
-def req(url, body=None, headers=None):
-    data = None if body is None else json.dumps(body).encode()
+def req(url, body=None, headers=None, data=None):
+    if data is None and body is not None:
+        data = json.dumps(body).encode()
     r = urllib.request.Request(url, data=data, headers=dict({"Content-Type": "application/json"}, **(headers or {})))
     try:
         with urllib.request.urlopen(r, timeout=120) as f:
@@ -151,6 +152,42 @@ def main():
     _, jv, _ = req(B + "api/job?id=" + jid)
     proc = st.jobs[jid].get("proc")
     check("取消＝停掉引擎进程", jv["status"] == "cancelled" and (proc is None or proc.poll() is not None))
+
+    print("== 阶段 2：画面拖拉（xy）、素材、设定清单、开头钩子")
+    from aaaai_editor import cards, render as R, theme
+    sbx = R.load_storyboard(sbp)
+    th = theme.theme(sbx.get("style"), sbx["_base"], sbx.get("brand"))
+    ov = dict(sb0["overlays"][1], anim="fade", t=[0, 9])
+    b0 = cards.layout(ov, th, 540, 960, 30)["_box"]
+    b1 = cards.layout(dict(ov, xy=[0.5, 0.6]), th, 540, 960, 30)["_box"]
+    check("xy＝把字卡放到指定位置（水平中心、上缘）", abs(b1[0] + b1[2] / 2 - 270) <= 1 and abs(b1[1] - 576) <= 1, "%s → %s" % (b0, b1))
+    b2 = cards.layout(dict(ov, xy=[0.0, 2.0]), th, 540, 960, 30)["_box"]
+    check("拖出画面会被拉回安全边内", b2[0] >= round(540 * cards.MARGIN_X) - 1 and b2[1] + b2[3] <= 960 + 1, str(b2))
+    c, r, _ = req(B + "api/card", {"p": pid, "overlay": dict(sb0["overlays"][1], xy=[0.5, 0.6]), "height": 640})
+    check("字卡真样子附带占的范围", c == 200 and r.get("box") and abs(r["box"][0] + r["box"][2] / 2 - 0.5) < 0.01, str(r)[:200])
+    c, o, _ = req(B + "api/options?p=" + pid)
+    check("设定清单（配乐、字幕样式、安全区、音效）", c == 200 and o["bgm"] and o["caption_styles"] and o["safe"]["top"] > 0 and o["sounds"])
+    png = open(os.path.join(ROOT, "assets", "icons", os.listdir(os.path.join(ROOT, "assets", "icons"))[0]), "rb").read() \
+        if os.path.isdir(os.path.join(ROOT, "assets", "icons")) and os.listdir(os.path.join(ROOT, "assets", "icons")) else b"\x89PNG\r\n\x1a\n" + b"0" * 64
+    up = lambda name, data: req(B + "api/upload?p=%s&name=%s" % (pid, urllib.request.quote(name)), data=data)
+    c1, r1, _ = up("图 1.png", png)
+    c2, r2, _ = up("图 1.png", png)
+    check("上传素材进 assets/、同名不覆盖", c1 == 200 and r1["path"] == "assets/图 1.png" and r2["path"] == "assets/图 1-2.png", "%s %s" % (r1, r2))
+    c3, _, _ = up("run.sh", b"echo hi")
+    check("不收图片／影片／声音以外的文件", c3 == 400 and not os.path.exists(os.path.join(d, "assets", "run.sh")))
+    c4, r4, _ = up("../../escape.png", png)
+    check("上传不能跑出 assets/", c4 == 200 and r4["path"] == "assets/escape.png" and not os.path.exists(os.path.join(os.path.dirname(d), "escape.png")))
+    check("被拒的上传不会弄坏下一个请求", req(B + "api/ping")[0] == 200)
+    c, al, _ = req(B + "api/assets?p=" + pid)
+    check("素材清单", c == 200 and {"assets/图 1.png", "assets/escape.png"} <= {a["path"] for a in al["assets"]})
+    c, hk, _ = req(B + "api/hook", {"p": pid})
+    check("推荐开头钩子", c == 200 and isinstance(hk.get("items"), list))
+    v_before = store.current_version(sbp)
+    c, hr, _ = req(B + "api/hook", {"p": pid, "a": 5.9, "b": 7.5, "mode": "teaser"})
+    hsb = json.load(open(sbp))
+    check("套用开头钩子（经存取口、版本更新）", c == 200 and hsb.get("hook") and hsb["cuts"][0][0] > 5 and store.current_version(sbp) != v_before,
+          str(hr)[:200] + str(hsb.get("cuts")))
+    store.write(sbp, sb0, source="test")
 
     print("== 体检与诊断")
     c, r, _ = req(B + "api/check", {"p": pid})
