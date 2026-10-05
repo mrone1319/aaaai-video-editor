@@ -28,6 +28,8 @@ from urllib.parse import parse_qs, unquote, urlparse
 from .. import __version__, config, env, store
 
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+DOCS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "docs")
+GUIDES = ("使用指南.html", "User-Guide.html")   # 使用指南走 http 打开（直接开本机文件时，有些浏览器面板不跑页面程序）
 MAX_BODY = 20 * 1024 * 1024
 MAX_UPLOAD = 4 * 1024 * 1024 * 1024
 STATE = config.path("studio.json")      # 正在跑的 Studio（让第二次启动直接沿用）
@@ -969,6 +971,12 @@ def _handler(studio: Studio):
                     return self._file(os.path.join(WEB, "index.html"))
                 if r in ("app.js", "app.css", "i18n.js", "i18n-data.js"):
                     return self._file(os.path.join(WEB, r))
+                if r.startswith("guide/"):
+                    name = unquote(r[6:])
+                    p = os.path.join(DOCS, name)
+                    if name not in GUIDES or not os.path.isfile(p):
+                        return self._404()
+                    return self._file(p)
                 if r.startswith("fonts/"):
                     from .. import fonts
                     name = os.path.basename(unquote(r[6:]))

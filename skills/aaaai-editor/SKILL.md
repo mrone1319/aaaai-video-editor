@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.8.0"
+  version: "1.8.1"
 ---
 
 # aaaai-editor 影片总监
@@ -374,7 +374,8 @@ Windows 版用 `install.ps1`（双击 `Install-Windows.cmd`）安装；命令、
 ## 参考
 
 **用户问「怎么用」「有哪些功能／小组件」「提示词怎么写」**：先指给他《使用指南》——
-`$APP/docs/使用指南.html`（`open` 它就会用浏览器打开）或 `$APP/docs/使用指南.pdf`，再按他的问题讲重点；
+`$APP/docs/使用指南.html`（`open` 它就会用浏览器打开）或 `$APP/docs/使用指南.pdf`（英文用户给 `User-Guide.html`／`.pdf`），再按他的问题讲重点；
+Studio 开着时也可以点首页或「⋯」里的「使用指南」（走 Studio 网址，目录跳转、深浅色、中英切换都能用）；**别把指南当本机文件塞进 Claude 的浏览器面板**——那里只显示静态快照，按钮和目录都不会动。
 用户照指南里「提示词格式范本」填来的需求，逐行照做，没写的行用开工三问补齐。
 
 `$APP/docs/安装指南-Mac.md`／`$APP/docs/安装指南-Windows.md`（安装须知、密钥、MCP；`00-快速安装.md` 是选择页）· `$APP/README.md`（命令总览）· `$APP/docs/CARDS.md` · `$APP/docs/STYLE.md` · `$APP/docs/RECIPES.md` ·

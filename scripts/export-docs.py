@@ -1,4 +1,4 @@
-"""把文档导出成 PDF：《使用指南》（HTML → PDF）与 Mac／Windows 安装指南（Markdown → PDF）。
+"""把文档导出成 PDF：《使用指南》中英文版（HTML → PDF）与 Mac／Windows 安装指南（Markdown → PDF）。
 用法：python3 scripts/export-docs.py   （需要 Playwright 的 Chromium；会连网载入字体与 marked）
 """
 import json
@@ -17,12 +17,13 @@ TPL = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "md-template
 def main() -> int:
     with sync_playwright() as p:
         b = p.chromium.launch()
-        pg = b.new_page()
-        pg.goto("file://" + os.path.join(DOCS, "使用指南.html"))
-        pg.wait_for_timeout(2500)
-        pg.emulate_media(media="print")
-        pg.pdf(path=os.path.join(DOCS, "使用指南.pdf"), format="A4", print_background=True, margin=MARGIN)
-        print("✅ 使用指南.pdf")
+        for name in ("使用指南", "User-Guide"):   # 中文与英文版
+            pg = b.new_page()
+            pg.goto("file://" + os.path.join(DOCS, name + ".html"))
+            pg.wait_for_timeout(2500)
+            pg.emulate_media(media="print")
+            pg.pdf(path=os.path.join(DOCS, name + ".pdf"), format="A4", print_background=True, margin=MARGIN)
+            print("✅ %s.pdf" % name)
         for name in ("安装指南-Mac", "安装指南-Windows"):
             md = open(os.path.join(DOCS, name + ".md"), encoding="utf-8").read()
             with tempfile.NamedTemporaryFile("w", suffix=".html", delete=False, encoding="utf-8") as f:

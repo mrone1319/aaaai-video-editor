@@ -432,6 +432,18 @@ def main():
     miss = sorted(r for r in runs if r not in data["dict"] and r not in data["full"])
     check("界面上每段中文都有英文（新加的字要补进 i18n-data.js）", not miss, " | ".join(miss[:30]))
 
+    print("== 使用指南（中文／English）")
+    from urllib.parse import quote as _q
+    g1, h1, _ = req(B + "guide/" + _q("使用指南.html"))
+    g2, h2, _ = req(B + "guide/User-Guide.html")
+    g3, _, _ = req(B + "guide/" + _q("../aaaai_editor/studio/server.py"))
+    g4, _, _ = req(B + "guide/PLAN.md")
+    check("Studio 打得开中英文使用指南", g1 == 200 and g2 == 200 and b'id="langBtn"' in h1 and b'href="User-Guide.html"' in h1
+          and b'<html lang="en">' in h2, "%s %s" % (g1, g2))
+    check("使用指南路径只放行两份指南", g3 == 404 and g4 == 404, "%s %s" % (g3, g4))
+    zh_ids = _re.findall(r'id="([^"]+)"', h1.decode("utf-8")); en_ids = _re.findall(r'id="([^"]+)"', h2.decode("utf-8"))
+    check("中英文指南章节一一对应", zh_ids == en_ids and len(zh_ids) > 20)
+
     print("== 体检与诊断")
     c, r, _ = req(B + "api/check", {"p": pid})
     check("体检回传清单", c == 200 and isinstance(r.get("items"), list), str(r)[:300])

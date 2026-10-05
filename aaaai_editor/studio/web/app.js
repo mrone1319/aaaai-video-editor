@@ -1734,8 +1734,12 @@ function modal(html, onAct, wide) {
 function help() {
   const k = [["空格", "播放／暂停"], ["← →", "前后一格（加 Shift＝一秒）"], ["Alt＋方向键", "微调选中字卡的位置（加 Shift＝大步）"], ["G", "安全区开关"], ["S", "在播放头切开画面"], ["N", "在播放头留言（可以请 Claude 处理）"], ["Shift／⌘＋点", "多选字卡与特效（整组拖、一起改）"], ["⌘Z／Ctrl+Z", "复原"], ["⇧⌘Z／Ctrl+Y", "重做"], ["R", "渲染这一段（选中的或播放头前后）"], ["Delete", "删除选中的字卡／特效；选中字幕＝把那句剪掉"], ["Esc", "取消选取"], ["M", "声音开关"], ["+ −", "时间轴放大缩小"], ["?", "这张表"]];
   modal('<h2>快捷键</h2><div class="keys">' + k.map((x) => '<span class="kbd">' + esc(x[0]) + "</span><span>" + esc(x[1]) + "</span>").join("") + '</div><p class="hint">画面上的字卡是近似样子，停下来会换成引擎的真样子；动态、转场、组合卡以「渲染这一段」为准。</p>' +
-    '<div class="acts"><button class="btn" data-a="hist">历史版本</button><button class="btn" data-a="tour">再看一次导览</button><button class="btn" data-a="diag">诊断报告</button><button class="btn primary" data-a="close">好</button></div>', (a) => { if (a === "diag") diag(); if (a === "tour") tour(0); if (a === "hist") openHistory("sb"); });
+    '<div class="acts"><button class="btn" data-a="hist">历史版本</button><button class="btn" data-a="tour">再看一次导览</button><button class="btn" data-a="diag">诊断报告</button><button class="btn" data-a="guide">使用指南</button><button class="btn primary" data-a="close">好</button></div>', (a) => { if (a === "diag") diag(); if (a === "tour") tour(0); if (a === "hist") openHistory("sb"); if (a === "guide") openGuide(); });
 }
+function openGuide() {   // 走 Studio 的网址打开，目录跳转、深浅色、换语言才会动
+  window.open("guide/" + encodeURIComponent(window.STUDIO_LANG === "en" ? "User-Guide.html" : "使用指南.html"), "_blank", "noopener");
+}
+document.querySelectorAll("[data-guide]").forEach((b) => { b.onclick = openGuide; });
 async function diag() {
   try {
     const r = await api("api/diag", { p: P ? P.id : null });

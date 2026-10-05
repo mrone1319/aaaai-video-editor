@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>aaaai-editor User Guide</title>
+<script>try{var t=localStorage.getItem("aaaai-editor-guide-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+SC:wght@400;500;700;900&display=swap">
+<style>
+:root{
+  --ground:#F6F7F9; --surface:#FFFFFF; --sunk:#EEF0F3; --ink:#15181D; --ink-2:#4A515C; --ink-3:#6B7380;
+  --line:#E1E4E9; --accent:#F0B23C; --accent-ink:#8F5D06; --accent-soft:#FDF1D8;
+  --cyan:#0B77A6; --cyan-soft:#E3F3FA; --green:#1C8C52; --green-soft:#E2F5EA; --red:#B4382B; --red-soft:#FBE7E4;
+  --screen:#20252D; --screen-2:#2C323C; --face:#59616D; --paper:#F4EFE7; --cap:#FFFFFF;
+  --shadow:0 1px 2px rgba(21,24,29,.06),0 6px 24px rgba(21,24,29,.06);
+  --sans:"Noto Sans SC","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","SF Mono",Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1216; --surface:#161A20; --sunk:#1C2129; --ink:#E8EBEF; --ink-2:#A9B1BC; --ink-3:#848D99;
+    --line:#272D36; --accent:#F0B23C; --accent-ink:#F4C35E; --accent-soft:#2E2412;
+    --cyan:#4CC3F5; --cyan-soft:#10252F; --green:#46D98A; --green-soft:#10281B; --red:#F07B6B; --red-soft:#2E1714;
+    --screen:#0B0D10; --screen-2:#1B2028; --face:#3E4550; --paper:#E9E3D8; --cap:#FFFFFF;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.28);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1216; --surface:#161A20; --sunk:#1C2129; --ink:#E8EBEF; --ink-2:#A9B1BC; --ink-3:#848D99;
+  --line:#272D36; --accent:#F0B23C; --accent-ink:#F4C35E; --accent-soft:#2E2412;
+  --cyan:#4CC3F5; --cyan-soft:#10252F; --green:#46D98A; --green-soft:#10281B; --red:#F07B6B; --red-soft:#2E1714;
+  --screen:#0B0D10; --screen-2:#1B2028; --face:#3E4550; --paper:#E9E3D8; --cap:#FFFFFF;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 28px rgba(0,0,0,.28);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16.5px;line-height:1.75;
+  -webkit-font-smoothing:antialiased;padding:0 20px}
+a{color:var(--cyan);text-underline-offset:3px}
+a:focus-visible,button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,kbd,.mono{font-family:var(--mono);font-size:.9em}
+:not(pre)>code{background:var(--sunk);border:1px solid var(--line);padding:.05em .38em;border-radius:5px;white-space:nowrap}
+h1,h2,h3,h4{text-wrap:balance;line-height:1.3;margin:0}
+p{margin:0}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:56px;padding-block:40px 96px}
+
+
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 24px);align-self:start;max-height:calc(100vh - 48px);overflow:auto;padding-right:6px}
+.toc .brand{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.06em;color:var(--ink-3);text-transform:uppercase;margin-bottom:14px}
+.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.toc a{display:flex;gap:10px;align-items:baseline;padding:6px 10px;border-radius:8px;color:var(--ink-2);text-decoration:none;font-size:14.5px;line-height:1.45}
+.toc a span{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);min-width:18px}
+.toc a:hover{background:var(--sunk);color:var(--ink)}
+.toc a.on{background:var(--accent-soft);color:var(--ink)}
+.toc a.on span{color:var(--accent-ink)}
+.toc-tools{margin-top:18px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.theme-btn,.lang-btn{font:500 13px var(--sans);line-height:1.4;color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;text-decoration:none}
+.theme-btn:hover,.lang-btn:hover{color:var(--ink);background:var(--sunk)}
+
+main{min-width:0;display:flex;flex-direction:column;gap:88px}
+section{scroll-margin-top:24px;display:flex;flex-direction:column;gap:22px}
+.eyebrow{font-family:var(--mono);font-size:12.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent-ink)}
+h2{font-size:31px;font-weight:900;letter-spacing:-.01em}
+h3{font-size:20px;font-weight:700}
+.lede{font-size:18px;color:var(--ink-2);max-width:40em}
+.prose{max-width:42em;color:var(--ink-2);display:flex;flex-direction:column;gap:12px}
+.prose strong{color:var(--ink)}
+p.prose{display:block}
+
+
+.hero{display:flex;flex-direction:column;gap:26px;padding-top:6px}
+.hero .tag{display:flex;gap:10px;flex-wrap:wrap}
+.chip{font-family:var(--mono);font-size:12.5px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;color:var(--ink-2);background:var(--surface)}
+.hero h1{font-size:clamp(34px,5.2vw,54px);font-weight:900;letter-spacing:-.02em;line-height:1.15}
+.hero h1 em{font-style:normal;background:linear-gradient(transparent 62%,var(--accent-soft) 62%);padding:0 .06em}
+.prompt-box{background:var(--screen);color:#E8EBEF;border-radius:16px;padding:20px 22px;font-family:var(--mono);font-size:15px;line-height:1.7;box-shadow:var(--shadow);max-width:720px}
+.prompt-box .who{color:#8A93A0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.prompt-box .cmd{color:var(--accent)}
+.prompt-box .caret{display:inline-block;width:9px;height:1.1em;background:var(--accent);vertical-align:-3px;margin-left:3px;animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.flow3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:720px}
+.flow3 div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.flow3 b{display:block;font-size:16px}
+.flow3 small{color:var(--ink-3);font-size:13.5px;line-height:1.55;display:block;margin-top:2px}
+.flow3 .n{font-family:var(--mono);font-size:12px;color:var(--accent-ink);font-weight:600}
+
+
+.feat{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.feat article{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;display:flex;flex-direction:column;gap:6px}
+.feat h3{font-size:16.5px}
+.feat p{font-size:14.5px;color:var(--ink-2);line-height:1.65}
+.feat .num{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+
+
+.note{border-radius:12px;padding:14px 16px;font-size:15px;line-height:1.7;display:flex;gap:12px;max-width:44em}
+.note b.k{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;flex:none;padding-top:3px}
+.note.tip{background:var(--cyan-soft);color:var(--ink)} .note.tip b.k{color:var(--cyan)}
+.note.ok{background:var(--green-soft);color:var(--ink)} .note.ok b.k{color:var(--green)}
+.note.warn{background:var(--red-soft);color:var(--ink)} .note.warn b.k{color:var(--red)}
+
+
+.need{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.need div{border-top:2px solid var(--ink);padding-top:10px}
+.need b{display:block;font-size:15.5px}
+.need span{font-size:14px;color:var(--ink-2);line-height:1.6;display:block;margin-top:2px}
+.need code,.lane code,.fields code{white-space:normal;overflow-wrap:anywhere}
+
+
+.steps{display:flex;flex-direction:column;gap:0;counter-reset:s}
+.step{display:grid;grid-template-columns:64px minmax(0,1fr);gap:0 18px;position:relative}
+.step:not(:last-child)::before{content:"";position:absolute;left:31px;top:46px;bottom:0;width:2px;background:var(--line)}
+.step .dot{width:64px;height:40px;border-radius:10px;background:var(--ink);color:var(--ground);font-family:var(--mono);font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
+.step .body{padding-bottom:40px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.step h3{padding-top:6px}
+.step .time{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);margin-left:8px;font-weight:500}
+.lanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.lane{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.lane .l{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase;margin-bottom:4px}
+.lane.you .l{color:var(--accent-ink)}
+.lane ul{margin:0;padding-left:1.1em;font-size:14.5px;color:var(--ink-2);line-height:1.65}
+.lane li+li{margin-top:3px}
+.say{font-family:var(--mono);font-size:14px;background:var(--sunk);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:9px 12px;color:var(--ink);overflow-x:auto}
+
+
+.tpl{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.tpl-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tpl-head b{font-size:15px}
+.copy{font:500 13px var(--sans);background:var(--ink);color:var(--ground);border:0;border-radius:8px;padding:6px 12px;cursor:pointer}
+.copy.done{background:var(--green)}
+pre{margin:0;padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:14px;line-height:1.85;color:var(--ink);white-space:pre}
+pre .f{color:var(--accent-ink);font-weight:600}
+pre .c{color:var(--ink-3)}
+.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.fields div{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.fields b{font-family:var(--mono);font-size:13.5px;color:var(--accent-ink)}
+.fields p{font-size:14px;color:var(--ink-2);line-height:1.6;margin-top:2px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button{font:500 14px var(--sans);padding:7px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.tabpanel[hidden]{display:none}
+.why{font-size:14.5px;color:var(--ink-2);padding:12px 16px 16px;border-top:1px dashed var(--line);line-height:1.7}
+
+
+.gal-group{display:flex;flex-direction:column;gap:14px}
+.gal-group>h3{display:flex;align-items:baseline;gap:10px}
+.gal-group>h3 small{font-weight:400;font-size:14px;color:var(--ink-3)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.w{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;grid-template-columns:88px minmax(0,1fr);gap:14px;align-items:start}
+.w svg{width:88px;height:auto;display:block;border-radius:10px}
+.w h4{font-size:16px;display:flex;flex-wrap:wrap;gap:6px;align-items:baseline}
+.w h4 code{font-size:12px;font-weight:500;color:var(--ink-3);background:none;border:0;padding:0}
+.w dl{margin:6px 0 0;display:flex;flex-direction:column;gap:5px}
+.w dt{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink-3);text-transform:uppercase}
+.w dd{margin:0;font-size:13.8px;color:var(--ink-2);line-height:1.6}
+.w dd.s{color:var(--ink);font-size:13.5px}
+.w dd.s::before{content:"“";color:var(--accent-ink)} .w dd.s::after{content:"”";color:var(--accent-ink)}
+.badge{font-family:var(--mono);font-size:10.5px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--ink-3)}
+.badge.req{border-color:var(--cyan);color:var(--cyan)}
+.w.wide{grid-column:1/-1}
+
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:560px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.6}
+th{font-size:12px;font-family:var(--mono);letter-spacing:.06em;color:var(--ink-3);font-weight:600;background:var(--sunk);text-transform:uppercase}
+tr:last-child td{border-bottom:0}
+td .mono{font-size:13px;color:var(--accent-ink)}
+
+
+.styles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.sty{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+.sty .sw{height:62px;display:flex;align-items:flex-end;gap:6px;padding:10px 12px}
+.sty .sw i{width:18px;height:18px;border-radius:50%;display:block;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.sty .sw b{margin-left:auto;font-family:var(--mono);font-size:13px}
+.sty div.t{padding:10px 12px 12px;font-size:13.8px;color:var(--ink-2);line-height:1.55}
+.sty div.t code{font-size:13px}
+
+
+.check{display:flex;flex-direction:column;gap:8px;max-width:44em}
+.check label{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 14px;cursor:pointer;font-size:15px;line-height:1.6}
+.check input{margin-top:5px;accent-color:var(--green);width:16px;height:16px;flex:none}
+.check label:has(input:checked){color:var(--ink-3)}
+.check label:has(input:checked) b{text-decoration:line-through}
+
+details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0 16px}
+details+details{margin-top:8px}
+summary{cursor:pointer;padding:13px 0;font-weight:700;font-size:15.5px;list-style:none;display:flex;justify-content:space-between;gap:10px}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-family:var(--mono);color:var(--ink-3)}
+details[open] summary::after{content:"−"}
+details .a{padding-bottom:14px;font-size:15px;color:var(--ink-2);line-height:1.75;display:flex;flex-direction:column;gap:8px}
+.faq{max-width:48em}
+
+.rules{counter-reset:r;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.rules div{counter-increment:r;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px 14px 52px;position:relative;font-size:14.8px;color:var(--ink-2);line-height:1.65}
+.rules div::before{content:counter(r);position:absolute;left:16px;top:13px;font-family:var(--mono);font-weight:600;color:var(--accent-ink);font-size:18px}
+.rules b{color:var(--ink);display:block;font-size:15.5px}
+footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padding-top:20px;display:flex;flex-direction:column;gap:4px}
+
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr;gap:28px;padding-block:20px 72px}
+  nav.toc{position:static;max-height:none;overflow:visible;padding:0}
+  .toc ol{flex-direction:row;overflow-x:auto;gap:6px;padding-bottom:6px}
+  .toc a{white-space:nowrap;border:1px solid var(--line);background:var(--surface)}
+  .toc-tools{margin-top:10px}
+  main{gap:64px}
+  h2{font-size:26px}
+}
+@media (max-width:560px){
+  body{padding:0 16px;font-size:16px}
+  .flow3{grid-template-columns:1fr}
+  .step{grid-template-columns:44px minmax(0,1fr);gap:0 12px}
+  .step .dot{width:44px;height:34px;font-size:11.5px}
+  .step:not(:last-child)::before{left:21px}
+  .w{grid-template-columns:72px minmax(0,1fr)}
+  .w svg{width:72px}
+  pre{font-size:13px;padding:14px}
+}
+@media print{
+  body{background:#fff;padding:0;font-size:12.5pt}
+  .wrap{display:block;padding:0}
+  nav.toc,.toc-tools,.copy,.tabs{display:none}
+  .tabpanel[hidden]{display:block}
+  section{break-inside:auto} .w,.step,.tpl,.feat article,.rules div,details{break-inside:avoid}
+  details{border:0;padding:0} details .a{display:flex}
+  main{gap:36px}
+  .prompt-box{box-shadow:none}
+}
+.kbd{font-family:var(--mono);font-size:12px;border:1px solid var(--line,#ccc);border-bottom-width:2px;border-radius:4px;padding:0 5px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <div class="brand">aaaai-editor · Guide</div>
+  <ol>
+    <li><a href="#start"><span>00</span>Start here</a></li>
+    <li><a href="#features"><span>01</span>What it does for you</a></li>
+    <li><a href="#prepare"><span>02</span>Before you start</a></li>
+    <li><a href="#walk"><span>03</span>Your first edit</a></li>
+    <li><a href="#template"><span>04</span>Prompt template</a></li>
+    <li><a href="#intro"><span>05</span>Introduce yourself: name &amp; avatar</a></li>
+    <li><a href="#publish"><span>06</span>Captions &amp; publishing</a></li>
+    <li><a href="#gallery"><span>07</span>Component gallery</a></li>
+    <li><a href="#styles"><span>08</span>Styles</a></li>
+    <li><a href="#sound"><span>09</span>Music &amp; sound effects</a></li>
+    <li><a href="#edit"><span>10</span>How to ask for changes</a></li>
+    <li><a href="#studio"><span>11</span>Studio visual editor</a></li>
+    <li><a href="#files"><span>12</span>Where files are</a></li>
+    <li><a href="#qa"><span>13</span>Pre-publish check</a></li>
+    <li><a href="#faq"><span>14</span>FAQ</a></li>
+    <li><a href="#habits"><span>15</span>Habits for reliable results</a></li>
+    <li><a href="#license"><span>16</span>Copyright &amp; license</a></li>
+  </ol>
+  <div class="toc-tools">
+    <a class="lang-btn" id="langBtn" href="%E4%BD%BF%E7%94%A8%E6%8C%87%E5%8D%97.html" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+    <button class="theme-btn" id="themeBtn" type="button">Light / dark</button>
+  </div>
+</nav>
+
+<main>
+<!-- 00 -->
+<section id="start" class="hero">
+  <div class="tag"><span class="chip">v1.8.1</span><span class="chip">macOS · Windows</span><span class="chip">Runs in Claude Code</span></div>
+  <h1>You do the talking and the deciding.<br><em>aaaai-editor does the editing</em>.</h1>
+  <p class="lede">It's a complete editing workflow for talking-head videos: trimming pauses, captions, on-screen cards, music and sound effects, loudness, thumbnails, and frame-by-frame checks. No editing software to learn, no commands to memorize. Just type <code>/aaaai-editor</code> in Claude Code and tell it what you want in plain words.</p>
+  <div class="prompt-box" aria-label="Example: one sentence is enough">
+    <div class="who">You type in Claude Code</div>
+    <span class="cmd">/aaaai-editor</span> Edit ~/Movies/raw/0921.mp4 into a 60-second vertical video with Chinese-English captions, and open with the strongest line as a teaser<span class="caret" aria-hidden="true"></span>
+  </div>
+  <div class="note ok" style="max-width:720px"><b class="k">Easiest way</b><span>Don't feel like writing anything? Just type <code>/aaaai-editor edit my video</code>. It will ask you to drag your video into the window, then walk you through what you want, one question at a time.</span></div>
+  <div class="flow3">
+    <div><span class="n">Step 1</span><b>Drop in footage, say what you need</b><small>One sentence works, or fill in the prompt template.</small></div>
+    <div><span class="n">Step 2</span><b>Answer a few questions</b><small>Style, music, captions. It shows you a comparison image first.</small></div>
+    <div><span class="n">Step 3</span><b>Watch the preview, say what to change</b><small>The final video and thumbnail are made only once you're happy.</small></div>
+  </div>
+</section>
+
+<!-- 01 -->
+<section id="features">
+  <div class="eyebrow">01 · Highlights</div>
+  <h2>What it can do for you</h2>
+  <p class="lede">It's not about having lots of features. It's that every step is checked for you: cuts wait for words to finish, captions match the actual voice, cards stay off your face, and loudness hits platform standards.</p>
+  <div class="feat">
+    <article><h3>Auto rough cut that never clips words</h3><p>It cuts out silent gaps, waits for each word to trail off before cutting, and starts each segment just before you speak. Restarts and "um/uh" moments are listed for you. Nothing is deleted until you say yes.</p></article>
+    <article><h3>Captions matched to your real voice</h3><p>Each line lines up with the exact moment it's spoken. Chinese, Chinese-English, or original language plus Chinese translation. Keywords get highlighted. If you sit low in the frame, captions move below your chin so they don't cover your face.</p></article>
+    <article><h3>Hook viewers in the first 3 seconds</h3><p>It copies the strongest line in your video to the very start as a teaser. Not sure which line? It scores lines on numbers, contrast, and questions, and suggests 3.</p></article>
+    <article><h3>20+ card types that avoid your face</h3><p>Title cards, animated stats, lists, quotes, comparisons, name tags, chapters, and more. Once they land, they "breathe" gently, and key cards give a quick flash. If you sit high in the frame, cards move out of the way of your eyes.</p></article>
+    <article><h3>Card takeover: a full layout for showing proof</h3><p>The video shrinks into a card while your head pops out of the frame. Above it go proof screenshots, workflow steps, and a call to action, ending on a "comment this keyword" prompt. Great for showing earnings or results.</p></article>
+    <article><h3>Audio, all in one go</h3><p>Noise reduction (you hear three levels first), music that ducks automatically under your voice, 7 sound effects (coin, pop, whoosh…), and final loudness locked to −14 LUFS (the standard across platforms).</p></article>
+    <article><h3>Three sources for B-roll</h3><p>Your own footage is best. It can also find free stock footage (Pexels) or generate clips with AI. Before generating, it always gives you a price quote and only spends money once you agree. Default cap is $2 per project.</p></article>
+    <article><h3>Image cards: turn cards into posts</h3><p>The stat, list, and quote cards from your video can be exported as still images (1080×1350 by default). Add a caption and you have a Xiaohongshu or Instagram carousel post that drives traffic to and from your video. Just say "make image cards."</p></article>
+    <article><h3>Every style has its own typography</h3><p>Each of the 9 styles has its own font personality: bold headings, wide-spaced uppercase labels, monospaced numbers. Backgrounds have a top highlight and soft shadow. Units on stat cards are a size smaller, and you can add a bar showing the amount.</p></article>
+    <article><h3>It checks its own work before delivery</h3><p>It grabs frames at each card's timing to check them, runs a caption timing check, and checks that the thumbnail respects a 15% safe zone. It won't say "done" until it has looked at the actual frames.</p></article>
+    <article><h3>Write the posts right after editing</h3><p>Hand it off to the Content Pipeline: it writes captions and makes images for the platforms you pick (Xiaohongshu, Douyin, X, Instagram, Bilibili…), bundles them into a ready-to-post package, and remembers each client's brand voice. You press "post" yourself.</p></article>
+    <article><h3>Fast and safe</h3><p>It only decodes the parts it needs, so a 60-second video previews in about 30 seconds. Your original footage is never deleted, changed, or moved. API keys are stored in the Mac Keychain and only sent to official addresses.</p></article>
+  </div>
+</section>
+
+<!-- 02 -->
+<section id="prepare">
+  <div class="eyebrow">02 · Setup</div>
+  <h2>Before you start</h2>
+  <div class="need">
+    <div><b>A computer</b><span>Mac or Windows (see requirements below). For background removal, Mac uses its built-in Apple Vision and Windows uses Google MediaPipe. Both are free and work offline.</span></div>
+    <div><b>Claude Code</b><span>Desktop app or terminal, either works. ChatGPT Codex is also supported. On Windows, install Git first (the installer can do it for you).</span></div>
+    <div><b>aaaai-editor installed</b><span>Mac: double-click "双击安装.command" ("double-click to install"). Windows: double-click "Install-Windows.cmd". You can also install it as a Claude Code plugin. The first install downloads about 3GB.</span></div>
+    <div><b>A video clip</b><span>Vertical phone footage works best: you centered in the frame, upper body fully visible, clear audio, quiet background.</span></div>
+  </div>
+  <h3>Computer requirements</h3>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Mac</th><th>Windows</th></tr></thead>
+    <tbody>
+      <tr><td><b>OS</b></td><td>macOS 13 Ventura or later</td><td>Windows 10 (22H2) or Windows 11, 64-bit</td></tr>
+      <tr><td><b>Processor</b></td><td><b>Apple M series (M1 or later)</b>. It installs on Intel Macs, but transcription, background removal, and rendering are much slower. Not recommended</td><td>A 64-bit Intel/AMD processor from the last 5 years. With an NVIDIA, Intel, or AMD graphics card, you can turn on hardware acceleration for rendering. Windows on ARM isn't supported yet</td></tr>
+      <tr><td><b>Memory</b></td><td>8GB minimum, <b>16GB recommended</b></td><td>8GB minimum, <b>16GB recommended</b></td></tr>
+      <tr><td><b>Storage</b></td><td colspan="2">At least <b>20GB</b> free (about 3GB for tools and speech models, the rest for footage and exports; one minute of 4K phone footage is about 0.5GB)</td></tr>
+      <tr><td><b>Internet</b></td><td colspan="2">About 3GB to download during install. After that, editing works offline (only B-roll stock footage, AI generation, and Content Pipeline research need a connection)</td></tr>
+      <tr><td><b>How to check your computer</b></td><td>Apple menu (top left) › "About This Mac": if the chip starts with Apple M, you're good</td><td>"Settings › System › About": check that "System type" is 64-bit, and how much memory you have</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><b class="k">WINDOWS</b><span>The Windows version is new. It follows the same workflow as the Mac version but still needs testing on more Windows PCs. If you run into a problem, send Claude a screenshot and it will help you troubleshoot.</span></div>
+  <h3>Installation steps</h3>
+  <div class="tabs" role="tablist" aria-label="Installation">
+    <button type="button" role="tab" id="tab-mac" aria-controls="in-mac" aria-selected="true">Mac</button>
+    <button type="button" role="tab" id="tab-win" aria-controls="in-win" aria-selected="false">Windows</button>
+  </div>
+  <div class="tabpanel" id="in-mac" role="tabpanel" aria-labelledby="tab-mac">
+    <div class="steps">
+      <div class="step"><div class="dot">1</div><div class="body"><h3>Unzip the package</h3><p class="prose">Double-click <code>aaaai-editor-v*.zip</code> to unzip it.</p></div></div>
+      <div class="step"><div class="dot">2</div><div class="body"><h3>Double-click "双击安装.command"</h3><p class="prose">Follow the prompts step by step (press Enter to agree). It uses Homebrew to install FFmpeg, whisper, and Python, and asks you before each one. Installing Homebrew needs your Mac login password.</p></div></div>
+      <div class="step"><div class="dot">3</div><div class="body"><h3>If macOS blocks it</h3><p class="prose">If you see "can't be opened" or "developer cannot be verified," open "System Settings › Privacy &amp; Security," scroll down, click "Open Anyway," then double-click the file again.</p></div></div>
+      <div class="step"><div class="dot">4</div><div class="body"><h3>Background removal (optional)</h3><p class="prose">The installer asks whether to install Apple's Xcode Command Line Tools. You need them for text-behind-you effects and card takeovers.</p></div></div>
+      <div class="step"><div class="dot">5</div><div class="body"><h3>Check the health report</h3><p class="prose">Once everything shows ✅, you're ready. Type <code>/aaaai-editor</code> in Claude Code.</p></div></div>
+    </div>
+    <p class="prose">Full details (installer options, keys, MCP, updates, uninstalling, FAQ): <code>docs/安装指南-Mac.md</code> in the package.</p>
+  </div>
+  <div class="tabpanel" id="in-win" role="tabpanel" aria-labelledby="tab-win" hidden>
+    <div class="steps">
+      <div class="step"><div class="dot">1</div><div class="body"><h3>Extract All</h3><p class="prose">Right-click the zip › "Extract All." Don't double-click inside the zip directly, or the installer won't find its other files.</p></div></div>
+      <div class="step"><div class="dot">2</div><div class="body"><h3>Double-click "Install-Windows.cmd"</h3><p class="prose">Follow the prompts step by step (type y or press Enter to agree). It uses Windows' built-in winget to install Python, FFmpeg, and Git, and downloads whisper, the speech model, and the MediaPipe segmentation model from official sources. It asks you before each one.</p></div></div>
+      <div class="step"><div class="dot">3</div><div class="body"><h3>If Windows blocks it</h3><p class="prose">If a blue "Windows protected your PC" screen appears, click "More info" › "Run anyway." If it says "winget not found," install "App Installer" from the Microsoft Store.</p></div></div>
+      <div class="step"><div class="dot">4</div><div class="body"><h3>Install Claude Code</h3><p class="prose">Download the Windows version from claude.ai/download. It needs Git (already installed in step 2). After installing, fully close Claude Code and reopen it.</p></div></div>
+      <div class="step"><div class="dot">5</div><div class="body"><h3>Check the health report</h3><p class="prose">Once everything shows ✅, you're ready. Type <code>/aaaai-editor</code> in Claude Code. Finished videos are in File Explorer under "Videos › aaaai-editor › 成品 (exports)."</p></div></div>
+    </div>
+    <p class="prose">Full details (installer options, keys, MCP, updates, uninstalling, FAQ): <code>docs/安装指南-Windows.md</code> in the package.</p>
+  </div>
+  <div class="note tip"><b class="k">TIP</b><span>Right after installing, just tell Claude "check if aaaai-editor is installed correctly." It runs a health check. All ✅ means you're good to go.</span></div>
+  <div class="note ok"><b class="k">It's free</b><span>Editing, captions, cards, music, sound effects, loudness, and thumbnails are all free. The only thing that might cost money is AI-generated B-roll, and it always gives you a quote and asks first.</span></div>
+</section>
+
+<!-- 03 -->
+<section id="walk">
+  <div class="eyebrow">03 · Walkthrough</div>
+  <h2>Your first edit, start to finish</h2>
+  <p class="lede">We'll use a 2-minute talking-head video shot on a phone. Each step shows "what you do" and "what it does," so you won't get lost.</p>
+  <div class="steps">
+
+    <div class="step"><div class="dot">01</div><div class="body">
+      <h3>Get your footage ready<span class="time">About 1 min</span></h3>
+      <div class="lanes">
+        <div class="lane you"><div class="l">You do</div><ul><li>Put your video anywhere you can find it (for example, your Movies folder).</li><li>Put any photos, screenshots, logos, or your own B-roll in the same folder. You'll tell it where in a moment.</li></ul></div>
+        <div class="lane"><div class="l">It does</div><ul><li>Creates a new project in "Movies › aaaai-editor." Your original footage is only read, never moved or changed.</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">02</div><div class="body">
+      <h3>Say what you want<span class="time">30 sec</span></h3>
+      <p class="prose">Type <code>/aaaai-editor</code> in Claude Code, followed by one sentence. Want to be more detailed? Use the prompt template in the next chapter.</p>
+      <div class="say">/aaaai-editor edit my video</div>
+      <p class="prose">That's the shortest version. It will ask you to drag your video into the window, then ask questions one at a time. The more you tell it up front, the less back-and-forth:</p>
+      <div class="say">/aaaai-editor Edit ~/Movies/raw/0921.mp4 into a vertical short with Chinese-English captions</div>
+      <div class="note tip"><b class="k">TIP</b><span>Drag the video file from Finder straight into the Claude Code input box, and the path fills in automatically. No typing needed.</span></div>
+    </div></div>
+
+    <div class="step"><div class="dot">03</div><div class="body">
+      <h3>Answer three kickoff questions<span class="time">1 min</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">It asks</div><ul><li><b>Style</b>: it sends you a style comparison image first.</li><li><b>Music</b>: it suggests 1–2 of its 7 original built-in tracks, or you can use your own music, or skip music.</li><li><b>Captions</b>: Chinese / Chinese-English / none (for English videos: original language / with Chinese translation).</li><li>If your footage is horizontal, it also asks: keep it horizontal, or crop to vertical?</li></ul></div>
+        <div class="lane you"><div class="l">You do</div><ul><li>Pick one. Not sure? Pick the one marked "Recommended."</li><li>Next time, say "same as last time" to reuse your previous settings.</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">04</div><div class="body">
+      <h3>Check the captions<span class="time">3–5 min · The most important step</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">It does</div><ul><li>Turns speech into text, fixes common typos, and matches each line to your real voice.</li><li>For names, brands, or coin names it isn't sure about, it clips that bit so you can listen.</li><li>Gives you a roughly one-minute caption preview to check timing.</li></ul></div>
+        <div class="lane you"><div class="l">You do</div><ul><li>Fix any typos (especially names and terms).</li><li>For bilingual captions, check that the English sounds natural.</li><li>Tell it which words to highlight, like brand names or key numbers.</li></ul></div>
+      </div>
+      <div class="note tip"><b class="k">TIP</b><span>The sooner you lock the captions, the easier everything else is. Card timing is based on the captions.</span></div>
+    </div></div>
+
+    <div class="step"><div class="dot">05</div><div class="body">
+      <h3>Clean it up, pick the opener<span class="time">2 min</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">It does</div><ul><li>Lists every "um/uh" and every restart (it lists them but doesn't delete them).</li><li>Suggests 3 lines that would work as an opener.</li></ul></div>
+        <div class="lane you"><div class="l">You do</div><ul><li>Say "delete all" or "delete 1 and 3."</li><li>Pick one line as the opening teaser, or say "no teaser."</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">06</div><div class="body">
+      <h3>Add cards, watch the preview<span class="time">5–10 min · May take a few rounds</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">It does</div><ul><li>First writes one sentence on "what viewers should remember," then lays out cards to match the content (one idea per card).</li><li>Renders a half-resolution preview and grabs frames to check that nothing covers your face or overflows a card.</li><li>Sends you the preview file and reveals it in Finder.</li></ul></div>
+        <div class="lane you"><div class="l">You do</div><ul><li>Just say what to change: "The card at 0:20 stays up too long," "Switch the list to a numbered card," "Add a name tag here."</li><li>Move on once you're happy.</li></ul></div>
+      </div>
+      <div class="note warn"><b class="k">Heads up</b><span>The preview <code>final_preview.mp4</code> is only for checking layout. It's half quality and <b>not the final video</b>.</span></div>
+      <div class="note tip"><b class="k">Want to do it yourself?</b><span>Say "open the editor," and Claude opens <b>Studio</b> alongside the chat. Like editing software, it has a preview, a properties panel, and a multi-track timeline. Drag cards and captions to change their timing and length, and edit any text or number. Delete a sentence in the "Transcript" and that part gets cut, with later cards shifting forward automatically. "Check-up" marks timing issues, captions that are too long, and cards covering your face as red dots. "Render this section" shows you the real final frames in seconds. Changes save automatically, and anything you ask Claude to change in chat syncs over too, so neither side overwrites the other. Studio only opens on your own computer.</span></div>
+    </div></div>
+
+    <div class="step"><div class="dot">07</div><div class="body">
+      <h3>Listen to the audio<span class="time">2 min</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">It plays you</div><ul><li><b>Music A/B</b>: the same section as MP3s at three volume levels.</li><li><b>Noise reduction A/B</b> (when there's AC or fan noise): original / standard / strong. Standard is on by default.</li><li><b>Sound effects</b>: only added if you ask for them. It plays them for you during the preview.</li></ul></div>
+        <div class="lane you"><div class="l">You do</div><ul><li>Pick one: "music option two," "use strong noise reduction."</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">08</div><div class="body">
+      <h3>Export the video and thumbnail<span class="time">A few min (depends on length)</span></h3>
+      <div class="lanes">
+        <div class="lane"><div class="l">It does</div><ul><li>Renders the final video: loudness at −14 LUFS, true peak no higher than −1 dB.</li><li>Grabs frames from the final video to check again, and runs a caption timing check.</li><li>Gives you a sheet of thumbnail candidate frames (clean shots from the original, no captions) and recommends a few where you're looking at the camera.</li><li>Makes the thumbnail (vertical 1080×1920 and 1080×1350; horizontal videos get 1920×1080): small label, big title, third line, and your account name, with a dark shadow behind the text. It checks that text stays in the safe zone and off your face.</li><li>Copies the video and thumbnail to "Movies › aaaai-editor › 成品."</li></ul></div>
+        <div class="lane you"><div class="l">You do</div><ul><li>Pick a background frame by its number.</li><li>Give the thumbnail a short hook (a few words), or let it suggest the label, title, and third line.</li><li>Go through the checklist in Chapter 12.</li></ul></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="dot">09</div><div class="body">
+      <h3>Publish (optional)<span class="time">Depends on platform</span></h3>
+      <p class="prose">It asks whether to hand off to the Content Pipeline, which writes captions, makes images, and packages everything for the platforms you choose. Just say "Yes, for Xiaohongshu and Douyin." The video, thumbnail, and transcript are passed along automatically. You press "post" yourself, because platforms don't allow AI to post on its own. See Chapter 6 for details.</p>
+    </div></div>
+
+  </div>
+</section>
+
+<!-- 04 -->
+<section id="template">
+  <div class="eyebrow">04 · Just fill it in</div>
+  <h2>Prompt template</h2>
+  <p class="lede">No commands to memorize. Copy the template below and replace what comes after each bracket with your own request. <b>Delete any lines you don't need.</b> For anything you leave out, it will ask you or pick a sensible default.</p>
+
+  <div class="tpl">
+    <div class="tpl-head"><b>General template</b><button class="copy" type="button" data-copy="tplMain">Copy template</button></div>
+<pre id="tplMain"><span class="f">/aaaai-editor</span>
+<span class="f">[Footage]</span>~/Movies/raw/0921.mp4            <span class="c">← You can list several. Also say where your photos and screenshots are</span>
+<span class="f">[Type]</span>Talking-head explainer, for TikTok and Xiaohongshu          <span class="c">← Talking head / interview / live event; which platforms</span>
+<span class="f">[Core]</span>The most expensive part of learning AI is the time lost on detours            <span class="c">← The one line viewers should remember</span>
+<span class="f">[Length]</span>Under 60 seconds
+<span class="f">[Style]</span>Your pick                             <span class="c">← Or a style name: ink, neon, paper…</span>
+<span class="f">[Subtitles]</span>Bilingual Chinese/English; highlight: brand names, all numbers
+<span class="f">[Opening]</span>Suggest 3 lines for me to choose from                      <span class="c">← Or: use the line "…" as the teaser</span>
+<span class="f">[Edit]</span>Cut pauses, filler words, and retakes (show me the list first)
+<span class="f">[Intro]</span>I'm MR ONE, AI workflows · one-person company; headshot ~/Pictures/头像/me.jpg   <span class="c">← Chapter 5</span>
+<span class="f">[Cards]</span>When I get to "three detours," make a numbered list
+<span class="f">[Proof]</span>When I talk about income, use a card fold-in. Screenshots are in ~/Desktop/proof/. Stamp the amount
+<span class="f">[Audio]</span>Keep the music quieter; if there's fan noise, let me hear the noise reduction first; add a coin sound when numbers appear
+<span class="f">[Ending]</span>End on a comment card: comment "start" and I'll send you the link
+<span class="f">[Aspect]</span>Vertical 9:16
+<span class="f">[Cover]</span>Cover text: Don't Detour into AI
+<span class="f">[Publish]</span>When the edit is done, hand it to the content pipeline: one caption each for Xiaohongshu and TikTok        <span class="c">← Chapter 6</span>
+<span class="f">[Other]</span>Proper nouns: MR ONE, Claude Code</pre>
+  </div>
+
+  <h3>How to fill in each line</h3>
+  <div class="fields">
+    <div><b>[Footage]</b><p>The video path. Drag the file from Finder into Claude Code and the path appears. List everything: multiple clips, photos, screenshots, logos, your own B-roll.</p></div>
+    <div><b>[Type]</b><p>Talking head, interview, or live event, plus the platforms you'll post to. The platform sets the aspect ratio, pacing, and cover size.</p></div>
+    <div><b>[Core]</b><p>The one line viewers should remember. Cards, the opening, and the cover all build around it. Writing it makes the final video more focused.</p></div>
+    <div><b>[Style]</b><p>A style name, or "your pick." The style sets the colors and fonts for cards and subtitles (Chapter 8).</p></div>
+    <div><b>[Subtitles]</b><p>Chinese / bilingual Chinese-English / original language + Chinese / none. Which words to highlight. Whether subtitles should be bigger or higher.</p></div>
+    <div><b>[Opening]</b><p>Pick the line to use as the opening teaser, or let it suggest some. "Add an opening title: …" goes here too.</p></div>
+    <div><b>[Edit]</b><p>Cut pauses (done by default), filler words, and flubbed takes. Say which parts to keep and which to cut.</p></div>
+    <div><b>[Intro]</b><p>Your name, your role (one line is enough), and where your headshot is. With a photo you get an avatar card; without one, a name bar. See Chapter 5 for how to prepare the photo.</p></div>
+    <div><b>[Cards]</b><p>Just describe the moment with "when I talk about…". No exact seconds needed. For common phrasing, see "Say it like this" under each component in Chapter 7.</p></div>
+    <div><b>[Proof]</b><p>Use this when you have screenshots of income, dashboards, orders, or reviews. The screenshots must be real. It won't make up data for you.</p></div>
+    <div><b>[Audio]</b><p>Which music track and how loud. Noise reduction. Whether you want sound effects, and which ones.</p></div>
+    <div><b>[Ending]</b><p>End title, call to action (comment keyword, follow, DM), and whether to hold on the card until the end.</p></div>
+    <div><b>[Publish]</b><p>Whether to also write captions and package everything after the edit: which platforms, and how many posts each. If you skip it, it will ask you when the edit is done.</p></div>
+    <div><b>[Other]</b><p>Max length, lines that must stay in, proper nouns that are easy to mishear, your account name (bottom-right of the cover).</p></div>
+  </div>
+
+  <h3>Filled-in examples</h3>
+  <div class="tabs" role="tablist" aria-label="Examples">
+    <button type="button" role="tab" id="tab-e" aria-controls="ex-e" aria-selected="true">Simplest</button>
+    <button type="button" role="tab" id="tab-a" aria-controls="ex-a" aria-selected="false">Explainer</button>
+    <button type="button" role="tab" id="tab-b" aria-controls="ex-b" aria-selected="false">Income proof</button>
+    <button type="button" role="tab" id="tab-c" aria-controls="ex-c" aria-selected="false">Live event / interview</button>
+    <button type="button" role="tab" id="tab-d" aria-controls="ex-d" aria-selected="false">One-line shortcut</button>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-e" role="tabpanel" aria-labelledby="tab-e">
+    <div class="tpl-head"><b>Simplest · Start with one line</b><button class="copy" type="button" data-copy="pe">Copy</button></div>
+<pre id="pe"><span class="f">/aaaai-editor</span> Edit a video for me</pre>
+    <p class="why">Here's what happens next: ① it asks you to drag your video into the window; ② it shows a style comparison and asks about style, music, and subtitles; ③ it checks the subtitles with you and shows you a preview.
+      You just answer as you go. Once you're used to it, write everything at once with the General template. That saves a lot of back-and-forth.</p>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-a" role="tabpanel" aria-labelledby="tab-a" hidden>
+    <div class="tpl-head"><b>Explainer · 60-second vertical</b><button class="copy" type="button" data-copy="pa">Copy</button></div>
+<pre id="pa"><span class="f">/aaaai-editor</span>
+<span class="f">[Footage]</span>~/Movies/raw/ai-3-mistakes.mp4
+<span class="f">[Type]</span>Talking-head explainer, for TikTok and WeChat Channels
+<span class="f">[Core]</span>The three detours beginners take most when learning AI
+<span class="f">[Length]</span>Under 60 seconds
+<span class="f">[Style]</span>ink
+<span class="f">[Subtitles]</span>Bilingual Chinese/English; highlight the keyword of each "detour"
+<span class="f">[Opening]</span>Suggest 3 lines for me to choose from
+<span class="f">[Edit]</span>Cut pauses and filler words; show me a list of retakes
+<span class="f">[Intro]</span>I'm MR ONE, AI workflows · one-person company; headshot ~/Pictures/头像/me.jpg
+<span class="f">[Cards]</span>Add an opening title "Three Detours for Beginners"; show a numbered row card for detours one, two, and three;
+      make the last punchline a quote card; show the avatar card on the line "I'm MR ONE"
+<span class="f">[Audio]</span>Music focus-quiet; no sound effects
+<span class="f">[Ending]</span>End card: Follow me. Next time: how to pick your tools
+<span class="f">[Cover]</span>Suggest 3 options, 8 words max</pre>
+    <p class="why">Why it's written this way: explainers live or die on clear structure, so numbered row cards pin down the three key points. No sound effects keeps the tone steady.</p>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-b" role="tabpanel" aria-labelledby="tab-b" hidden>
+    <div class="tpl-head"><b>Income proof · Three card fold-ins in a row</b><button class="copy" type="button" data-copy="pb">Copy</button></div>
+<pre id="pb"><span class="f">/aaaai-editor</span>
+<span class="f">[Footage]</span>~/Movies/raw/week-income.mp4; screenshots in ~/Desktop/proof/ (后台.png, 订单1.png, 订单2.png)
+<span class="f">[Type]</span>Results share, for Xiaohongshu and IG Reels
+<span class="f">[Core]</span>Shoot 3 minutes on the fly, let AI edit, get paid all week
+<span class="f">[Style]</span>Your pick
+<span class="f">[Subtitles]</span>Chinese; highlight amounts
+<span class="f">[Opening]</span>Use the line "I didn't edit anything this week" as the teaser
+<span class="f">[Proof]</span>When I talk about income, use a card fold-in with a paper background:
+      first part shows the dashboard screenshot, and the moment I say the amount, stamp "+$1,593" with a coin sound;
+      second part shows the two order screenshots side by side, then the workflow: Shoot on the fly → AI auto-edit → Weekly income
+<span class="f">[Audio]</span>Music upbeat-energetic, quiet; add a "pop" when cards appear
+<span class="f">[Ending]</span>Hold on a call-to-action card until the end: "Want this workflow?" Comment "edit" and I'll send it to you
+<span class="f">[Cover]</span>A week of income, zero editing</pre>
+    <p class="why">Why it's written this way: proof videos fail when it's all talk. The card fold-in puts the screenshot right above you, and the stamp lands the moment you say the number. That's the most believable setup. The screenshots must be real.</p>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-c" role="tabpanel" aria-labelledby="tab-c" hidden>
+    <div class="tpl-head"><b>Live event / guest interview</b><button class="copy" type="button" data-copy="pc">Copy</button></div>
+<pre id="pc"><span class="f">/aaaai-editor</span>
+<span class="f">[Footage]</span>~/Movies/summit/stage.mp4 (shot horizontal); guest photo ~/Movies/summit/guest.jpg
+<span class="f">[Type]</span>Event highlights, for YouTube Shorts and LinkedIn
+<span class="f">[Length]</span>Under 90 seconds; keep only the guest's three best moments
+<span class="f">[Style]</span>trust
+<span class="f">[Subtitles]</span>Original language (English) + Chinese translation
+<span class="f">[Edit]</span>There's audience reaction, so use standard noise reduction. Don't wipe out the audience sound
+<span class="f">[Cards]</span>Add an avatar card when the guest first appears (name, title); use a counting stat when they mention numbers;
+      separate the three parts with chapter breaks
+<span class="f">[Aspect]</span>Crop to vertical 9:16, keep the speaker centered
+<span class="f">[Ending]</span>End card: Full talk on my profile</pre>
+    <p class="why">Why it's written this way: event footage is often shot horizontal, so say up front that you want a vertical crop. With audience reaction, use standard noise reduction. The strong setting will wipe out the audience too.</p>
+  </div>
+
+  <div class="tpl tabpanel" id="ex-d" role="tabpanel" aria-labelledby="tab-d" hidden>
+    <div class="tpl-head"><b>One-line shortcut</b><button class="copy" type="button" data-copy="pd">Copy</button></div>
+<pre id="pd"><span class="f">/aaaai-editor</span> Edit ~/Movies/raw/0921.mp4, same as last time</pre>
+    <p class="why">"Same as last time" means reuse the style, music, and subtitle settings from your last video. It will ask about other details along the way. On your first video, replace "same as last time" with "make it a 60-second vertical with Chinese subtitles."</p>
+  </div>
+
+  <div class="note tip"><b class="k">TIP</b><span>Describe moments with "when I talk about…" or "the last line." It lines them up using the subtitle timing. Only give seconds when you need precision (seconds in the final video, not the raw footage).</span></div>
+</section>
+
+<!-- 05 -->
+<section id="intro">
+  <div class="eyebrow">05 · Introduce yourself</div>
+  <h2>Introduce yourself: name and headshot</h2>
+  <p class="lede">The first time new viewers see you, they need to know who you are and why they should listen. The moment you say "Hi, I'm…", show a card with your name and role. With a photo, use an avatar card. Without one, use a name bar.</p>
+  <div class="gal">
+    <article class="w"><span id="introAvatar"></span><div><h4>Avatar card <code>avatar</code> <span class="badge req">Photo needed</span></h4><dl>
+      <dt>What it looks like</dt><dd>A round photo in the bottom-left (ringed in the style's accent color) + your name + one line about who you are.</dd>
+      <dt>Good for</dt><dd>Introducing yourself; a guest's first appearance; mentioning a well-known person or partner (swap in their photo).</dd>
+      <dt>Say it like this</dt><dd class="s">Show the avatar card on the line "I'm MR ONE." Headshot ~/Pictures/头像/me.jpg, role: AI workflows · one-person company</dd></dl></div></article>
+    <article class="w"><span id="introLower"></span><div><h4>Name bar <code>speaker</code></h4><dl>
+      <dt>What it looks like</dt><dd>Along the bottom edge: a short accent-color bar + your name in bold + one line about who you are. Slides in from the left.</dd>
+      <dt>Good for</dt><dd>When you don't have a good photo, or your face is already on screen.</dd>
+      <dt>Say it like this</dt><dd class="s">Add a name bar when I introduce myself: MR ONE, AI workflows</dd></dl></div></article>
+  </div>
+
+  <h3>How to prepare your headshot</h3>
+  <div class="need">
+    <div><b>Clear face, good light</b><span>A headshot or waist-up shot both work. Face the camera or turn slightly. Skip reflective sunglasses.</span></div>
+    <div><b>Square is best</b><span>Vertical or horizontal is fine too. It's auto-cropped to a square, then a circle, keeping the upper part by default (that's usually where your face is).</span></div>
+    <div><b>At least 500×500</b><span>Small images get blurry when enlarged. An original phone photo is plenty.</span></div>
+    <div><b>JPG, PNG, or HEIC</b><span>No need to convert iPhone photos (HEIC). A simple background looks cleaner inside the circle.</span></div>
+  </div>
+
+  <h3>Where to put the photo</h3>
+  <div class="steps">
+    <div class="step"><div class="dot">A</div><div class="body">
+      <h3>Keep it in one place</h3>
+      <p class="prose">For example, "Pictures › 头像 (headshot) › me.jpg". Then use the same photo for every video. That's the easiest way.</p>
+    </div></div>
+    <div class="step"><div class="dot">B</div><div class="body">
+      <h3>Tell it where it is</h3>
+      <p class="prose">Put the path in [Intro] in your prompt, or just drag the photo into the Claude Code input box (the path appears automatically). It copies the photo into the project's <code>assets</code> folder. Your original stays untouched.</p>
+      <div class="say">[Intro] I'm MR ONE, AI workflows · one-person company; headshot ~/Pictures/头像/me.jpg</div>
+    </div></div>
+    <div class="step"><div class="dot">C</div><div class="body">
+      <h3>Check the preview and fine-tune</h3>
+      <p class="prose">Once the preview is ready, look at the avatar card frame. If something's off, just say so:</p>
+      <div class="tbl"><table>
+        <thead><tr><th>You want</th><th>Say it like this</th></tr></thead>
+        <tbody>
+          <tr><td>Face sits too low in the circle / gets cut off</td><td><span class="mono">Move the headshot framing up a bit</span> (or "down a bit")</td></tr>
+          <tr><td>Photo is too small</td><td><span class="mono">Make the headshot bigger</span></td></tr>
+          <tr><td>Move it to the right</td><td><span class="mono">Put the avatar card in the bottom-right</span></td></tr>
+          <tr><td>Shows too long / too early</td><td><span class="mono">Bring the avatar card in one second later and hold it for three seconds</span></td></tr>
+          <tr><td>Make it stand out more</td><td><span class="mono">Add a focus frame around the avatar card when it appears</span></td></tr>
+          <tr><td>Role is too long and wraps</td><td><span class="mono">Change the role to "AI workflows"</span></td></tr>
+        </tbody>
+      </table></div>
+    </div></div>
+  </div>
+  <div class="note tip"><b class="k">TIP</b><span>The avatar card appears right when you say your name and stays for 3–4 seconds. One intro per video is usually enough. For a series, you can show it every episode so viewers remember you.</span></div>
+  <div class="note ok"><b class="k">Guests</b><span>Interviews and event videos work the same way: "Add an avatar card when the guest first appears, photo ~/Desktop/guest.jpg, name Alex Chen, role: Founder of Example Co."</span></div>
+</section>
+
+<!-- 06 -->
+<section id="publish">
+  <div class="eyebrow">06 · Publish</div>
+  <h2>Captions and posting: the content pipeline</h2>
+  <p class="lede">Once the video is cut, the next question is what to write and which images to use. The suite's <b>social-content-pipeline</b> takes the platforms you name and bundles your video, cover, and captions into a ready-to-post pack. You just open the platform, paste, and hit Post.</p>
+
+  <h3>The five things it does</h3>
+  <div class="steps">
+    <div class="step"><div class="dot">01</div><div class="body"><h3>Gather info</h3><p class="prose">It pulls facts from your transcript first. Then it checks recent news, what similar accounts are posting, and any trends worth riding.</p></div></div>
+    <div class="step"><div class="dot">02</div><div class="body"><h3>Find the angle</h3><p class="prose">It picks the hook, the target audience (a specific group of people), and the tone.</p></div></div>
+    <div class="step"><div class="dot">03</div><div class="body"><h3>Write per platform</h3><p class="prose">Each platform gets its own post-ready caption, with length and hashtags that follow that platform's norms. Numbers and facts come from your content. Nothing is made up.</p></div></div>
+    <div class="step"><div class="dot">04</div><div class="body"><h3>Add visuals</h3><p class="prose">If Canva is connected, it can make images there (it asks first). Without Canva it still delivers: it uses the cover aaaai-editor made, or gives you a clear image brief. Short-video platforms just use the finished video.</p></div></div>
+    <div class="step"><div class="dot">05</div><div class="body"><h3>Pack and archive</h3><p class="prose">Every post comes with its text plus where the image or video goes. It also saves a copy to an archive, so it won't repeat topics next time.</p></div></div>
+  </div>
+
+  <h3>Two ways to start</h3>
+  <div class="lanes">
+    <div class="lane you"><div class="l">A · Right after the edit (most common)</div><ul>
+      <li>After delivering the video, it asks: "Want to hand this to the content pipeline?"</li>
+      <li>You reply: "Yes, one post each for Xiaohongshu and Douyin."</li>
+      <li>The video, cover, transcript, and style carry over automatically. No need to send them again.</li></ul></div>
+    <div class="lane you"><div class="l">B · On its own (you already have a video, or just need captions)</div><ul>
+      <li>Start with one of the fixed openers: <code>启动内容生产线：</code>, <code>/content-pipeline</code>, or <code>content pipeline:</code>.</li>
+      <li>Only these three openers start it. Saying "write me a tweet" just gets you one caption, not the full process.</li></ul></div>
+  </div>
+
+  <div class="tpl">
+    <div class="tpl-head"><b>Content pipeline template</b><button class="copy" type="button" data-copy="tplPub">Copy template</button></div>
+<pre id="tplPub"><span class="f">content pipeline:</span>
+<span class="f">[Topic]</span> The most expensive part of learning AI is the time lost on detours
+<span class="f">[Client]</span> MR ONE (my own account)                <span class="c">← one brand profile per account/brand</span>
+<span class="f">[Platforms]</span> Xiaohongshu, Douyin, X                <span class="c">← pick as many as you like</span>
+<span class="f">[Count]</span> 1 post per platform
+<span class="f">[Assets]</span> Video ~/Movies/aaaai-editor/成品/20260921-example-cut.mp4; cover is in the same folder
+<span class="f">[Goal]</span> Drive sign-ups for the 9/24 AI beginners' session
+<span class="f">[Tone]</span> Relaxed and direct, no salesy voice
+<span class="f">[Must include]</span> Session date; comment "start" to get the link
+<span class="f">[Avoid]</span> Hype slang; exaggerated earnings claims
+<span class="f">[Language]</span> Simplified Chinese for Xiaohongshu and Douyin; English for X</pre>
+    <p class="why">When you come straight from an edit, [Assets] is filled in for you. Fill in the other lines as needed. The first time you use a new [Client], it asks four questions to build a brand profile (see below), then reuses it from then on. (成品 = the "finished videos" folder.)</p>
+  </div>
+
+  <h3>What the posts look like</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Platform</th><th>Caption</th><th>Visual</th><th>Hashtags/topics</th></tr></thead>
+    <tbody>
+      <tr><td>Xiaohongshu (RED)</td><td>Title under 20 characters + body in short paragraphs (under 1,000 characters)</td><td>3:4 cover image (big title over the image)</td><td><code>#topic#</code> at the end</td></tr>
+      <tr><td>Douyin/WeChat Channels</td><td>One or two lines of description</td><td>9:16 video</td><td><code>#topic</code></td></tr>
+      <tr><td>TikTok/YouTube Shorts</td><td>Open with a hook; Shorts titles under 100 characters</td><td>9:16 video</td><td>hashtag</td></tr>
+      <tr><td>Instagram posts/Reels</td><td>The first 125 characters are what people see before "more"</td><td>4:5 post or 9:16 Reels</td><td>End of caption or first comment</td></tr>
+      <tr><td>X</td><td>280 characters per post; longer content becomes a thread</td><td>16:9 or 1:1; video can be 9:16</td><td>0–2</td></tr>
+      <tr><td>Bilibili</td><td>Title under 80 characters + description (highlights and timestamps)</td><td>16:9 landscape + cover</td><td>Filled in separately on the upload page</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note tip"><b class="k">TIP</b><span>By default each post gets at most 5 hashtags, only the most useful ones. Platform rules change often, so take one more look on the platform before posting.</span></div>
+
+  <h3>Brand profiles: it remembers each account's style</h3>
+  <div class="need">
+    <div><b>Asks 4 things the first time</b><span>Main colors and visual style, tone (professional, casual, suspenseful…), banned words and required disclaimers, and output language.</span></div>
+    <div><b>Saved on your own computer</b><span><code>Documents › brand-profiles › ClientName.md</code>. It's a plain text file, and you can edit it yourself.</span></div>
+    <div><b>Separate for each account</b><span>One for each client, company, or personal account, so styles never mix.</span></div>
+    <div><b>Every output is archived</b><span><code>Documents › content-history › ClientName</code>. Next time, it avoids topics you've already covered.</span></div>
+  </div>
+
+  <div class="note warn"><b class="k">What it won't do</b><span>① <b>Post automatically.</b> Platforms don't let AI publish on its own, so the last tap is yours. ② <b>Make a video from scratch.</b> To edit a video, use aaaai-editor, then hand the result over for packaging.</span></div>
+  <div class="note ok"><b class="k">Canva is optional</b><span>Once you connect Canva in Claude, it asks before making images. Without Canva, it uses aaaai-editor's covers (vertical 1080×1920 and 1080×1350, landscape 1920×1080), or writes an image brief covering the scene, layout, colors, and size.</span></div>
+</section>
+
+<!-- 07 -->
+<section id="gallery">
+  <div class="eyebrow">07 · Gallery</div>
+  <h2>Widget gallery</h2>
+  <p class="lede">Each small preview on the left is a 9:16 vertical mockup: the <span class="mono">gray figure</span> is you, the white line is the caption (about 70% down the frame), and yellow is the accent color. You can copy the "Say this" lines straight into your prompt.</p>
+  <div id="galleryRoot" style="display:flex;flex-direction:column;gap:40px"></div>
+</section>
+
+<!-- 06 -->
+<section id="styles">
+  <div class="eyebrow">08 · Styles</div>
+  <h2>Styles at a glance</h2>
+  <p class="lede">A style sets the colors, fonts, and texture of your cards and captions. When you start, you'll get a side-by-side comparison image. Say a style's name to switch, and nothing else needs redoing. The first 7 are general styles, so pick by content. The last two are <b>community styles</b>. You can use them, but they carry the MR ONE and OTG brand look, so they're usually not a good main style for your own channel.</p>
+  <div class="styles" id="styleRoot"></div>
+  <div class="note tip"><b class="k">TIP</b><span>Caption keyword colors follow the style's accent color. To pick your own, say "Use #FF5C7A for caption highlights." If you have brand colors, you can turn them into a custom style too.</span></div>
+</section>
+
+<!-- 07 -->
+<section id="sound">
+  <div class="eyebrow">09 · Sound</div>
+  <h2>Music and sound effects</h2>
+  <div class="prose"><p>Everything is original, so there are <b>no copyright issues</b>. Music ducks automatically under your voice. Sound effects are mixed in before loudness is locked, so the final loudness stays accurate. Sound effects are off by default. 3 to 6 per minute is plenty; more gets noisy.</p></div>
+  <h3>7 built-in music tracks</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Name</th><th>Tempo</th><th>Feel</th><th>Good for</th></tr></thead>
+    <tbody id="bgmRoot"></tbody>
+  </table></div>
+  <h3>Want more music? The HeyGen music library</h3>
+  <div class="prose">
+    <p>The suite also includes HeyGen's HyperFrames. It can search the <b>HeyGen music library (10,000+ tracks)</b> from a description, download a track into your project, and mix it in as usual (still ducking under your voice and locking loudness).</p>
+  </div>
+  <div class="lanes">
+    <div class="lane you"><div class="l">First time: sign in once</div><ul><li>Install HeyGen's command-line tool in the Terminal app (follow HeyGen's official instructions).</li><li>Run <code>heygen auth login --oauth</code> and sign in with your HeyGen account. This uses the free tier.</li><li>Not sure how? Tell Claude "Help me set up the HeyGen music library." It walks you through each step. You do the sign-in yourself.</li></ul></div>
+    <div class="lane"><div class="l">After that, say</div><ul><li>"Find an upbeat lo-fi track from the HeyGen music library that won't compete with my voice."</li><li>"Give me three tracks to preview, similar in pace to upbeat-energetic."</li><li>"Use HeyGen to find a 'whoosh' sound for a transition."</li></ul></div>
+  </div>
+  <div class="note warn"><b class="k">Note</b><span>Tracks from the HeyGen music library are licensed under HeyGen's terms of use. Before commercial use (ads, client projects), check that track's license on HeyGen. The 7 built-in tracks and 7 sound effects are original and safe to use in your own videos.</span></div>
+  <h3>7 sound effects</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Name</th><th>Sounds like</th><th>Use for</th><th>Say this</th></tr></thead>
+    <tbody id="sfxRoot"></tbody>
+  </table></div>
+</section>
+
+<!-- 08 -->
+<section id="edit">
+  <div class="eyebrow">10 · Revisions</div>
+  <h2>Want to change something? Say this</h2>
+  <p class="lede">No change means starting over. The transcript, person mask, and card images are all cached, so a new preview usually takes 30 seconds to a minute.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>You want</th><th>Say this</th></tr></thead>
+    <tbody id="editRoot"></tbody>
+  </table></div>
+</section>
+
+<!-- Studio -->
+<section id="studio">
+  <div class="eyebrow">11 · Visual editor</div>
+  <h2>Studio: hands-on editing</h2>
+  <p class="lede">Want to drag and tweak things yourself, like in an editing app? Say "<b>open the editor</b>" in the chat. Studio opens next to Claude: preview on the left, properties and tools on the right, and a multi-track timeline below. Every change saves to the edit sheet automatically. Changes you ask Claude for in the chat sync over too, and neither side overwrites the other. Only your own computer can open it.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>To do this</th><th>In Studio</th></tr></thead>
+    <tbody>
+      <tr><td>Change a card's text or numbers</td><td>Click the card in the preview or on the timeline, then edit it in "Inspect" on the right.</td></tr>
+      <tr><td>Move or resize</td><td>When paused, the card switches to how the engine really draws it. Drag the box to move it, and drag the gold square at the bottom-right to resize. <span class="kbd">Alt</span> + arrow keys nudge it. "Reset to default position" on the right puts it back where the style places it.</td></tr>
+      <tr><td>Change when it appears</td><td>On the timeline, drag the middle to move it and drag the ends to change its length. It snaps to the playhead and other blocks.</td></tr>
+      <tr><td>Add cards, zoom-ins, confetti, sound effects</td><td>Use "+ Card" and "+ Effect" below. They're added at the playhead. Select one and press <span class="kbd">Delete</span> to remove it.</td></tr>
+      <tr><td>Cut a sentence</td><td>Press ✕ in "Script" to cut that part. Later cards move up automatically. Struck-through sentences can be restored.</td></tr>
+      <tr><td>Clean up flubs, pick the opening</td><td>Above "Script," use "Find flubs/retakes" and "Suggest opening hook." Check a box or click once to apply.</td></tr>
+      <tr><td>Make sure nothing covers faces or gets hidden</td><td>Toolbar buttons "Safe area," "Face," and "Platform" (rough button positions for Douyin, Reels, Shorts, and Xiaohongshu). "Check" marks problems with red dots.</td></tr>
+      <tr><td>Change caption style, music, noise reduction</td><td>"Setup": caption style and height, music and volume, noise reduction, loudness, end fade-out.</td></tr>
+      <tr><td>Add your own images or videos</td><td>"Media": drag files in and they go into the project's assets/. Images can go on screen, videos work as B-roll, and audio works as music.</td></tr>
+      <tr><td>Trim cut points</td><td>On the timeline's "Video" track, drag a clip's ends to change its in/out points in the source. <span class="kbd">S</span> splits at the playhead; select the extra piece and press <span class="kbd">Delete</span>. With a clip selected, you can "Preview in/out point" (2 seconds before and after).</td></tr>
+      <tr><td>Edit several at once</td><td>Shift/⌘-click cards on the timeline to add them to the selection. Drag the group together, and change entrance animation, sound effect, and size all at once on the right.</td></tr>
+      <tr><td>Edit all captions together</td><td>"Script" → "Batch captions": find and replace, highlight a word in every sentence, or shift all captions earlier/later.</td></tr>
+      <tr><td>Make a cover or card images</td><td>"Cover": play to a frame you like and press "Use playhead frame," type a title, and press "Make cover." Check cards and press "Export card images."</td></tr>
+      <tr><td>Preview music or noise reduction</td><td>In "Setup," pick a track or level and press "Preview 8 sec." It's the real mix and won't change your video.</td></tr>
+      <tr><td>Camera too far away</td><td>"Setup" → "Framing": zoom to 1.15–1.25 to push in on the whole video.</td></tr>
+      <tr><td>Go back to an earlier version</td><td>Top right "⋯" → "Version history": every save is kept (the last 100). Click "Restore this version."</td></tr>
+      <tr><td>Ask Claude to fix a spot</td><td>Play to that spot (or select that card) and press "+ Note" (<span class="kbd">N</span>), then check "Ask Claude to handle this." In the chat, say "check the Studio notes." Claude fixes each one and replies on the "Notes" tab. Notes can also just be reminders for yourself.</td></tr>
+      <tr><td>Choose a style</td><td>Top right "Style overview": the same card on the same frame in every style, side by side. Click one to switch.</td></tr>
+      <tr><td>Export several sizes at once</td><td>When you "Export," check 4:5 and 1:1 (landscape videos also get 16:9…). Each is saved as out/final_WIDTHxHEIGHT.mp4, and the finished-video folder name includes the size, so your main version is never overwritten.</td></tr>
+      <tr><td>Channel rules</td><td>"Check" uses your channel profile to check length, cover, captions, and more, and lists your editing rules (you can write your own in <code>studio-checks.json</code>).</td></tr>
+      <tr><td>Bring in a video made elsewhere</td><td>On the project home page, use "+ Import video": pick the video and name it. It creates a new project, copies the source, and transcribes it. Then add captions, a cover, and export as usual.</td></tr>
+      <tr><td>Change how a card exits, or its colors</td><td>Select the card. Under "Exit animation" on the right, choose drop, float up, slide out left, slide out right, or just disappear. "Color" changes this card's accent, text, and background colors.</td></tr>
+      <tr><td>Make a card move</td><td>Select the card → "Motion path" → "Make it move." Move the playhead to a time, then drag the card on screen to set its position at that time (this adds a keyframe if there isn't one). It glides smoothly between points.</td></tr>
+      <tr><td>Speed up or slow down</td><td>Select a clip on the timeline's "Video" track, then pick 0.5× to 3× under "Speed for this clip" on the right (audio changes too, pitch stays the same). For just part of it, press <span class="kbd">S</span> to split first. Cards adjust automatically.</td></tr>
+      <tr><td>Hide license plates or personal info</td><td>"+ Effect" → "Blur" or "Mosaic." Drag a box over the area on screen, drag the bottom-right corner to resize, and set the time range on the timeline.</td></tr>
+      <tr><td>Fade music in and out</td><td>"Setup" → music fade-in/fade-out seconds, which second of the track to start from, and when to end it in the video.</td></tr>
+      <tr><td>See the real final look</td><td>"Render this section" shows the final frames for that part in a few seconds. When you're happy, press "Export."</td></tr>
+      <tr><td>Switch to the English interface</td><td>Use the "中／EN" toggle at the top right (also on the project home page). Your own content, like captions, card text, and notes, isn't translated. Your choice is remembered.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Keyboard shortcuts</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Key</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td><span class="kbd">Space</span></td><td>Play/pause</td></tr>
+      <tr><td><span class="kbd">← →</span></td><td>Back/forward one frame (add Shift for one second)</td></tr>
+      <tr><td><span class="kbd">⌘Z</span>／<span class="kbd">⇧⌘Z</span></td><td>Undo/redo (Windows: Ctrl+Z/Ctrl+Y)</td></tr>
+      <tr><td><span class="kbd">Delete</span></td><td>Delete the selected card or effect; with a caption selected, cut that sentence</td></tr>
+      <tr><td><span class="kbd">R</span></td><td>Render this section</td></tr>
+      <tr><td><span class="kbd">G</span></td><td>Toggle safe area</td></tr>
+      <tr><td><span class="kbd">S</span></td><td>Split the video at the playhead</td></tr>
+      <tr><td><span class="kbd">N</span></td><td>Add a note at the playhead</td></tr>
+      <tr><td>Shift/⌘ + click</td><td>Select multiple cards and effects</td></tr>
+      <tr><td><span class="kbd">?</span></td><td>Shortcut list, replay the tour, diagnostic report</td></tr>
+    </tbody>
+  </table></div>
+  <h3>FAQ</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Situation</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Cards in the preview don't quite match the final video</td><td>During playback you see an approximation. Pause for half a second and it switches to the engine's real look. For animations, transitions, and combo cards, press "Render this section."</td></tr>
+      <tr><td>A message says "The edit sheet was changed elsewhere"</td><td>You and Claude in the chat edited the same edit sheet at the same time. Choose "Load latest version," then press "Undo" once to get your changes back. Nothing is ever silently overwritten.</td></tr>
+      <tr><td>Project is marked "Read-only"</td><td>The source video is missing (moved or renamed). Put it back where it was, reopen the project, and you can edit again.</td></tr>
+      <tr><td>Something in the interface breaks</td><td>Top right "⋯" → "Diagnostic report" → copy, then paste it to Claude. The report doesn't include your videos or keys.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- 09 -->
+<section id="files">
+  <div class="eyebrow">12 · Locations</div>
+  <h2>Where your files are</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>What</th><th>Where</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>Finished videos (easiest to find)</b></td><td><code>Movies › aaaai-editor › 成品</code> (finished)<br><span style="color:var(--ink-3)">Windows: Videos › aaaai-editor › 成品</span></td><td>After every final render and cover, a copy lands here, named after the project. Find it under "Movies" in the Finder sidebar ("Videos" in Windows File Explorer).</td></tr>
+      <tr><td>Project folder</td><td><code>Movies › aaaai-editor › date-topic</code></td><td>One folder per video.</td></tr>
+      <tr><td>Final video</td><td><code>project › out › final.mp4</code></td><td>The only version to deliver (the master).</td></tr>
+      <tr><td>Preview</td><td><code>project › out › final_preview.mp4</code></td><td>Half resolution. For checking layout only. Not the finished video.</td></tr>
+      <tr><td>Covers</td><td><code>project › out › cover_*.png</code></td><td>Two vertical sizes. Landscape videos also get a 16:9 one.</td></tr>
+      <tr><td>Images for the project</td><td><code>project › assets</code></td><td>Photos, screenshots, logos, your own B-roll. They can live elsewhere too. Just tell it the path.</td></tr>
+      <tr><td>Edit decisions</td><td><code>project › storyboard.json</code></td><td>Every decision is saved here (cuts, cards, music). Go back, change things and re-render anytime.</td></tr>
+      <tr><td>Caption track</td><td><code>project › work › captions.json</code></td><td>Your hand-edited captions. Delete it to go back to auto captions.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note ok"><b class="k">Relax</b><span>Your original footage is never deleted, moved or overwritten. You can change where finished videos go. Just say "save finished videos to ~/Desktop/finished".</span></div>
+</section>
+
+<!-- 10 -->
+<section id="qa">
+  <div class="eyebrow">13 · Final check</div>
+  <h2>Check before you post</h2>
+  <p class="lede">It checks its own work before rendering, but your name goes on the post. Take two minutes for one more look. Your checkmarks are saved only in this computer's browser.</p>
+  <div class="check" id="checkRoot"></div>
+</section>
+
+<!-- 11 -->
+<section id="faq">
+  <div class="eyebrow">14 · FAQ</div>
+  <h2>FAQ</h2>
+  <div class="faq" id="faqRoot"></div>
+</section>
+
+<!-- 12 -->
+<section id="habits">
+  <div class="eyebrow">15 · Good habits</div>
+  <h2>Habits for consistent videos</h2>
+  <div class="rules">
+    <div><b>Lock captions first, then place cards</b>Card timing follows the captions. Change captions later and the cards may need to move too.</div>
+    <div><b>One idea per card</b>Fewer cards is better. At most one main card every 8–15 seconds. For videos under 30 seconds: opener + one main card + ending.</div>
+    <div><b>Leave room when you shoot</b>Sit in the middle of the frame with a little space above your head. Cards, text-behind-subject and card takeovers all look better.</div>
+    <div><b>Tell it proper nouns up front</b>Put brand names, people's names and coin names under [Other]. That fixes most typos.</div>
+    <div><b>A preview is not the final</b>The final video is <code>final.mp4</code>, and you only get it when you say "render the final". Previews are for layout only.</div>
+    <div><b>Same series, same settings</b>Say "same as last time" to reuse the last video's settings. That keeps style and volume consistent across episodes.</div>
+    <div><b>Use real proof</b>Earnings, dashboard and order screenshots must be real. It only handles layout. It won't make up numbers for you.</div>
+    <div><b>It asks before spending money</b>AI-generated B-roll always comes with a quote first. Decide after you see it. If you say no, nothing is spent.</div>
+  </div>
+</section>
+
+<!-- 14 -->
+<section id="license">
+  <div class="eyebrow">16 · Copyright</div>
+  <h2>Copyright and licensing</h2>
+  <p class="lede">aaaai-editor is free for you to use. The videos, covers and captions you make with it are yours, including for commercial use. The items below have their own rights holders:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Content</th><th>Rights holder</th><th>You may</th></tr></thead>
+    <tbody>
+      <tr><td><b>The aaaai-editor suite itself</b> (code, styles, cards, recipes, icons, docs, built-in music and sound effects)</td><td>© aaaai.ai</td><td>Install and use it for free, and modify it for yourself. Don't resell, give away, publicly distribute or repackage it as your own product.</td></tr>
+      <tr><td><code>mrone</code> style and caption style (community style)</td><td>© MR ONE</td><td>Free to use. The brand belongs to MR ONE. Don't use it to pose as MR ONE.</td></tr>
+      <tr><td><code>otg</code> style and caption style (community style: OTG name, colors, brand elements)</td><td>© OTG community</td><td>Free to use. The brand belongs to the OTG community. Don't use it to pose as OTG.</td></tr>
+      <tr><td>The videos, covers and captions you make with it</td><td>You</td><td>Any use, including commercial.</td></tr>
+      <tr><td>HeyGen music library, Pexels footage, AI-generated B-roll</td><td>Each service provider</td><td>Use under each provider's terms. Pexels footage needs credit to Pexels and the photographer (it builds the credit list for you).</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><b class="k">Community styles</b><span><code>mrone</code> and <code>otg</code> are the brand styles of two channels/communities. You can use them, but the names, colors and brand elements belong to their owners. Don't use them to pose as that brand or to make content look official. Full terms are in <code>LICENSE.md</code> in the suite.</span></div>
+  <footer>
+    <span>aaaai-editor v1.8.1 · © aaaai.ai. Detailed settings for advanced users: <code>docs/CARDS.md</code> (cards), <code>docs/RECIPES.md</code> (recipes), <code>docs/STYLE.md</code> (styles).</span>
+    <span>This guide is updated with each version. If anything is unclear, just ask Claude "how do I use this feature?"</span>
+  </footer>
+</section>
+</main>
+</div>
+
+<script>
+(function(){
+  /* ---------- 9:16 diagrams ---------- */
+  var W = 90, H = 160;
+  function el(tag, a, inner){ var s = "<" + tag; for (var k in a) s += " " + k + '="' + a[k] + '"'; return s + (inner != null ? ">" + inner + "</" + tag + ">" : "/>"); }
+  function person(o){ o = o || {}; var cx = o.cx || 45, cy = o.cy || 64, r = o.r || 13, fill = o.fill || "var(--face)";
+    return el("circle",{cx:cx,cy:cy,r:r,fill:fill}) +
+      el("path",{d:"M"+(cx-30)+" "+(cy+54)+" Q"+(cx-28)+" "+(cy+18)+" "+cx+" "+(cy+17)+" Q"+(cx+28)+" "+(cy+18)+" "+(cx+30)+" "+(cy+54)+" Z",fill:fill}); }
+  function cap(y){ y = y || 110; return el("rect",{x:26,y:y,width:38,height:3,rx:1.5,fill:"var(--cap)",opacity:.95}) + el("rect",{x:31,y:y+5,width:28,height:2,rx:1,fill:"var(--cap)",opacity:.6}); }
+  function line(x,y,w,h,c,o){ return el("rect",{x:x,y:y,width:w,height:h||3,rx:(h||3)/2,fill:c||"#fff",opacity:o==null?1:o}); }
+  function scrimTop(h){ return el("rect",{x:0,y:0,width:W,height:h||62,fill:"url(#gTop)"}); }
+  function pill(x,y,w,h,c){ return el("rect",{x:x,y:y,width:w,height:h||7,rx:(h||7)/2,fill:c||"var(--accent)"}); }
+  var defs = '<defs><linearGradient id="gTop" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".78"/><stop offset=".6" stop-color="#000" stop-opacity=".45"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>' +
+             '<linearGradient id="gBot" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".8"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient></defs>';
+  function frame(inner, bg){ return '<svg viewBox="0 0 90 160" role="img" aria-hidden="true">' + defs + el("rect",{x:0,y:0,width:W,height:H,fill:bg||"var(--screen)"}) + inner + "</svg>"; }
+  function takeoverBase(extra){  /* paper background + frame (34%–84%) + person inside frame + head breaking out of frame */
+    var t = 54, b = 134;
+    return el("rect",{x:0,y:0,width:W,height:H,fill:"var(--paper)"}) +
+      el("rect",{x:5,y:t,width:80,height:b-t,rx:6,fill:"var(--screen-2)"}) +
+      person({cy:76,fill:"var(--face)"}) + el("rect",{x:5,y:b,width:80,height:H-b,fill:"var(--paper)"}) + cap(112) + (extra||""); }
+  var S = {
+    hookcut: function(){ return frame(person() + cap() + pill(6,8,22,7,"var(--accent)") + line(9,10.5,16,2,"#1E1B16") ); },
+    title: function(){ return frame(person() + scrimTop(66) + line(6,10,10,2,"var(--accent)") + line(6,16,14,2,"#fff",.7) + line(6,22,46,5) + line(52,22,20,5,"var(--accent)") + line(6,31,30,2.4,"#fff",.75) + cap()); },
+    stat: function(){ return frame(person() + scrimTop(70) + line(6,10,10,2,"var(--accent)") + line(6,15,14,2,"#fff",.7) + el("text",{x:6,y:40,"font-size":22,"font-weight":900,fill:"var(--accent)","font-family":"var(--mono)"},"32K") + line(6,45,32,2.4,"#fff",.75) + cap()); },
+    bullets: function(){ var s = person() + scrimTop(78) + line(6,10,10,2,"var(--accent)"); for (var i=0;i<3;i++){ s += el("circle",{cx:8,cy:19+i*9,r:1.6,fill:"var(--accent)"}) + line(12,17.8+i*9,40-i*6,2.6); } return frame(s + cap()); },
+    rows: function(){ var s = person() + scrimTop(84) + line(6,10,10,2,"var(--accent)"); for (var i=0;i<3;i++){ s += el("rect",{x:6,y:16+i*11,width:78,height:9,rx:2,fill:"#000",opacity:.45}) + el("rect",{x:7.5,y:17.5+i*11,width:6,height:6,rx:1.2,fill:"var(--accent)"}) + line(16,19+i*11,36-i*5,2.4); } return frame(s + cap()); },
+    quote: function(){ return frame(person() + scrimTop(62) + line(6,10,10,2,"var(--accent)") + el("text",{x:5,y:25,"font-size":12,fill:"var(--accent)","font-weight":900},"“") + line(12,18,56,4) + line(12,25,38,4) + line(12,33,16,2,"#fff",.6) + cap()); },
+    compare: function(){ return frame(person() + scrimTop(84) + line(6,10,10,2,"var(--accent)") + line(6,16,20,2.4,"#fff",.55) + el("text",{x:6,y:26,"font-size":6,fill:"#fff",opacity:.5},"✕") + line(12,22,30,2.6,"#fff",.5) + line(6,33,22,2.4,"var(--accent)") + el("text",{x:6,y:43,"font-size":6,fill:"#46D98A"},"✓") + line(12,39,36,2.6) + cap()); },
+    chapter: function(){ return frame(person() + el("rect",{x:0,y:0,width:W,height:H,fill:"#000",opacity:.72}) + el("text",{x:8,y:84,"font-size":30,"font-weight":900,fill:"var(--accent)","font-family":"var(--mono)"},"02") + line(8,92,48,4.5) + line(8,100,30,2.4,"#fff",.6) + cap()); },
+    icons: function(){ var s = person() + scrimTop(64) + line(6,10,10,2,"var(--accent)") + line(6,15,30,3.4); for (var i=0;i<4;i++){ s += el("rect",{x:6+i*20,y:24,width:14,height:14,rx:3,fill:"var(--accent)",opacity:.9}) + line(6+i*20,41,14,2,"#fff",.7); } return frame(s + cap()); },
+    stamp: function(){ return frame(person() + pill(56,12,28,9) + line(60,15.5,20,2,"#1E1B16") + cap()); },
+    lower: function(){ return frame(person() + el("rect",{x:0,y:96,width:W,height:64,fill:"url(#gBot)"}) + el("rect",{x:6,y:122,width:1.6,height:14,fill:"var(--accent)"}) + line(10,124,30,4) + line(10,131,24,2.4,"var(--accent)") + cap(106)); },
+    avatar: function(){ return frame(person() + el("rect",{x:0,y:96,width:W,height:64,fill:"url(#gBot)"}) + el("circle",{cx:14,cy:130,r:8,fill:"var(--face)",stroke:"var(--accent)","stroke-width":1.6}) + line(26,125,30,4) + line(26,132,24,2.4,"var(--accent)") + cap(106)); },
+    glow: function(){ return frame(person() + el("rect",{x:0,y:96,width:W,height:64,fill:"url(#gBot)"}) + el("circle",{cx:14,cy:130,r:8,fill:"var(--face)",stroke:"var(--accent)","stroke-width":1.4}) + line(26,125,30,4) + line(26,132,24,2.4,"var(--accent)") +
+      el("rect",{x:3,y:119,width:60,height:22,rx:6,fill:"none",stroke:"var(--accent)","stroke-width":1.4}) + el("rect",{x:1.5,y:117.5,width:63,height:25,rx:7,fill:"none",stroke:"var(--accent)","stroke-width":2.4,opacity:.3}) + cap(106)); },
+    takeover: function(){ return frame(takeoverBase(line(10,12,10,2,"var(--accent)") + line(10,20,58,5,"#1E1B16") + line(10,29,34,2.6,"#5B554C"))); },
+    proof: function(){ return frame(takeoverBase(line(28,8,34,2,"#5B554C") + el("rect",{x:17,y:13,width:56,height:34,rx:3,fill:"#fff",stroke:"#E3DED5","stroke-width":.6}) + el("rect",{x:19,y:15,width:52,height:5,fill:"#1F6FEB"}) + line(21,24,14,4,"#1F2328") + [0,1,2,3].map(function(i){return el("rect",{x:40+i*7,y:42-i*4,width:5,height:4+i*4,fill:"#3D8BFD"});}).join("") +
+      pill(34,44,22,6,"#F5C542") + pill(60,10,24,8,"var(--accent)") + line(63,13,18,2,"#1E1B16"))); },
+    flow: function(){ var s = line(30,9,30,2.4,"#5B554C"); for (var i=0;i<3;i++){ var x = 6+i*27; s += el("rect",{x:x,y:15,width:24,height:24,rx:3,fill:i==2?"var(--accent)":"#fff",stroke:"#E3DED5","stroke-width":.6}) + el("circle",{cx:x+12,cy:22,r:2.6,fill:i==2?"#1E1B16":"var(--accent)"}) + line(x+6,28,12,1.6,i==2?"#1E1B16":"#8A8378") + line(x+4,32,16,2.6,"#1E1B16"); } return frame(takeoverBase(s)); },
+    cta: function(){ return frame(takeoverBase(el("rect",{x:6,y:9,width:78,height:22,rx:4,fill:"#fff",stroke:"#E3DED5","stroke-width":.6}) + line(35,13,20,2,"var(--accent)") + line(20,19,50,4.5,"#1E1B16") + pill(28,35,34,10) + line(34,39,22,2.4,"#1E1B16") + line(29,48,32,2,"#5B554C"))); },
+    outro: function(){ return frame(person() + el("rect",{x:0,y:0,width:W,height:H,fill:"#000",opacity:.78}) + line(39,62,12,2,"var(--accent)") + line(20,69,50,6) + pill(26,81,38,9) + line(31,84.5,28,2,"#1E1B16")); },
+    confetti: function(){ var s = person() + cap(), cols = ["var(--accent)","#46D98A","#fff","#FF5C7A","#4CC3F5"]; var pts = [[12,30],[22,18],[35,26],[50,14],[62,24],[74,16],[80,34],[16,48],[70,48],[42,40],[28,56],[58,58],[8,70],[82,66],[46,22]];
+      pts.forEach(function(p,i){ s += el("rect",{x:p[0],y:p[1],width:3.2,height:1.6,fill:cols[i%5],transform:"rotate("+(i*37%90)+" "+p[0]+" "+p[1]+")"}); }); return frame(s); },
+    countdown: function(){ return frame(person({cy:70}) + el("circle",{cx:45,cy:32,r:15,fill:"none",stroke:"var(--accent)","stroke-width":3.2,opacity:.25}) + el("path",{d:"M45 17 A15 15 0 1 1 30.8 36.9",fill:"none",stroke:"var(--accent)","stroke-width":3.2,"stroke-linecap":"round"}) + el("text",{x:45,y:38.5,"font-size":17,"font-weight":900,fill:"#fff","text-anchor":"middle","font-family":"var(--mono)"},"2") + cap()); },
+    sparkle: function(){ return frame(person() + scrimTop(66) + line(6,10,10,2,"var(--accent)") + line(6,18,46,5) + line(6,27,30,2.4,"#fff",.75) +
+      el("path",{d:"M64 16 L66 21 L71 23 L66 25 L64 30 L62 25 L57 23 L62 21 Z",fill:"#fff"}) + el("path",{d:"M76 30 L77 32.5 L79.5 33.5 L77 34.5 L76 37 L75 34.5 L72.5 33.5 L75 32.5 Z",fill:"var(--accent)"}) + cap()); },
+    zoom: function(){ return frame(person({r:15,cy:62}) + el("rect",{x:14,y:30,width:62,height:110,fill:"none",stroke:"var(--accent)","stroke-width":1.4,"stroke-dasharray":"3 2"}) + el("path",{d:"M6 12 L14 30 M84 12 L76 30",stroke:"var(--accent)","stroke-width":1}) + cap()); },
+    behind: function(){ return frame(el("text",{x:45,y:60,"font-size":26,"font-weight":900,fill:"var(--accent)","text-anchor":"middle"},"GO") + person({cy:66}) + cap()); },
+    cutout: function(){ return frame(el("rect",{x:0,y:0,width:W,height:H,fill:"var(--accent)",opacity:.85}) + line(8,14,52,6,"#1E1B16") + person({cy:78,fill:"#3A414C"}) + cap(122)); },
+    broll: function(){ return frame(el("rect",{x:0,y:0,width:W,height:H,fill:"#3C5A6E"}) + el("path",{d:"M0 104 L24 76 L40 92 L58 66 L90 100 L90 160 L0 160 Z",fill:"#27414F"}) + el("circle",{cx:66,cy:34,r:8,fill:"#E9D8A6",opacity:.9}) + cap(62)); },
+    brollblur: function(){ return frame(el("rect",{x:0,y:0,width:W,height:H,fill:"#2E4452"}) + el("rect",{x:0,y:56,width:W,height:50,fill:"#4A6B80"}) + el("path",{d:"M0 96 L20 80 L36 90 L54 72 L90 94 L90 106 L0 106 Z",fill:"#27414F"}) + cap(118)); },
+    image: function(){ return frame(person() + el("circle",{cx:72,cy:18,r:10,fill:"#fff"}) + el("rect",{x:66,y:13,width:12,height:10,rx:2,fill:"#15181D"}) + cap()); },
+    clip: function(){ return frame(person() + el("path",{d:"M10 30 Q30 8 50 26 T84 20",fill:"none",stroke:"var(--accent)","stroke-width":2.4}) + el("circle",{cx:84,cy:20,r:3,fill:"var(--accent)"}) + line(10,38,40,4) + cap()); },
+    whip: function(){ return frame(el("rect",{x:0,y:0,width:W,height:H,fill:"var(--screen)"}) + [0,1,2,3].map(function(i){ return el("g",{opacity:(0.28+i*0.22).toFixed(2)}, person({cx:26+i*9,cy:64})); }).join("") +
+      [0,1,2,3,4].map(function(i){ return el("rect",{x:6+i*3,y:48+i*14,width:30,height:1.4,fill:"#fff",opacity:.35}); }).join("") + el("path",{d:"M60 30 L80 30 M74 24 L80 30 L74 36",stroke:"var(--accent)","stroke-width":2,fill:"none"}) + cap()); },
+    faceavoid: function(){ return frame(person({cy:104,r:12}) + el("rect",{x:26,y:146,width:38,height:3,rx:1.5,fill:"var(--cap)"}) + el("path",{d:"M45 114 L45 140",stroke:"var(--accent)","stroke-width":1,"stroke-dasharray":"2 2"}) + el("path",{d:"M42 137 L45 142 L48 137",fill:"none",stroke:"var(--accent)","stroke-width":1})); }
+  };
+
+  var G = [
+    {h:"Openers and endings", sub:"The first 3 seconds decide if viewers stay; the ending decides if they act", items:[
+      {k:"hookcut", n:"Opening teaser", c:"hook", look:"Copies the strongest line in the video to the very start, and keeps it in its original spot too (or moves the whole line).", when:"Worth trying on every short video, especially ones with a flat start.", say:"Use the “…” line as the opening teaser; or: suggest 3 lines that would make good openers", note:"It trims the cut points to the actual voice, then transcribes again to make sure the line is complete."},
+      {k:"title", n:"Opening title", c:"hook", look:"Gradient scrim at the top + small tag + big title, keywords in the accent color, with a gentle push-in as it lands.", when:"For new viewers, when you need one line that sums up the topic.", say:"Add an opening title “The **three detours** for beginners”", note:"Keep titles to two lines max. Words wrapped in **double asterisks** turn the accent color."},
+      {k:"outro", n:"Ending card", c:"outro", look:"Darkened frame (you're still visible) + big centered title + button-style tag; sound and picture fade out together.", when:"Regular endings: follow me, next episode teaser.", say:"Ending: follow me, next time I'll cover tools", note:"Want it fully black? Say “ending full black”."},
+      {k:"cta", n:"Call-to-action card", c:"cta", look:"A question on a white card (keyword highlighted) → a comment box rises, the keyword types out letter by letter, the cursor blinks, the send button lights up → one line of small text. Can hold until the end.", when:"When you want comments, or DMs to claim a freebie. Often paired with a card takeover.", say:"End on the comment card: Want the same setup? Comment “EDIT” and I'll send it", note:"Typing starts the moment you say the keyword. Short keywords of a word or two look best."}
+    ]},
+    {h:"Key points", sub:"One idea per card; at most one main card every 8–15 seconds", items:[
+      {k:"stat", n:"Number count-up", c:"stat_hit", look:"A big number counts from a start value to the end value (prefix/suffix optional), with a gentle push-in as it lands.", when:"When you say a key number: followers, revenue, days, percentages.", say:"Do a count-up when I say 32K followers", note:"Numbers use a monospace font, so they don't wobble while counting."},
+      {k:"bullets", n:"List", c:"steps", look:"Points appear one by one at the top, each timed to the second you say it.", when:"Listing 2–4 things.", say:"Make a list for the three steps, each one appearing when I say it", note:"Keep it to 3–4 items, one line each. Longer ones will cover your face."},
+      {k:"rows", n:"Numbered rows", c:"steps · rows", look:"One small card per item, with a numbered accent-color square on the left. Feels more like “first, second” than a list.", when:"When you say “first, second, third”.", say:"Use numbered rows for the three detours", note:"Keep the text as short as you can."},
+      {k:"quote", n:"Pull quote", c:"quote_pull", look:"Quote mark + one line + source. Fades in with a slow push-in the whole time.", when:"A line worth screenshotting and sharing.", say:"Make “the most expensive thing is time spent on detours” a quote card", note:"One or two per video is plenty."},
+      {k:"compare", n:"Comparison", c:"compare", look:"Two groups, top and bottom: the first faded with an X (what you thought / before), the second in accent color with a check (what's true / now), appearing a beat later.", when:"Busting a myth, before vs. after.", say:"Compare: you think the subscription is the biggest cost, but really it's time spent on detours", note:"On vertical video, top-and-bottom reads better than side by side."},
+      {k:"chapter", n:"Chapter break", c:"chapter", look:"The whole frame darkens for 1–2 seconds + big chapter number + title. You're still visible.", when:"When the video really has sections (long videos, three-part structure).", say:"Add a chapter break between each section", note:"3–4 per video max."},
+      {k:"icons", n:"Icon grid", c:"icons", look:"A row of icons + labels. Good for listing tools, platforms or features.", when:"When you say “here are the tools I used”.", say:"Do an icon grid when I talk about my tools: microphone, camera, rocket", note:"41 built-in icons. Say the name or just what you mean."},
+      {k:"stamp", n:"Stamp / callout", c:"callout", look:"A small pill tag (icon optional) that pops in.", when:"Highlighting a small point: NEW, save 80%, limited time.", say:"Add a “save 80% time” callout in the top right", note:"Stamps always sit on top of other cards, so they never get covered."}
+    ]},
+    {h:"Show who, without blocking", sub:"Let viewers know who's talking, without covering your face", items:[
+      {k:"lower", n:"Name bar", c:"speaker", look:"Along the bottom: accent-color vertical line + name + title.", when:"Self-intros, or when a guest first appears.", say:"Add a name bar during my intro: MR ONE, AI workflows", note:"Keep the title short."},
+      {k:"avatar", n:"Avatar badge", c:"avatar", look:"Round photo (accent-color ring) + name + role. Easier to recognize than plain text.", when:"When you mention someone, a guest or a famous quote.", say:"Add an avatar badge when I mention Alex, photo assets/alex.jpg", note:"Put photos in the project's assets/. You can set the crop center.", need:"photo"},
+      {k:"glow", n:"Glow frame", c:"glow", look:"A gold glowing frame that pulses gently around an area.", when:"Reminding people to follow, pointing at a button, framing an avatar badge.", say:"Add a glow frame around the avatar badge when it appears", note:"It figures out the position. To choose it yourself, say what to frame."},
+      {k:"faceavoid", n:"Captions avoid face", c:"auto", look:"If you sit low and your face lands where captions go, those lines move below your chin. Cards that would cover your eyes move out of the way too.", when:"On by default.", say:"Don't move captions away from my face (usually not needed)", note:"Needs background removal. Without it, captions stay put.", need:"background removal"}
+    ]},
+    {h:"Show proof: card takeover", sub:"The video shrinks into a card with proof above it — the most convincing way to show earnings or results", items:[
+      {k:"takeover", wide:true, n:"Card takeover", c:"takeover", look:"The video shrinks into a rounded frame at the bottom, with your head breaking out of the top edge. The background can be a blurred frame or paper. A title or panel area sits on top.", when:"Key moments, showing proof, holding at the end. 2–3 per video.", say:"Use a card takeover here with a paper background; hold the last one until the end", note:"Head breakout needs background removal. If you sit too low, your head won't break out. That's normal.", need:"background removal"},
+      {k:"proof", n:"Proof screenshot card", c:"proof", look:"Rounded screenshot in a white frame + small heading above + yellow date pill at the bottom + amount stamp in the top right. Two can sit side by side.", when:"Dashboard data, orders, revenue, reviews, chat screenshots.", say:"Show the dashboard screenshot, stamp “+$1,593” when I say 1,593, and add a coin sound", note:"Screenshots must be real. Very tall screenshots shrink to fit.", need:"screenshot"},
+      {k:"flow", n:"Workflow steps card", c:"flow", look:"A row of small cards (icon + small text + bold text). Each step appears on its line, and the last one is the accent-color “result”.", when:"Explaining your process: shoot → edit → earn.", say:"Make a workflow: shoot 3 minutes → AI edits it → money every week", note:"3 steps looks best, 4 max."}
+    ]},
+    {h:"Mood and pacing", sub:"Nice extras — a little goes a long way", items:[
+      {k:"sparkle", n:"Float and sparkle", c:"auto", look:"Cards float gently up and down after landing. Titles, numbers, quotes and endings sparkle once or twice on the accent color.", when:"On by default.", say:"Cards don't float / no sparkle", note:"Don't want it? Just say so to turn it off."},
+      {k:"zoom", n:"Push-in", c:"zooms", look:"A slow push (build-up) or a punch-in (punchline, number reveal), like switching camera angles.", when:"Punchlines, quotes, number reveals. At most 3 punch-ins per minute.", say:"Punch in the moment I state the conclusion", note:"If the camera is too far away, it can push in on the whole video. It shows you a comparison so you can pick the zoom."},
+      {k:"confetti", n:"Confetti popper", c:"confetti", look:"Colored confetti bursts from the lower middle, spinning as it falls.", when:"Hitting a milestone, sharing good news.", say:"Pop confetti when I say we passed 100K followers, with a popper sound", note:"Once per video is enough."},
+      {k:"countdown", n:"Ring countdown", c:"countdown", look:"A ring shrinks each second + a big number in the middle, with a tick every second. Sits above your head by default.", when:"“Three, two, one”, suspense before a reveal.", say:"Do a 3-second countdown before the reveal", note:"You can turn off the ticks."},
+      {k:"whip", n:"Whip transition", c:"transitions · whip", look:"About 0.3 seconds around a section cut: the frame zooms, whips sideways and back with motion blur, plus an automatic “whoosh”. Captions and cards aren't affected.", when:"When you really change topics or move to the next section.", say:"Add a whip transition when I finish the first detour and start the second", note:"Only added when you ask. Auto-editing never uses it. Video length doesn't change."}
+    ]},
+    {h:"Visual tricks", sub:"Add depth to the frame", items:[
+      {k:"behind", n:"Text behind subject", c:"behind_subject", look:"Big text sits behind you, and you stand in front of it.", when:"Opening titles when you're centered with room above your head.", say:"Make the opening title text-behind-subject, with the text behind me", note:"Needs background removal.", need:"background removal"},
+      {k:"cutout", n:"Subject cutout", c:"cutout", look:"Cuts you out of the frame and places you on a different background or color.", when:"For a poster look, or to swap the background.", say:"Cut me out for these few seconds and put me on the accent-color background", note:"Needs background removal.", need:"background removal"},
+      {k:"broll", n:"Full-screen B-roll", c:"broll", look:"Inserted footage fills the screen while your voice keeps going. Captions move up to the upper middle.", when:"When you mention something visual: a product screen, a location, an object.", say:"Insert assets/cafe.mp4 when I mention the coffee shop, starting at 3 seconds", note:"Your own footage is best. It can also find free footage or generate it with AI (quote first).", need:"footage"},
+      {k:"brollblur", n:"B-roll blurred fill / letterbox", c:"broll · blur／letterbox", look:"Landscape footage in a vertical video: fill the top and bottom with a blurred copy, or leave black bars.", when:"Inserting landscape footage or screen recordings.", say:"Use a blurred fill for this landscape clip", note:"Images get a slow automatic push-in, so they never look static."},
+      {k:"image", n:"Image / logo", c:"image", look:"Places an image or logo. Black logos can sit on a white circle.", when:"Brand exposure, partner logos, product shots.", say:"Put assets/logo.png in the top right on a white circle", note:"Transparent PNGs work best."},
+      {k:"clip", n:"Transparent animation clip", c:"clip", look:"Overlays an animation with a transparent background (like a brand animation).", when:"For complex motion. The motion skill makes it, then it gets overlaid.", say:"Have the motion side make a logo animation and overlay it at the start", note:"See motion-graphic-video-editor in the suite for how."}
+    ]}
+  ];
+
+  var root = document.getElementById("galleryRoot"), html = "";
+  G.forEach(function(g){
+    html += '<div class="gal-group"><h3>' + g.h + ' <small>' + g.sub + '</small></h3><div class="gal">';
+    g.items.forEach(function(it){
+      html += '<article class="w' + (it.wide ? ' wide' : '') + '">' + S[it.k]() + '<div><h4>' + it.n + ' <code>' + it.c + '</code>' + (it.need ? ' <span class="badge req">Needs ' + it.need + '</span>' : '') + '</h4><dl>' +
+        '<dt>What it looks like</dt><dd>' + it.look + '</dd><dt>When to use</dt><dd>' + it.when + '</dd><dt>Say this</dt><dd class="s">' + it.say + '</dd>' +
+        (it.note ? '<dt>Tip</dt><dd>' + it.note + '</dd>' : '') + '</dl></div></article>';
+    });
+    html += "</div></div>";
+  });
+  root.innerHTML = html;
+  ["introAvatar:avatar", "introLower:lower"].forEach(function(x){ var p = x.split(":"), e = document.getElementById(p[0]); if (e) e.outerHTML = S[p[1]](); });
+
+  /* ---------- Styles ---------- */
+  var ST = [
+    ["ink","#1B2430","#F0B23C","#3DDC84","Business, education: ink background, off-white text, amber accent. Steady and goes with anything."],
+    ["neon","#141033","#32E3C2","#3DDC84","Web3, tech: near-black background, teal accent, thin outlines."],
+    ["gold","#222735","#F59E0B","#3DDC84","Finance, crypto: slate background, gold for trust."],
+    ["trust","#192134","#3B82F6","#10B981","Wealth, institutions: deep navy background, trust blue, profit green."],
+    ["paper","#EFE7D6","#C2452D","#15803D","Editorial, print feel: off-white background, dark ink text, vermilion accent."],
+    ["mag","#F4F4F5","#EC4899","#15803D","Magazine, commentary: pure white cards, near-black text, magenta accent."],
+    ["serif","#F3ECDD","#9A3412","#15803D","Paper serif: warm cream background, serif titles, ochre-red accent."],
+    ["mrone · community","#0B0B0D","#FFC933","#3DDC84","MR ONE black and gold: bold white titles, golden-yellow keywords and number squares. Community style, © MR ONE."],
+    ["otg · community","#0A0A0A","#E60012","#10B981","OTG rocket style: OTG red, frosted glass, starfield chapter breaks, laser sweeps. Community style, © OTG community."]
+  ];
+  document.getElementById("styleRoot").innerHTML = ST.map(function(s){
+    var light = /^#[EF]/i.test(s[1]);
+    return '<div class="sty"><div class="sw" style="background:' + s[1] + ';color:' + (light ? "#15181D" : "#F2F2F2") + '"><i style="background:' + s[2] + '"></i><i style="background:' + s[3] + '"></i><b>' + s[0] + '</b></div><div class="t">' + s[4] + '</div></div>';
+  }).join("");
+
+  /* ---------- Music and sound effects ---------- */
+  var BGM = [["focus-quiet","76 BPM","Quiet and focused, almost no drums","Tutorials, dense info"],["warm-story","80 BPM","Warm storytelling, medium pace","Behind the scenes, personal stories"],["upbeat-energetic","96 BPM","Bright and upbeat, busiest drums","Announcements, showing results"],["chill-tropical","84 BPM","Tropical chill with a groove","Outdoors, digital nomads"],["lounge-vacation","70 BPM","Lazy vacation vibe with vibraphone","Laid-back, relaxing"],["late-night-chill","68 BPM","Late-night mood, slow and moody","Night shoots, reflection"],["minimal-intimate","66 BPM","Minimal and quiet, no kick drum","Serious topics, monologues"]];
+  document.getElementById("bgmRoot").innerHTML = BGM.map(function(b){ return "<tr><td class=\"mono\">" + b[0] + "</td><td>" + b[1] + "</td><td>" + b[2] + "</td><td>" + b[3] + "</td></tr>"; }).join("");
+  var SFX = [["coin","Cha-ching, coins","Amounts, number reveals","Add a coin sound when I say the amount"],["pop","Pop","Cards popping in, list items appearing","Add a “pop” when the card appears"],["ding","Ding","Conclusions, key points, tips","Ding when I state the conclusion"],["whoosh","Whoosh","Transitions, card takeover entrances","Add a whoosh going into the card"],["click","Click","Buttons, checkmarks","Add a click on the checkmark"],["tick","Tick","Each second of a countdown","Add ticks to the countdown (on by default)"],["confetti","Popper","Celebrations, milestones","Add a popper sound with the confetti"]];
+  document.getElementById("sfxRoot").innerHTML = SFX.map(function(b){ return "<tr><td class=\"mono\">" + b[0] + "</td><td>" + b[1] + "</td><td>" + b[2] + "</td><td>" + b[3] + "</td></tr>"; }).join("");
+
+  /* ---------- How to ask for edits ---------- */
+  var ED = [
+    ["A caption has a typo or wrong English","At 12s change “Hanzhou” to “Hangzhou”; change the English to …"],
+    ["Captions too small / too low","Make captions bigger; move captions up a bit"],
+    ["Switch styles","Switch to the neon style"],
+    ["Too many cards, too crowded","Remove the card at 20s; use fewer cards"],
+    ["A card covers my face","Move that card down / right a bit; or: don't cover my face"],
+    ["A card shows too long / too early","Show the list one second later; shorten the stat card to two seconds"],
+    ["Music too loud","Turn the music down (or: try the second music version)"],
+    ["Background noise","Let me hear the noise reduction first; use stronger noise reduction"],
+    ["Add / remove sound effects","Add a coin sound when the number appears; remove all sound effects"],
+    ["Cuts too choppy / too slow","Leave longer pauses; cut this whole section"],
+    ["Opening isn't gripping","Use a different line as the opening teaser; suggest a few lines"],
+    ["Ending too abrupt","Add an ending card; make the final fade-out slower"],
+    ["Change cover background","Use frame 5 for the cover; show me cover options"],
+    ["Cover title line breaks","Put the title on one line; break the title after “editing”"],
+    ["Cover text","Change the small label to “Solo business · Productivity”; change line three to …; make the title white; center the text"],
+    ["Want rhythm between sections","Add a whip transition going into the next section"],
+    ["I look too small, camera too far","Push in on the whole video a bit (it shows a comparison so you can choose)"],
+    ["Check it on my phone first","Make a phone preview (under 30 MB, not the final)"],
+    ["I want the final video","Render the final and make the cover"],
+    ["Write the post copy","Hand it to the content pipeline, one post each for Xiaohongshu and Douyin"]
+  ];
+  document.getElementById("editRoot").innerHTML = ED.map(function(e){ return "<tr><td>" + e[0] + "</td><td><span class=\"mono\">" + e[1] + "</span></td></tr>"; }).join("");
+
+  /* ---------- Final checklist ---------- */
+  var CK = [
+    ["No typos in the captions","Especially names, brands, numbers and English."],
+    ["No card covers your face or runs off the frame","Check frames from the final, not just the preview."],
+    ["Something grabs attention in the first 3 seconds","A teaser line, opening title or on-screen action."],
+    ["Voice is clear and music doesn't drown it out","Listen to the start and end once with headphones."],
+    ["Screenshots and numbers are real","Proof should hold up to questions."],
+    ["The ending has a clear next step","Follow, comment a keyword, or visit your profile."],
+    ["Cover text is in the safe zone and off your face","Still visible after the profile grid crops it."],
+    ["You're posting final.mp4","Not final_preview.mp4."]
+  ];
+  var ckRoot = document.getElementById("checkRoot"), saved = {};
+  try { saved = JSON.parse(localStorage.getItem("aaaai-editor-guide-check") || "{}"); } catch (e) { saved = {}; }
+  ckRoot.innerHTML = CK.map(function(c, i){ return '<label for="ck' + i + '"><input type="checkbox" id="ck' + i + '"' + (saved[i] ? " checked" : "") + '><span><b>' + c[0] + '</b><br><span style="color:var(--ink-3);font-size:14px">' + c[1] + '</span></span></label>'; }).join("");
+  ckRoot.addEventListener("change", function(e){ var t = e.target; if (!t.id) return; saved[t.id.slice(2)] = t.checked; try { localStorage.setItem("aaaai-editor-guide-check", JSON.stringify(saved)); } catch (err) {} });
+
+  /* ---------- FAQ ---------- */
+  var FQ = [
+    ["What's the difference between the preview and the final?","The preview (<code>final_preview.mp4</code>) is half resolution, for checking layout and pacing, and it's ready in under a minute. The final (<code>final.mp4</code>) is full quality with loudness locked in. It only renders when you say “render the final”."],
+    ["Why does the first render take longer?","Card takeovers and text-behind-subject need a person mask first, and long videos render in segments. All of this is cached, so after you change cards or captions, a new preview usually takes 30 seconds to a minute."],
+    ["Will it delete or change my original footage?","No. Originals are only read, never deleted, moved or overwritten. All edit decisions are saved in the project's storyboard.json."],
+    ["Do I have to pay?","No. Only “AI-generated B-roll” may cost money (about $0.15–$0.35 per clip). You always get a quote first, and nothing is generated until you agree. Each project has a $2 cap by default, and it warns you before going over."],
+    ["Are my API keys safe?","You type keys only in your own terminal, and they're stored in the Mac Keychain. They never go through chat or into any file. They're sent only over https to the official URL, and they're masked if they show up in error messages. Never paste a key into a chat with AI."],
+    ["What if my footage is landscape?","It asks whether to keep it landscape (for YouTube, etc.) or crop to a vertical short. When cropping, you're kept in the center, and if the camera is far away it can push in on the whole video."],
+    ["What does “same as last time” reuse?","The last video's style, music and caption settings. Use it within a series so style and volume stay consistent across episodes."],
+    ["Why didn't my head break out of the card frame?","The card takeover's “head breakout” needs your head near the top edge of the frame. If you sit lower, your head stays inside the frame. That's normal. For best results, sit a little higher and leave some room above your head."],
+    ["Why do captions sometimes move lower?","That's “captions avoid face”: when your face lands where captions go, those lines move below your chin. Don't want it? Say “don't move captions away from my face”."],
+    ["Can I use my own music?","Yes. Just tell it where the file is, and make sure you have the rights. For more options, use the HeyGen music library (Chapter 9). The 7 built-in tracks are original, so they're safe to use in your own videos."],
+    ["Can it edit English videos?","Yes. It detects the language automatically. English captions break by word, and you can add a Chinese translation. Replies and captions follow the language you use."],
+    ["What about explainers or animations with no people on camera?","Tell it what you want to make. Brand animations go to the motion skill, and explainers and website-to-video go to HyperFrames. Then it all comes back to aaaai-editor for captions, loudness and the cover."]
+  ];
+  document.getElementById("faqRoot").innerHTML = FQ.map(function(q){ return "<details><summary>" + q[0] + "</summary><div class=\"a\"><p>" + q[1] + "</p></div></details>"; }).join("");
+
+  /* ---------- Copy ---------- */
+  document.addEventListener("click", function(e){
+    var b = e.target.closest ? e.target.closest(".copy") : null; if (!b) return;
+    var src = document.getElementById(b.getAttribute("data-copy")); if (!src) return;
+    var text = src.innerText.split("\n").map(function(l){ return l.replace(/\s+←.*$/, ""); }).join("\n");
+    function done(){ var t = b.textContent; b.textContent = "Copied"; b.classList.add("done"); setTimeout(function(){ b.textContent = t; b.classList.remove("done"); }, 1600); }
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(done, fallback); } else { fallback(); }
+    function fallback(){ var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); done(); } catch (err) {} document.body.removeChild(ta); }
+  });
+
+  /* ---------- Example tabs ---------- */
+  Array.prototype.slice.call(document.querySelectorAll('[role="tablist"]')).forEach(function(list){   // each tab group switches on its own
+    var tabs = Array.prototype.slice.call(list.querySelectorAll('[role="tab"]'));
+    tabs.forEach(function(t){ t.addEventListener("click", function(){
+      tabs.forEach(function(x){ x.setAttribute("aria-selected", x === t ? "true" : "false"); document.getElementById(x.getAttribute("aria-controls")).hidden = x !== t; });
+    }); });
+  });
+
+  /* ---------- Table of contents highlight ---------- */
+  var links = Array.prototype.slice.call(document.querySelectorAll(".toc ol a"));
+  var secs = links.map(function(a){ return document.querySelector(a.getAttribute("href")); });
+  function spy(){ var y = window.scrollY + Math.max(160, window.innerHeight * 0.3), cur = 0; secs.forEach(function(s, i){ if (s && s.offsetTop <= y) cur = i; }); links.forEach(function(a, i){ a.classList.toggle("on", i === cur); }); }
+  window.addEventListener("scroll", spy, {passive:true}); spy();
+
+  /* ---------- Light / dark theme ---------- */
+  var btn = document.getElementById("themeBtn");
+  if (btn) btn.addEventListener("click", function(){
+    var r = document.documentElement, cur = r.getAttribute("data-theme");
+    var dark = cur ? cur === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    r.setAttribute("data-theme", dark ? "light" : "dark");
+    try { localStorage.setItem("aaaai-editor-guide-theme", dark ? "light" : "dark"); } catch (err) {}
+  });
+
+  /* ---------- Chinese / English: stay on the same chapter when switching language ---------- */
+  var lb = document.getElementById("langBtn");
+  if (lb) lb.addEventListener("click", function(){ var cur = document.querySelector(".toc ol a.on"); var h = cur ? cur.getAttribute("href") : location.hash; if (h) lb.setAttribute("href", lb.getAttribute("href").split("#")[0] + h); });
+})();
+</script>
+</body>
+</html>
