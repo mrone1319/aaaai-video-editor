@@ -560,6 +560,12 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         if cs.get("accent") and "hl" not in cs and not ov.get("_raw"):   # 只改强调色：**关键词** 的高亮也跟着换（不然遮罩版卡片的高亮还是风格色）
             cs["hl"] = cs["accent"]
         th = resolve_colors(dict(th, **cs))
+    pth = ov.get("path") if not ov.get("_xy") else None   # 移动路径：[[出现后第几秒, 水平中心, 上缘], …]
+    if pth and len(pth) >= 2:
+        pth = sorted(([float(k[0]), float(k[1]), float(k[2])] for k in pth), key=lambda k: k[0])
+        ov = dict(ov, xy=[pth[0][1], pth[0][2]])
+    else:
+        pth = None
     typ = ov["type"]
     lite = is_lite(ov, th)
     outro = (bool(ov.get("bleed")) and typ == "title" and bool(th.get("lite", 1)) and ov.get("lite", True)
@@ -763,7 +769,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         sc_col = th.get("scrim_color") or (pl[-1] if isinstance(pl, (list, tuple)) else pl)
         chap = ov.get("chapter") is not None
         mid = bool(ov.get("_mid"))   # 避脸：人坐得高，卡片改放在下巴下面，遮罩只包住字、上下渐淡，不压脸
-        if ov.get("xy") and not ov.get("_xy") and typ not in LOWER_TYPES and not chap and py > H * 0.30:
+        if ov.get("xy") and not ov.get("_xy") and typ not in LOWER_TYPES and not chap and (py > H * 0.30 or pth):
             mid = True   # 用户拖到画面中下段：遮罩只包住字，不从画面顶端一路压下来
         if chap:
             band = H
@@ -1051,6 +1057,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         L["float"] = {"a": max(2.0, round(U * 0.0036, 1)), "p": 3.2, "s": round(t0 + di + 0.05, 3)}
     if ox0 or oy0:
         L["exit"] = {"ox": ox0, "oy": oy0, "t1": t1, "do": do_}
+    if pth:   # 各关键点相对起点的位移（像素）与时间（成片秒）
+        L["path"] = [{"t": round(t0 + k[0], 3), "dx": int(round((k[1] - pth[0][1]) * W)),
+                      "dy": int(round((k[2] - pth[0][2]) * H))} for k in pth]
     L["_box"] = [round(px if mode != "bleed" else 0), round(py if mode != "bleed" else 0),
                  round(plate_w), round(plate_h)]   # 字卡占的范围（Studio 画选取框用；渲染不读）
     if photo_sz:

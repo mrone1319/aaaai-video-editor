@@ -294,10 +294,23 @@ function visibleCards() {
   return out;
 }
 const BLUR_BOX = [0.35, 0.40, 0.30, 0.15];
+function pathKeys(o) { return Array.isArray(o.path) && o.path.length >= 2 ? o.path.map((k) => k.map(Number)).sort((a, b) => a[0] - b[0]) : null; }
+function pathAt(o, t) {   // t＝成片时间 → 相对起点的位移 [dx, dy]（画面比例）
+  const ks = pathKeys(o); if (!ks) return [0, 0];
+  const t0 = +o.t[0]; let x = 0, y = 0;
+  for (let i = 0; i + 1 < ks.length; i++) {
+    const a = ks[i], b = ks[i + 1], d = Math.max(0.01, b[0] - a[0]);
+    const p = Math.min(1, Math.max(0, (t - t0 - a[0]) / d)), sm = p * p * (3 - 2 * p);
+    x += (b[1] - a[1]) * sm; y += (b[2] - a[2]) * sm;
+  }
+  return [x, y];
+}
 function boxOf(o) {
   if (o && o.type === "blur") return (o.box || BLUR_BOX).map(Number);
   const pg = o && PNG.get(pngKey(o));
-  return pg && pg.box;
+  if (!pg || !pg.box) return null;
+  const [dx, dy] = pathAt(o, tOut);   // 移动路径：真样子排在起点，画面上要加上现在的位移
+  return [pg.box[0] + dx, pg.box[1] + dy, pg.box[2], pg.box[3]];
 }
 function boxCss(b) { return "left:" + b[0] * 100 + "%;top:" + b[1] * 100 + "%;width:" + b[2] * 100 + "%;height:" + b[3] * 100 + "%"; }
 function renderStage() {
@@ -315,10 +328,12 @@ function renderStage() {
     }
     const pg = showTrue && v.k === "ov" ? PNG.get(pngKey(o)) : null;
     if (pg) {
-      t += '<img alt="" data-i="' + v.i + '" src="' + esc(pg.url) + '">'; anyTrue = true;
-      if (pg.box) hits += '<div class="hit" data-k="ov" data-i="' + v.i + '" style="' + boxCss(pg.box) + '"></div>';
+      const [pdx, pdy] = pathAt(o, tOut);
+      t += '<img alt="" data-i="' + v.i + '" src="' + esc(pg.url) + '"' + (pdx || pdy ? ' style="transform:translate(' + pdx * 100 + "%," + pdy * 100 + '%)"' : "") + ">"; anyTrue = true;
+      if (pg.box) hits += '<div class="hit" data-k="ov" data-i="' + v.i + '" style="' + boxCss(boxOf(o)) + '"></div>';
     } else anyApprox = true;
-    const xy = o.xy && v.k === "ov" ? ' style="left:' + o.xy[0] * 100 + "%;top:" + o.xy[1] * 100 + '%;right:auto;bottom:auto;transform:translateX(-50%);max-width:88%"' : "";
+    const pk = v.k === "ov" ? pathKeys(o) : null, at_ = pk ? [pk[0][1] + pathAt(o, tOut)[0], pk[0][2] + pathAt(o, tOut)[1]] : o.xy;
+    const xy = at_ && v.k === "ov" ? ' style="left:' + at_[0] * 100 + "%;top:" + at_[1] * 100 + '%;right:auto;bottom:auto;transform:translateX(-50%);max-width:88%"' : "";
     h += '<div class="' + cardClass(v) + (isSel ? " sel" : "") + (pg ? " hid" : "") + '" data-k="' + v.k + '" data-i="' + v.i + '"' + xy + ">" + cardHTML(v) + "</div>";
     if (v.k === "ov" && !["lower_third", "avatar", "stamp", "image", "clip", "broll", "cutout", "confetti", "glow"].includes(o.type) && !(o.pos || "").startsWith("bottom") && !o.xy) top = true;
   }
@@ -744,7 +759,16 @@ function renderInspector() {
     h += '<div class="field"><label>位置</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="hint">' +
       (o.xy ? "水平中心 " + Math.round(o.xy[0] * 100) + "%、上缘 " + Math.round(o.xy[1] * 100) + "%（手动放的，不会自动避脸）" : "风格默认位置（会自动避脸）") + "</span>" +
       (o.xy && !RO ? '<button class="btn sm" id="resetXY">还原默认位置</button>' : "") + "</div></div>";
-    h += otherFields(o, fields.concat(["type", "t", "xy"]));
+    if (SCHEMA.true_look.includes(o.type)) {
+      const ks = pathKeys(o);
+      h += '<fieldset><legend>移动路径</legend>' + (ks
+        ? '<p class="hint" style="margin:0">播放头移到某个时间，在画面上拖卡片＝改那个时间的位置（没有就新增关键点）。点与点之间平滑移过去。</p>' +
+          ks.map((k, i) => '<div class="row2" style="grid-template-columns:1fr 1fr 1fr auto;align-items:end">' + inp("pk_t" + i, i ? "出现后（秒）" : "起点（秒）", "num", k[0]) +
+            inp("pk_x" + i, "水平中心", "num", k[1]) + inp("pk_y" + i, "上缘", "num", k[2]) + (ks.length > 2 && !RO ? '<button class="btn sm" data-pkdel="' + i + '" title="删掉这个关键点">×</button>' : "<span></span>") + "</div>").join("") +
+          (RO ? "" : '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="pkAdd">在播放头加关键点</button><button class="btn sm" id="pkOff">不要移动</button></div>')
+        : (RO ? '<p class="hint">没有移动。</p>' : '<p class="hint" style="margin:0">让这张卡在画面上从一个位置移到另一个位置。</p><button class="btn sm" id="pkOn">让它移动</button>')) + "</fieldset>";
+    }
+    h += otherFields(o, fields.concat(["type", "t", "xy", "path"]));
     h += '<p class="hint">' + (SCHEMA.true_look.includes(o.type) ? "停下来后，画面上的这张卡会换成引擎排的<b>真样子</b>；要看动态按「渲染这一段」。" : "这种卡只有「渲染这一段」才看得到真样子。") + "</p>";
   } else if (sel.k === "rc") {
     const rc = SCHEMA.recipes[o.use] || { desc: "", required: [], optional: [] };
@@ -804,7 +828,28 @@ function renderInspector() {
     }
     return;
   }
-  const rx = $("resetXY"); if (rx) rx.onclick = () => { const before = snap(); delete o.xy; commit(before); };
+  const rx = $("resetXY"); if (rx) rx.onclick = () => { const before = snap(); delete o.xy; delete o.path; commit(before); };
+  const pkOn = $("pkOn");
+  if (pkOn) pkOn.onclick = () => {
+    const bx = boxOf(o) || [0.06, 0.085, 0.88, 0.2], before = snap(), L = +o.t[1] - +o.t[0];
+    const cx = r3(bx[0] + bx[2] / 2), top = r3(bx[1]);
+    o.path = [[0, cx, top], [r2(Math.min(2, L * 0.6)), cx, r3(Math.min(0.75, top + 0.2))]]; o.xy = [cx, top];
+    commit(before); toast("加了两个关键点（往下移）。播放头移到要改的时间，在画面上拖卡片调整。");
+  };
+  const pkOff = $("pkOff"); if (pkOff) pkOff.onclick = () => { const before = snap(); const ks = pathKeys(o); delete o.path; if (ks) o.xy = [ks[0][1], ks[0][2]]; commit(before); };
+  const pkAdd = $("pkAdd");
+  if (pkAdd) pkAdd.onclick = () => {
+    const ks = pathKeys(o), [dx, dy] = pathAt(o, tOut), before = snap();
+    setKey(o, tOut - +o.t[0], r3(ks[0][1] + dx), r3(ks[0][2] + dy)); commit(before);
+  };
+  $("pane-insp").querySelectorAll("[data-pkdel]").forEach((x) => x.addEventListener("click", () => {
+    const ks = pathKeys(o), before = snap(); ks.splice(+x.dataset.pkdel, 1); o.path = ks; o.xy = [ks[0][1], ks[0][2]]; commit(before);
+  }));
+  $("pane-insp").querySelectorAll("[id^=pk_]").forEach((x) => x.addEventListener("change", () => {
+    const m = x.id.match(/^pk_([txy])(\d+)$/), v = parseFloat(x.value); if (!m || isNaN(v)) return;
+    const ks = pathKeys(o), before = snap(); ks[+m[2]][{ t: 0, x: 1, y: 2 }[m[1]]] = r3(Math.max(0, v));
+    ks.sort((a, b) => a[0] - b[0]); o.path = ks; o.xy = [ks[0][1], ks[0][2]]; commit(before);
+  }));
   $("pane-insp").querySelectorAll("[data-col]").forEach((x) => {
     let before = null;
     x.addEventListener("focus", () => { before = snap(); });
@@ -823,7 +868,7 @@ function otherFields(o, known) {
 function bindInspector(o) {
   const el = $("pane-insp");
   const cc = $("capCut"); if (cc) cc.onclick = () => cutPiece(sel.i);
-  el.querySelectorAll("[data-kind]").forEach((x) => {
+  el.querySelectorAll("[data-kind][id^=f_]").forEach((x) => {   // 只绑一般栏位（路径关键点、剪辑点另外处理）
     let before = null;
     x.addEventListener("focus", () => { before = snap(); });
     const apply = (final) => {
@@ -1543,6 +1588,9 @@ $("selLayer").addEventListener("pointerup", (e) => {
       const nx = d.mode === "move" ? b[0] + (e.clientX - d.sx) / d.W : b[0], ny = d.mode === "move" ? b[1] + (e.clientY - d.sy) / d.H : b[1];
       const nw = d.mode === "move" ? b[2] : d.nw, nh = d.mode === "move" ? b[3] : d.nh;
       d.o.box = [r3(Math.max(0, Math.min(1 - nw, nx))), r3(Math.max(0, Math.min(1 - nh, ny))), r3(nw), r3(nh)];
+    } else if (d.mode === "move" && pathKeys(d.o)) {
+      const cx = r3(Math.max(0, Math.min(1, b[0] + b[2] / 2 + (e.clientX - d.sx) / d.W))), top = r3(Math.max(0, Math.min(0.97, b[1] + (e.clientY - d.sy) / d.H)));
+      setKey(d.o, tOut - +d.o.t[0], cx, top);
     } else if (d.mode === "move") {
       const cx = b[0] + b[2] / 2 + (e.clientX - d.sx) / d.W, top = b[1] + (e.clientY - d.sy) / d.H;
       d.o.xy = [r3(Math.max(0, Math.min(1, cx))), r3(Math.max(0, Math.min(0.97, top)))];
@@ -1550,6 +1598,13 @@ $("selLayer").addEventListener("pointerup", (e) => {
     commit(d.before);
   } else renderStage();
 });
+function setKey(o, rel, cx, top) {   // 改（或加）rel 秒的关键点；起点同时是 xy
+  const ks = pathKeys(o); rel = r2(Math.max(0, Math.min(+o.t[1] - +o.t[0], rel)));
+  const k = ks.findIndex((x) => Math.abs(x[0] - rel) < 0.12);
+  if (k >= 0) ks[k] = [ks[k][0], cx, top]; else ks.push([rel, cx, top]);
+  ks.sort((a, b) => a[0] - b[0]);
+  o.path = ks; o.xy = [ks[0][1], ks[0][2]];
+}
 function nudge(dx, dy) {   // Alt＋方向键：微调位置（每次 0.5%，加 Shift＝2%）
   const o = findSel(), pg = o && PNG.get(pngKey(o));
   if (RO || !sel || sel.k !== "ov" || !o) return;

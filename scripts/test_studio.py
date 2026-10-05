@@ -351,6 +351,30 @@ def main():
     v0, v1, v2 = mv(0, 0.3), mv(3.5, 4.5), mv(7.6, 7.95)
     check("配乐淡入、淡出", v0 < v1 - 10 and v2 < v1 - 10, "%.1f %.1f %.1f" % (v0, v1, v2))
 
+    print("== 阶段 5 第二批：移动路径")
+    pov = dict(sb0["overlays"][0], anim="fade", t=[1, 4], path=[[0, 0.5, 0.1], [1.5, 0.5, 0.5], [2.5, 0.3, 0.5]])
+    lp = cards.layout(pov, th, 540, 960, 30)
+    pp = lp.get("path") or []
+    check("路径：起点＝第一个点、回传各点位移", len(pp) == 3 and pp[0]["dx"] == 0 and pp[1]["dy"] == round(0.4 * 960)
+          and pp[2]["dx"] == round(-0.2 * 540), str(pp))
+    from aaaai_editor import overlays as OV2
+    px_, py_ = OV2.path_expr(pp)
+    check("路径表达式：两段平滑移动", py_.count("*") >= 2 and px_ and "min(1" in py_, px_ + " | " + py_)
+    mx, my = OV2.path_at(pp, 2.5)
+    check("路径中途的位置", abs(my - pp[1]["dy"]) < 1 and mx == 0, "%s %s" % (mx, my))
+    dlp = richtext.dialogues(dict(lp["items"][0], path=pp), th, runs=lp["items"][0].get("runs"))
+    check("富文本跟着路径走（多段 \\move）", sum("\\move" in x for x in dlp) >= 10, str(len(dlp)))
+    s6 = json.loads(json.dumps(sb0))
+    s6["overlays"] = [pov]
+    store.write(sbp, s6, source="test")
+    try:
+        rp6 = R.render_range(sbp, 0.5, 4.2)
+        ok6 = os.path.isfile(rp6)
+    except Exception as e:   # noqa: BLE001
+        ok6, rp6 = False, str(e)
+    check("有移动路径的卡渲染得出来", ok6, rp6)
+    store.write(sbp, sb0, source="test")
+
     print("== 体检与诊断")
     c, r, _ = req(B + "api/check", {"p": pid})
     check("体检回传清单", c == 200 and isinstance(r.get("items"), list), str(r)[:300])

@@ -218,9 +218,15 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
         k = min(1.0, max(0.0, (t - (ex["t1"] - ex["do"])) / ex["do"])) ** 2
         return ex["ox"] * k, ex["oy"] * k
 
+    pth = it.get("path")
+
     def pos_at(t):
         k = 1.0 - _cv((t - t_in) / di)
         ex_x, ex_y = exit_at(t)
+        if pth:
+            from .overlays import path_at
+            px_, py_ = path_at(pth, t)
+            ex_x, ex_y = ex_x + px_, ex_y + py_
         return x + dx * k + ex_x, y + dy * k + float_y(t) + ex_y
 
     def alpha_at(t):
@@ -237,6 +243,14 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
         while tt < a1:
             cuts.append(tt)
             tt += 0.2
+    if pth:   # 移动路径：每段每 0.1 秒一个折点
+        for a_, b_ in zip(pth, pth[1:]):
+            if a_["dx"] != b_["dx"] or a_["dy"] != b_["dy"]:
+                tt = a_["t"]
+                while tt < b_["t"]:
+                    cuts.append(tt)
+                    tt += 0.1
+                cuts.append(b_["t"])
     if ex and ex["do"] > 0:   # 出场：最后 do 秒切 4 段，折线逼近加速曲线
         cuts += [ex["t1"] - ex["do"] * (1 - j / 4.0) for j in range(4)]
     pts = sorted({a0, a1} | {c for c in cuts if a0 < c < a1})
@@ -246,7 +260,9 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
             continue
         tags = list(base)
         moving = (u < t_in + di - 1e-6 and (dx or dy)) or bool(fl and v > fl["s"]) or \
-            bool(ex and ex["do"] > 0 and v > ex["t1"] - ex["do"] + 1e-6)
+            bool(ex and ex["do"] > 0 and v > ex["t1"] - ex["do"] + 1e-6) or \
+            bool(pth and any(a_["t"] - 1e-6 <= u < b_["t"] and (a_["dx"] != b_["dx"] or a_["dy"] != b_["dy"])
+                             for a_, b_ in zip(pth, pth[1:])))
         x0, y0 = pos_at(u)
         if moving:
             x1, y1 = pos_at(v)

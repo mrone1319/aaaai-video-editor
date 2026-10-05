@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.5.0"
+  version: "1.6.0"
 ---
 
 # aaaai-editor 影片总监
@@ -361,6 +361,7 @@ Windows 版用 `install.ps1`（双击 `Install-Windows.cmd`）安装；命令、
 | 结尾太突然 | `outro` 配方或 `"ending": {"fade": 1.2}` |
 | 想自己拖拉、一句句删、看时间轴 | 开 Studio（见上） |
 | 字卡离场想要移走而不是淡出 | 卡片 `"out": "fall"`／`"rise"`／`"left"`／`"right"`；`"cut"`＝直接消失 |
+| 卡片要在画面上移动 | 卡片 `"path": [[0, 0.5, 0.1], [1.5, 0.5, 0.45]]`（[出现后第几秒, 水平中心, 上缘]，0–1；点与点之间平滑移动；起点就是位置，不会自动避脸） |
 | 这张卡换个颜色 | 卡片 `"colors": {"accent": "#FF3366"}`（也可 text／plate／value；只改 accent 时高亮也跟着换） |
 | 要遮车牌、屏幕上的个资 | 加 `{"type": "blur", "t": [开始, 结束], "box": [x, y, 宽, 高], "mode": "mosaic"}`（0–1；不写 mode＝模糊；`strength` 调强弱） |
 | 配乐开头太突然／想提早收 | `music` 加 `"fade_in": 2`、`"fade_out": 3`、`"start": 10`（从配乐第几秒开始）、`"end": 50`（成片第几秒收掉） |

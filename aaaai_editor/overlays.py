@@ -51,6 +51,35 @@ def exit_expr(ex: Optional[dict]) -> Tuple[str, str]:
     return ("+(%d)*%s" % (ex["ox"], e) if ex["ox"] else ""), ("+(%d)*%s" % (ex["oy"], e) if ex["oy"] else "")
 
 
+def path_expr(pth: Optional[list]) -> Tuple[str, str]:
+    """移动路径：每两个关键点之间平滑移过去（smoothstep），各段位移累加。没有就回传空字串。"""
+    if not pth:
+        return "", ""
+    xs, ys = [], []
+    for a, b in zip(pth, pth[1:]):
+        d = max(0.01, b["t"] - a["t"])
+        e = ease(a["t"], d)
+        if b["dx"] != a["dx"]:
+            xs.append("+(%d)*%s" % (b["dx"] - a["dx"], e))
+        if b["dy"] != a["dy"]:
+            ys.append("+(%d)*%s" % (b["dy"] - a["dy"], e))
+    return "".join(xs), "".join(ys)
+
+
+def path_at(pth: Optional[list], t: float) -> Tuple[float, float]:
+    """同一条路径在 t 秒的位移（富文本、Studio 用）。"""
+    if not pth:
+        return 0.0, 0.0
+    x = y = 0.0
+    for a, b in zip(pth, pth[1:]):
+        d = max(0.01, b["t"] - a["t"])
+        p = min(1.0, max(0.0, (t - a["t"]) / d))
+        s = p * p * (3 - 2 * p)
+        x += (b["dx"] - a["dx"]) * s
+        y += (b["dy"] - a["dy"]) * s
+    return x, y
+
+
 def alpha_expr(t0: float, t1: float, di: float, do: float) -> str:
     return ("min(1\\,max(0\\,(t-%.3f)/%.3f))*min(1\\,max(0\\,(%.3f-t)/%.3f))"
             % (t0, max(di, 0.01), t1, max(do, 0.01)))
@@ -88,7 +117,8 @@ def _drawtext(it: dict, work: str, fps: float) -> List[str]:
         y = "%s+(%d)*(1-%s)" % (y, it["dy"], s)
     y += y_fl
     xe_, ye_ = exit_expr(it.get("exit"))
-    x, y = x + xe_, y + ye_
+    xp_, yp_ = path_expr(it.get("path"))
+    x, y = x + xe_ + xp_, y + ye_ + yp_
     common = ("fontfile=%s:fontsize=%d:fontcolor=%s:x=%s:y=%s:alpha='%s':expansion=none"
               % (q(font), it["size"], col(it["color"]), x, y, alpha_expr(t0, t1, di, do)))
     if it.get("stroke"):
@@ -276,7 +306,7 @@ def face_lift(ov: dict, th: dict, W: int, H: int, fps: float, faces) -> dict:
     头顶、帽子被遮罩盖到一点没关系，眼睛不行：护住「头顶～下巴」的 30% 以下。"""
     if not faces or ov.get("behind_subject") or ov.get("bleed") or ov.get("chapter") is not None \
             or ov.get("avoid_face") is False or ov.get("type") in cards.LOWER_TYPES or not cards.is_lite(ov, th) \
-            or ov.get("xy"):   # 用户亲手放的位置不自动挪
+            or ov.get("xy") or ov.get("path"):   # 用户亲手放的位置、移动路径不自动挪
         return ov
     pos = ov.get("pos")
     if pos and cards.ANCHORS.get(pos, (0.5, 0.5))[1] > 0.0:
@@ -592,10 +622,13 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             fl = L.get("float") if sb.get("float", True) else None
             fe = float_expr(fl)
             xe, ye = exit_expr(L.get("exit"))
+            xp, yp = path_expr(L.get("path"))   # 移动路径：底板（含遮罩）、文字、图标、头像、进度圈一起走
             for it_ in L["items"]:
                 it_["float"] = fl
                 if L.get("exit"):
                     it_["exit"] = L["exit"]
+                if L.get("path"):
+                    it_["path"] = L["path"]
             rec["th"], rec["engine"] = th, th.get("text_engine", "drawtext")
             loose = list(L.get("icons") or [])
             if L["plate"]:
@@ -667,6 +700,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     y += fe
                     if not p.get("scrim") and not bleed:   # 遮罩、整屏底不跟着移走，只淡出
                         x, y = x + xe, y + ye
+                    if not bleed:
+                        x, y = x + xp, y + yp
                     rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": t0, "t1": t1,
                                           "scale": None, "di": p["di"], "do": p["do"], "fade": True})
                     idx += 1
@@ -689,7 +724,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 src = gauge_src(int(gg_["size"]), fps, gg_["color"], gg_["track"], gg_["w"],
                                 float(gg_["ratio"]), gg_["t0"], float(gg_["dur"]))
                 inputs.append(["-f", "lavfi", "-t", "%.3f" % max(0.2, gg_["t1"] - gg_["t0"]), "-i", src])
-                rec["layers"].append({"idx": idx, "x": "%d" % gg_["x"] + xe, "y": "%d" % gg_["y"] + ye,
+                rec["layers"].append({"idx": idx, "x": "%d" % gg_["x"] + xe + xp, "y": "%d" % gg_["y"] + ye + yp,
                                       "t0": gg_["t0"], "t1": gg_["t1"], "scale": None,
                                       "di": gg_["di"], "do": gg_["do"], "fade": True})
                 idx += 1
@@ -716,7 +751,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     if ph["dy"]:
                         y = "%s+(%d)*(1-%s)" % (y, ph["dy"], s_)
                     y += fe
-                    x, y = x + xe, y + ye
+                    x, y = x + xe + xp, y + ye + yp
                     rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": t0, "t1": t1, "scale": None,
                                           "di": ph["di"], "do": ph["do"], "fade": True})
                     idx += 1
@@ -744,7 +779,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 if ic["dy"]:
                     y = "%s+(%d)*(1-%s)" % (y, ic["dy"], s_)
                 y += fe
-                x, y = x + xe, y + ye
+                x, y = x + xe + xp, y + ye + yp
                 rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": it0, "t1": t1,
                                       "scale": None, "di": ic["di"], "do": ic["do"], "fade": True})
                 idx += 1

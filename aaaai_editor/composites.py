@@ -231,7 +231,7 @@ def expand(sb: dict) -> dict:
         if not win or o.get("_raw"):
             continue
         o.setdefault("lite", False)
-        if o.get("pos") is None and o.get("_xy") is None and o.get("xy") is None \
+        if o.get("pos") is None and o.get("_xy") is None and o.get("xy") is None and o.get("path") is None \
                 and o.get("type") not in ("lower_third", "avatar"):
             o["_xy"] = [0.5, PANEL_TOP]
             o.setdefault("align", "center")
