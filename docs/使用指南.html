@@ -262,7 +262,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.3.0</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.4.0</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
@@ -759,6 +759,11 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       <tr><td>试听配乐、降噪</td><td>「设定」里选一首或一档按「试听 8 秒」：真正的混音，不会改到片子。</td></tr>
       <tr><td>机位太远</td><td>「设定」→「取景」放大 1.15–1.25，整支片推近。</td></tr>
       <tr><td>回到之前的版本</td><td>右上「⋯」→「历史版本」：每次存档都留一份（最近 100 份），点「回到这版」。</td></tr>
+      <tr><td>请 Claude 改某个地方</td><td>播放到那里（或选中那张字卡）按「＋ 留言」（<span class="kbd">N</span>），勾「请 Claude 处理」；在对话里说「看 Studio 留言」，Claude 逐条改好、回覆在「留言」页。也可以只是留给自己的备忘。</td></tr>
+      <tr><td>挑风格</td><td>右上「风格总览」：同一张字卡、同一个画面，所有风格并排看，点一个就换。</td></tr>
+      <tr><td>一次出好几种尺寸</td><td>「出片」时勾选 4:5、1:1（横版片还有 16:9…）；另存 out/final_宽x高.mp4，成品文件夹名字加尺寸，不会盖掉主版本。</td></tr>
+      <tr><td>频道规则</td><td>「体检」会照你的频道档案自动检查片长、封面、字幕…，并列出你的剪辑规则（<code>studio-checks.json</code> 可自己写）。</td></tr>
+      <tr><td>接别处做好的影片</td><td>项目首页「＋ 接入影片」：选影片、取名，会建新项目、复制原片、自动转录，之后照常加字幕、封面、出片。</td></tr>
       <tr><td>看真正的成品</td><td>「渲染这一段」几秒钟出那一段的成品画面；满意按「出片」。</td></tr>
     </tbody>
   </table></div>
@@ -773,6 +778,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       <tr><td><span class="kbd">R</span></td><td>渲染这一段</td></tr>
       <tr><td><span class="kbd">G</span></td><td>安全区开关</td></tr>
       <tr><td><span class="kbd">S</span></td><td>在播放头把画面切开</td></tr>
+      <tr><td><span class="kbd">N</span></td><td>在播放头留言</td></tr>
       <tr><td>Shift／⌘＋点</td><td>多选字卡与特效</td></tr>
       <tr><td><span class="kbd">?</span></td><td>快捷键表、再看一次导览、诊断报告</td></tr>
     </tbody>
@@ -857,7 +863,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">社群风格</b><span><code>mrone</code> 与 <code>otg</code> 是两个频道／社群的品牌风格：你可以用，但名称、配色和品牌元素归原权利人，不要用它们做冒充该品牌、或让人误以为是官方的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.3.0 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
+    <span>aaaai-editor v1.4.0 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
 </section>

@@ -1,0 +1,7 @@
+{
+ "_说明": "MR ONE 频道的自动检查（来自 rules.md：>75 秒回报、>85 秒停下改稿；封面是固定交付物）",
+ "warn_seconds": 75,
+ "max_seconds": 85,
+ "require_cover": true,
+ "require_captions": true
+}

@@ -159,6 +159,9 @@ aaaai-editor keys set PEXELS_API_KEY
 | Claude Desktop | 在 `%APPDATA%\Claude\claude_desktop_config.json` 的 `mcpServers` 加 `"aaaai-editor": {"command": "C:\\Users\\你的用户名\\.aaaai-editor\\bin\\aaaai-editor.cmd", "args": ["mcp"]}` |
 | Cursor 等 | 同样填命令 `…\.aaaai-editor\bin\aaaai-editor.cmd`、参数 `mcp` |
 
+提供的工具：B-roll（状态、搜寻、估价、生成、整个项目、素材库）、`doctor`，以及读写剪辑表 `storyboard_show`／`storyboard_patch`
+（带版本检查，只能碰项目的剪辑表与字幕轨）、`render_range`（只渲染一段）、`studio_notes`（Studio 留言）。
+
 要花钱的工具一律两步：先返回报价，你同意后才真正生成。
 
 ---

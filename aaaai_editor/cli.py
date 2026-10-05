@@ -277,6 +277,37 @@ def cmd_studio(a) -> int:
     return 0
 
 
+def cmd_notes(a) -> int:
+    """Studio 的时间点留言：列出（默认只列请 Claude 处理、还没完成的）、回覆、标完成。"""
+    from . import notes as N
+    proj = N.project_of(a.target)
+    if not os.path.isfile(os.path.join(proj, "storyboard.json")):
+        print("❌ %s 不是项目文件夹" % proj)
+        return 1
+    if a.add:
+        n = N.add(proj, a.add[1], float(a.add[0]), to="me", source="claude")
+        print("✅ 加了第 %d 条留言" % n["id"])
+        return 0
+    if a.reply:
+        n = N.change(proj, int(a.reply[0]), source="claude", reply=a.reply[1], status="done" if a.done_too else None)
+        print("✅ 回覆了第 %d 条" % n["id"])
+        return 0
+    if a.done is not None:
+        n = N.change(proj, a.done, source="claude", status="done")
+        print("✅ 第 %d 条标为完成" % n["id"])
+        return 0
+    doc, _v = N.load(proj)
+    rows = doc.get("notes", []) if a.all else N.pending(proj)
+    if not rows:
+        print("没有%s留言。" % ("" if a.all else "要 Claude 处理的"))
+        return 0
+    for n in rows:
+        print(N.describe(n))
+    if not a.all:
+        print("\n处理完：notes <项目> --reply 编号 \"做了什么\" --done-too（Studio 会马上看到）")
+    return 0
+
+
 def cmd_patch(a) -> int:
     """带版本检查的小改动：Claude 改剪辑表／字幕轨一律用它，不直接覆盖文件（Studio 开着时不会互相盖掉）。"""
     path = os.path.abspath(a.file)
@@ -695,6 +726,14 @@ def main(argv=None) -> int:
     pt.add_argument("--source", default="claude", help="改动来源，记在 work/edits.log")
     pt.add_argument("--show", action="store_true", help="只列出内容与版本")
     pt.set_defaults(fn=cmd_patch)
+    nt = sub.add_parser("notes", help="Studio 的时间点留言：列出要 Claude 处理的、回覆、标完成")
+    nt.add_argument("target", help="项目文件夹或其中的 storyboard.json")
+    nt.add_argument("--all", action="store_true", help="列出全部留言（包含已完成、给自己看的）")
+    nt.add_argument("--reply", nargs=2, metavar=("编号", "回覆"))
+    nt.add_argument("--done-too", action="store_true", help="回覆的同时标为完成")
+    nt.add_argument("--done", type=int, metavar="编号")
+    nt.add_argument("--add", nargs=2, metavar=("成片秒数", "文字"), help="加一条给用户看的留言")
+    nt.set_defaults(fn=cmd_notes)
     so = sub.add_parser("studio", help="打开图形剪辑界面（本机网页，拖拉字卡与字幕、逐字稿剪片、体检、渲染一段）")
     so.add_argument("target", nargs="?", help="项目文件夹或其中的 storyboard.json；不写＝打开项目首页")
     so.add_argument("--port", type=int, default=0, help="指定端口（默认随机）")

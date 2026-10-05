@@ -44,6 +44,8 @@ let OPT = null, FACES = null, FACES_BUSY = false;
 let multi = [];          // 多选：[{k, i}]（字卡、配方、推近、音效）
 let stopAt = null;       // 试听剪点：播到这里自己停
 let BROLL = null;        // B-roll 状态与搜寻结果
+let NOTES = [];          // 时间点留言（work/notes.json；不进复原纪录）
+let RULES = null;        // 频道规则
 const SHOW = { safe: false, face: false, plat: "" };   // 画面叠层：安全区、脸、平台遮挡
 const TOOLS = { tidy: null, hooks: null, busy: "" };    // 逐字稿页的口误清理／开头钩子结果
 let pngBusy = false, idleTimer = null;
@@ -93,6 +95,33 @@ async function showHome() {
       '<div class="row">' + (p.source_ok ? "" : '<span class="chip bad">原片不见了·只读</span>') + (p.final ? '<span class="chip ok">已出片</span>' : "") + '<span class="chip">' + p.overlays + " 张字卡</span></div></div></button>";
   }).join("");
 }
+$("adoptBtn").onclick = () => {
+  modal('<h2>接入影片</h2><p class="hint">把别处做好的影片（HyperFrames、动画片、别的剪辑软件出的）接进来，统一做字幕、响度、封面。会建一个新项目，影片复制进项目的 raw/（原档不动），自动转录。</p>' +
+    '<div class="field"><label for="adName">项目名字</label><input id="adName" placeholder="例：产品发布" style="background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:6px 8px"></div>' +
+    '<div class="field"><label for="adFile">影片（mp4／mov）</label><input id="adFile" type="file" accept="video/mp4,video/quicktime,.mp4,.mov,.m4v"></div><p class="hint" id="adMsg"></p>' +
+    '<div class="acts"><button class="btn" data-a="close">取消</button><button class="btn primary" data-a="copy" id="adGo">接入</button></div>', async (a) => {
+    if (a !== "copy") return;
+    const f = $("adFile").files[0], msg = $("adMsg");
+    if (!f) { msg.textContent = "先选一支影片。"; return; }
+    $("adGo").disabled = true;
+    try {
+      const np = await api("api/newproject", { name: $("adName").value || f.name.replace(/\.[^.]+$/, "") });
+      await new Promise((ok, bad) => {
+        const x = new XMLHttpRequest();
+        x.open("POST", "api/upload?p=" + np.id + "&dir=raw&name=" + encodeURIComponent(f.name));
+        x.upload.onprogress = (e) => { if (e.lengthComputable) msg.textContent = "复制影片：" + Math.round(e.loaded / e.total * 100) + "%"; };
+        x.onload = () => (x.status === 200 ? ok() : bad(new Error((JSON.parse(x.responseText || "{}").error) || x.status)));
+        x.onerror = () => bad(new Error("上传失败")); x.send(f);
+      });
+      msg.textContent = "接入并转录中…（几十秒到几分钟）";
+      const r = await api("api/render", { p: np.id, kind: "adopt" });
+      if (r.busy) throw new Error(r.msg);
+      const done = await waitJob(r.job, false);
+      if (done.status !== "done") throw new Error((done.log || []).slice(-2).join(" ") || done.stage);
+      $("modal").hidden = true; location.hash = "p=" + np.id;
+    } catch (e) { msg.textContent = "没接成：" + e.message; $("adGo").disabled = false; }
+  });
+};
 $("grid").addEventListener("click", (e) => { const b = e.target.closest(".pcard"); if (b) location.hash = "p=" + b.dataset.id; });
 $("back").onclick = () => { flushSave().finally(() => { location.hash = ""; }); };
 
@@ -119,15 +148,16 @@ async function openProject(id) {
 
 function load(j, first) {
   const keepSel = sel, keepT = tOut;
-  P = { id: j.id, name: j.name, fps: j.fps, W: j.W, H: j.H, styles: j.styles, source_ok: j.source_ok, proxy: j.proxy, final: j.final, srcDur: j.source_duration || 1e9 };
+  P = { id: j.id, name: j.name, fps: j.fps, W: j.W, H: j.H, styles: j.styles, source_ok: j.source_ok, proxy: j.proxy, final: j.final, srcDur: j.source_duration || 1e9, dir: j.dir };
   S = { sb: j.storyboard, cap: j.captions };
   AUTO = j.captions_auto || [];
-  V = { sb: j.sb_version, cap: j.cap_version };
+  V = { sb: j.sb_version, cap: j.cap_version, notes: j.notes_version || "" };
+  NOTES = j.notes || [];
   SAVED = { sb: JSON.stringify(S.sb), cap: S.cap ? JSON.stringify(S.cap) : "" };
   RO = !j.source_ok;
   CONFLICT = false;
   T = TL();
-  if (first) { FACES = null; TOOLS.tidy = null; TOOLS.hooks = null; OPT = null; multi = []; BROLL = null; }
+  if (first) { FACES = null; TOOLS.tidy = null; TOOLS.hooks = null; OPT = null; multi = []; BROLL = null; RULES = null; }
   if (first) { undoStack = []; redoStack = []; sel = null; tOut = 0; ISSUES = []; CHECKED = false; $("chkN").hidden = true; PNG.clear(); }
   else { sel = keepSel && findSel(keepSel) ? keepSel : null; tOut = Math.min(keepT, Math.max(0, T.dur - 0.01)); }
   document.title = P.name + " · Studio";
@@ -137,7 +167,7 @@ function load(j, first) {
   $("app").classList.toggle("ro-mode", RO);
   $("roNote").hidden = !RO;
   $("roNote").innerHTML = RO ? '<span class="ro">原片不见了：只能看、不能改（把原片放回 storyboard.json 的 source 指向的位置后重新打开）</span>' : "";
-  ["undo", "redo", "renderRange", "export", "styleSel", "addCardBtn", "addFxBtn", "delBtn", "splitBtn"].forEach((x) => { $(x).disabled = RO; });
+  ["undo", "redo", "renderRange", "export", "styleSel", "addCardBtn", "addFxBtn", "delBtn", "splitBtn", "styleAll"].forEach((x) => { $(x).disabled = RO; });
   updUndo(); setSave(); fitStage(); renderAll();
 }
 
@@ -217,6 +247,12 @@ async function pollVersion() {
   if (!P || document.hidden || saving || CONFLICT) return;
   let v;
   try { v = await api("api/version?p=" + encodeURIComponent(P.id)); } catch (_) { return; }
+  if ((v.notes_version || "") !== V.notes) {   // 留言变了（多半是 Claude 回覆了）：直接更新，不算冲突
+    const had = NOTES.filter((n) => n.reply).length;
+    const r = await api("api/notes", { p: P.id });
+    setNotes(r);
+    if (NOTES.filter((n) => n.reply).length > had) toast("Claude 回覆了留言（看「留言」页）。");
+  }
   if (v.sb_version === V.sb && v.cap_version === V.cap) return;
   if (saving) return;
   const fresh = await api("api/open?p=" + encodeURIComponent(P.id));
@@ -463,6 +499,7 @@ function renderTimeline() {
   let h = '<div class="ruler" id="ruler">';
   const step = pps >= 60 ? 1 : pps >= 24 ? 2 : pps >= 12 ? 5 : 10;
   for (let s = 0; s <= D; s += step) h += '<span style="left:' + s * pps + 'px">' + fmt(s).slice(0, 5) + "</span>";
+  for (const n of NOTES) h += '<i class="mark nt' + (n.status === "done" ? " done" : "") + '" data-t="' + n.t + '" title="留言 #' + n.id + "：" + esc(n.text) + '" style="left:' + n.t * pps + 'px"></i>';
   for (const x of ISSUES) if (x.t != null && x.level !== "ok") h += '<i class="mark' + (x.level === "note" ? " note" : "") + '" data-t="' + x.t + '" title="' + esc(x.msg) + '" style="left:' + x.t * pps + 'px"></i>';
   h += "</div>";
   const badT = ISSUES.filter((x) => x.level === "problem" && x.t != null).map((x) => x.t);
@@ -630,7 +667,8 @@ function ensureCapTrack() {
 // ------------------------------------------------------------------ 右栏：属性／逐字稿／体检
 function showPane(name) {
   for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.pane === name));
-  for (const n of ["insp", "tr", "chk", "ast", "cov", "set"]) $("pane-" + n).hidden = n !== name;
+  for (const n of ["insp", "tr", "chk", "nt", "ast", "cov", "set"]) $("pane-" + n).hidden = n !== name;
+  if (name === "nt") renderNotes();
   if (name === "cov") renderCover();
   if (name === "tr") renderTranscript();
   if (name === "ast") renderAssets();
@@ -1093,6 +1131,99 @@ function pathChange(e) {
 $("pane-set").addEventListener("change", pathChange);
 $("pane-cov").addEventListener("change", pathChange);
 
+// ------------------------------------------------------------------ 时间点留言（可以请 Claude 处理）
+function setNotes(r) {
+  NOTES = r.notes || []; V.notes = r.notes_version || "";
+  const n = NOTES.filter((x) => x.status !== "done" && x.to === "claude").length;
+  $("ntN").hidden = !n; $("ntN").textContent = n;
+  renderTimeline(); renderNotes();
+}
+function selLabel() {
+  const o = findSel(); if (!o || !sel) return null;
+  if (sel.k === "ov") return { k: "ov", i: sel.i, label: ((SCHEMA.cards[o.type] || {}).name || o.type) + "「" + plain(o.kicker || o.text || o.name || o.title || "").slice(0, 16) + "」" };
+  if (sel.k === "rc") return { k: "rc", i: sel.i, label: "配方 " + o.use };
+  if (sel.k === "cap") return { k: "cap", i: sel.i, label: "字幕「" + plain(o.text).slice(0, 16) + "」" };
+  return null;
+}
+function addNote() {
+  if (RO || !P) return;
+  const rg = rangeOf(), ref = selLabel();
+  modal('<h2>在 ' + fmt(tOut) + " 留言</h2>" + (ref ? '<p class="hint">关于：' + esc(ref.label) + (rg ? "（成片 " + fmt(rg[0]) + "–" + fmt(rg[1]) + "）" : "") + "</p>" : "") +
+    '<div class="field"><textarea id="ntText" rows="4" placeholder="例：这里字卡太多了，留一张就好／开头太慢，帮我剪紧一点"></textarea></div>' +
+    '<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="ntClaude" checked> 请 Claude 处理（在对话里说「看 Studio 留言」）</label>' +
+    '<div class="acts"><button class="btn" data-a="close">取消</button><button class="btn primary" data-a="save">留言</button></div>', async (a) => {
+    if (a !== "save") return;
+    try {
+      const r = await api("api/notes", Object.assign({ p: P.id, action: "add", text: $("ntText").value, t: r2(tOut), to: $("ntClaude").checked ? "claude" : "me", ref },
+        rg && ref ? { a: r2(rg[0]), b: r2(rg[1]) } : {}));
+      setNotes(r); toast("留言了。" + ($("ntClaude") && $("ntClaude").checked ? "" : ""), false, [["看留言", () => showPane("nt")]]);
+    } catch (e) { toast("没留成：" + e.message, true); }
+  });
+  setTimeout(() => { const t = $("ntText"); if (t) t.focus(); }, 30);
+}
+$("noteBtn").onclick = addNote;
+function renderNotes() {
+  const el = $("pane-nt"); if (!P || el.hidden) return;
+  const open = NOTES.filter((n) => n.status !== "done"), done = NOTES.filter((n) => n.status === "done");
+  const ask = open.filter((n) => n.to === "claude");
+  const one = (n) => '<div class="note' + (n.status === "done" ? " done" : "") + '"><div class="hd"><b>#' + n.id + "</b><span>" + (n.a != null ? fmt(n.a) + "–" + fmt(n.b) : fmt(n.t)) + "</span>" +
+    (n.ref && n.ref.label ? "<span>" + esc(n.ref.label) + "</span>" : "") + (n.to === "claude" ? '<span class="chip">请 Claude</span>' : '<span class="chip">给自己</span>') + '<span class="spacer"></span><span>' + esc(n.created || "") + "</span></div>" +
+    '<div class="tx">' + esc(n.text) + "</div>" + (n.reply ? '<div class="rp">' + esc(n.reply) + "</div>" : "") +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-nt="go" data-id="' + n.id + '">跳过去</button>' + (RO ? "" :
+      '<button class="btn sm" data-nt="' + (n.status === "done" ? "reopen" : "done") + '" data-id="' + n.id + '">' + (n.status === "done" ? "重开" : "完成") + '</button><button class="btn sm" data-nt="del" data-id="' + n.id + '">删除</button>') + "</div></div>";
+  el.innerHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="ntAdd"' + (RO ? " disabled" : "") + '>＋ 在播放头留言</button><button class="btn sm" id="ntCopy"' + (ask.length ? "" : " disabled") + ">复制给 Claude（" + ask.length + "）</button></div>" +
+    '<p class="hint">标「请 Claude」的留言，在对话里说「<b>看 Studio 留言</b>」，Claude 会逐条处理并回覆在这里。时间轴上方蓝色小方块就是留言。</p>' +
+    (open.length ? open.map(one).join("") : '<p class="empty">还没有留言。</p>') + (done.length ? "<h3>已完成</h3>" + done.map(one).join("") : "");
+  $("ntAdd").onclick = addNote;
+  $("ntCopy").onclick = () => {
+    const txt = "请处理 Studio 留言（aaaai-editor）：项目 " + (P.dir || P.name) + "\n" + ask.map((n) => "#" + n.id + " 成片 " + (n.a != null ? fmt(n.a) + "–" + fmt(n.b) : fmt(n.t)) + (n.ref && n.ref.label ? "（" + n.ref.label + "）" : "") + "：" + n.text).join("\n") +
+      "\n（处理完用 aaaai-editor notes <项目> --reply 编号 \"做了什么\" --done-too 回覆）";
+    navigator.clipboard.writeText(txt).then(() => toast("已复制，贴进对话就行。"), () => toast("复制不了，请手动选取。", true));
+  };
+}
+$("pane-nt").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-nt]"); if (!b) return;
+  const id = +b.dataset.id, n = NOTES.find((x) => x.id === id), act = b.dataset.nt;
+  if (act === "go") { seek((n.a != null ? n.a : n.t) + 0.01); if (n.ref && n.ref.k && findSel(n.ref)) select({ k: n.ref.k, i: n.ref.i }); return; }
+  try {
+    const body = { p: P.id, action: "change", id };
+    if (act === "done") body.status = "done"; if (act === "reopen") body.status = "open"; if (act === "del") body.delete = true;
+    setNotes(await api("api/notes", body));
+  } catch (err) { toast("没改成：" + err.message, true); }
+});
+
+// ------------------------------------------------------------------ 风格总览：同一张字卡、同一个画面，所有风格并排
+async function styleOverview() {
+  if (!P || !P.source_ok) return;
+  let v = visibleCards().find((x) => x.k === "ov" && SCHEMA.true_look.includes(x.o.type));
+  if (!v) {   // 播放头没有字卡：跳到第一张能看真样子的字卡
+    const i = (S.sb.overlays || []).findIndex((o) => SCHEMA.true_look.includes(o.type) && Array.isArray(o.t));
+    if (i < 0) { toast("这支片还没有能预览的字卡（标题、数据、清单…）。"); return; }
+    seek(+S.sb.overlays[i].t[0] + Math.min(1, (S.sb.overlays[i].t[1] - S.sb.overlays[i].t[0]) / 2));
+    await new Promise((r) => setTimeout(r, 400));
+    v = { k: "ov", i, o: S.sb.overlays[i] };
+  }
+  await flushSave();
+  let bg = "";
+  try { const c = document.createElement("canvas"); c.width = 360; c.height = Math.round(360 * P.H / P.W); c.getContext("2d").drawImage(video, 0, 0, c.width, c.height); bg = c.toDataURL("image/jpeg", 0.8); } catch (_) {}
+  const names = Object.keys(P.styles), cur = S.sb.style || "";
+  modal('<h2>风格总览</h2><p class="hint">同一张字卡（' + esc(((SCHEMA.cards[v.o.type] || {}).name || v.o.type)) + "）、同一个画面，每种风格的真样子。点一个就换成那个风格（整支片）。</p>" +
+    '<div class="styles" style="--ar:' + P.W + " / " + P.H + '">' + names.map((n) => '<button data-a="st:' + esc(n) + '" class="' + (n === cur ? "cur" : "") + '"><div class="cv" style="background-image:url(' + bg + ')"><img alt="" id="sty_' + esc(n) + '"></div><div class="nm">' + esc(n) + (P.styles[n].desc ? ' <span class="hint">' + esc(P.styles[n].desc).slice(0, 18) + "</span>" : "") + "</div></button>").join("") + "</div>" +
+    '<div class="acts"><button class="btn primary" data-a="close">关闭</button></div>', (a) => {
+    if (!a.startsWith("st:")) return;
+    const before = snap(); S.sb.style = a.slice(3); commit(before); $("styleSel").value = S.sb.style; PNG.clear();
+    toast("整支片换成 " + S.sb.style + " 风格。", false, [["复原", undo]]);
+  }, true);
+  for (const n of names) {   // 一张张向引擎要（有缓存，第二次很快）
+    if ($("modal").hidden) break;
+    try {
+      const r = await api("api/card", { p: P.id, overlay: Object.assign({}, v.o, { style: n }), height: 640 });
+      const img = $("sty_" + n); if (img) img.src = r.url;
+    } catch (_) {}
+  }
+}
+$("styleAll").onclick = styleOverview;
+
 // ------------------------------------------------------------------ 封面与图卡
 async function renderCover() {
   const el = $("pane-cov"); if (!S || el.hidden) return;
@@ -1188,8 +1319,9 @@ function markTranscript() {
 async function renderChecks(run) {
   const el = $("pane-chk");
   if (!run) {
-    el.innerHTML = '<p class="hint">检查字幕对时（静音时还挂着字、讲话前就出字、话尾被切）、字幕太长、字卡压到脸、成片响度。问题会在时间轴上标红点，点一下跳过去。</p><button class="btn primary" id="runChk"' + (P && P.source_ok ? "" : " disabled") + ">开始体检</button>" + issuesHTML();
+    el.innerHTML = '<p class="hint">检查字幕对时（静音时还挂着字、讲话前就出字、话尾被切）、字幕太长、字卡压到脸、成片响度，以及频道档案里能自动检查的规则。问题会在时间轴上标红点，点一下跳过去。</p><button class="btn primary" id="runChk"' + (P && P.source_ok ? "" : " disabled") + ">开始体检</button>" + issuesHTML() + rulesHTML();
     $("runChk").onclick = () => renderChecks(true);
+    if (!RULES) api("api/rules?p=" + encodeURIComponent(P.id)).then((r) => { RULES = r; if (!$("pane-chk").hidden && !el.contains(document.activeElement)) renderChecks(false); }).catch(() => { RULES = { files: [] }; });
     return;
   }
   el.innerHTML = '<p class="hint">体检中…（第一次要分析声音，几秒到半分钟）</p>';
@@ -1201,6 +1333,13 @@ async function renderChecks(run) {
     $("chkN").hidden = !n; $("chkN").textContent = n;
     renderChecks(false); renderTimeline();
   } catch (e) { el.innerHTML = '<p class="hint">体检没跑成：' + esc(e.message) + "</p>"; }
+}
+function rulesHTML() {
+  if (!RULES) return "";
+  if (!RULES.files.length) return '<p class="hint">没有设定频道档案（aaaai-editor config --set profile=名字）；有的话这里会列出你的剪辑规则。</p>';
+  const ck = Object.keys(RULES.checks || {});
+  return '<details class="rules"><summary class="hint" style="cursor:pointer">频道规则（' + esc(RULES.profile) + "）" + (ck.length ? "：会自动检查 " + ck.length + " 项" : "") + "</summary>" +
+    RULES.files.map((f) => '<p class="hint" style="margin:6px 0 4px">' + esc(f.name) + "</p><pre>" + esc(f.text) + "</pre>").join("") + "</details>";
 }
 function issuesHTML() {
   if (!CHECKED) return "";
@@ -1408,6 +1547,7 @@ async function startJob(body) {
     }
     if (body.kind === "audition") { playResult(done.result, "试听（真正的混音与响度）", done.elapsed); return; }
     if (body.kind === "range") playResult(done.result, "这一段的成品画面（预览画质）", done.elapsed);
+    else if (body.kind === "variant") toast(body.w + "×" + body.h + " 版出好了（" + done.elapsed + " 秒）", false, [["播放", () => playResult(done.result, body.w + "×" + body.h + " 版", null)]], 12000);
     else { P.final = done.result; toast("成片出好了（" + done.elapsed + " 秒）：out/final.mp4", false, [["播放", () => playResult(done.result, "成片", null)]], 12000); }
   } else if (done.status === "error") {
     toast("渲染失败：" + (done.log || []).slice(-2).join(" ") + "（⋯ → 诊断报告）", true);
@@ -1430,8 +1570,21 @@ function renderRange() {
   startJob({ kind: "range", a: r3(a), b: r3(Math.min(b, a + 30)) });
 }
 $("renderRange").onclick = renderRange;
+const SIZES = [[1080, 1920, "9:16 竖版（Reels／抖音／Shorts）"], [1080, 1350, "4:5（IG／小红书 动态）"], [1080, 1080, "1:1 方形"], [1920, 1080, "16:9 横版（YouTube）"]];
 $("export").onclick = () => {
-  modal('<h2>出片</h2><p class="hint">按目前的剪辑表出正式成片（' + fmt(T.dur) + "），覆盖 out/final.mp4。长片要几分钟，进度在上方；可以取消。</p><div class=\"acts\"><button class=\"btn\" data-a=\"no\">先不要</button><button class=\"btn primary\" data-a=\"go\">出片</button></div>", (a) => { if (a === "go") startJob({ kind: "final", duration: T.dur }); });
+  const portrait = P.H > P.W;
+  const opts = SIZES.filter(([w, h]) => !(w === P.W && h === P.H)).map(([w, h, lb]) => {
+    const bad = portrait && w > h;   // 竖版原片出横版：会裁掉大半个画面
+    return '<label style="display:flex;gap:8px;align-items:center"><input type="checkbox" class="vsz" value="' + w + "x" + h + '"' + (bad ? " disabled" : "") + "> " + esc(lb) + (bad ? ' <span class="hint">（竖版片不适合，会裁掉大半）</span>' : "") + "</label>";
+  }).join("");
+  modal('<h2>出片</h2><p class="hint">按目前的剪辑表出正式成片（' + fmt(T.dur) + "，" + P.W + "×" + P.H + "），覆盖 out/final.mp4。长片要几分钟，进度在上方；可以取消。</p>" +
+    "<b>另外再出（选填）</b>" + opts + '<p class="hint">其他尺寸会裁切画面（字卡、字幕按比例重新排），另存成 out/final_宽x高.mp4，成品文件夹的名字加尺寸后缀，不会盖掉主版本。一个接一个出。</p>' +
+    '<div class="acts"><button class="btn" data-a="no">先不要</button><button class="btn primary" data-a="go">出片</button></div>', async (a) => {
+    if (a !== "go") return;
+    const extra = [...document.querySelectorAll(".vsz:checked")].map((x) => x.value.split("x").map(Number));
+    await startJob({ kind: "final", duration: T.dur });
+    for (const [w, h] of extra) { if (!P) break; await startJob({ kind: "variant", w, h, duration: T.dur }); }
+  });
 };
 function playResult(url, title, sec) {
   modal("<h2>" + esc(title) + (sec ? '　<span class="hint">渲染 ' + sec + " 秒</span>" : "") + '</h2><video controls autoplay playsinline src="' + esc(url) + "?v=" + Date.now() + '"></video><div class="acts"><button class="btn" data-a="close">关闭</button></div>', null, true);
@@ -1446,18 +1599,20 @@ function toast(msg, bad, acts, ms) {
   t.onclick = (e) => { const b = e.target.closest("button"); if (b) { t.hidden = true; acts[+b.dataset.k][1](); } };
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, ms || (acts ? 8000 : 4200));
 }
+let modalGen = 0;
 function modal(html, onAct, wide) {
-  const m = $("modal"), box = $("modalBox");
+  const m = $("modal"), box = $("modalBox"), gen = ++modalGen;
   box.className = "box" + (wide ? " wide" : ""); box.innerHTML = html; m.hidden = false;
   const close = () => { m.hidden = true; box.innerHTML = ""; document.removeEventListener("keydown", esc_); };
   const esc_ = (e) => { if (e.key === "Escape") close(); };
   document.addEventListener("keydown", esc_);
-  box.onclick = (e) => { const b = e.target.closest("[data-a]"); if (!b) return; const a = b.dataset.a; if (a !== "copy") close(); if (onAct) onAct(a); };
+  // 先做动作（这时表单还在、读得到），再关；动作自己开了新的对话框（下一步、重新整理）就不关
+  box.onclick = (e) => { const b = e.target.closest("[data-a]"); if (!b) return; const a = b.dataset.a; if (onAct) onAct(a); if (a !== "copy" && gen === modalGen) close(); };
   m.onclick = (e) => { if (e.target === m) close(); };
   const f = box.querySelector(".primary, button"); if (f) f.focus();
 }
 function help() {
-  const k = [["空格", "播放／暂停"], ["← →", "前后一格（加 Shift＝一秒）"], ["Alt＋方向键", "微调选中字卡的位置（加 Shift＝大步）"], ["G", "安全区开关"], ["S", "在播放头切开画面"], ["Shift／⌘＋点", "多选字卡与特效（整组拖、一起改）"], ["⌘Z／Ctrl+Z", "复原"], ["⇧⌘Z／Ctrl+Y", "重做"], ["R", "渲染这一段（选中的或播放头前后）"], ["Delete", "删除选中的字卡／特效；选中字幕＝把那句剪掉"], ["Esc", "取消选取"], ["M", "声音开关"], ["+ −", "时间轴放大缩小"], ["?", "这张表"]];
+  const k = [["空格", "播放／暂停"], ["← →", "前后一格（加 Shift＝一秒）"], ["Alt＋方向键", "微调选中字卡的位置（加 Shift＝大步）"], ["G", "安全区开关"], ["S", "在播放头切开画面"], ["N", "在播放头留言（可以请 Claude 处理）"], ["Shift／⌘＋点", "多选字卡与特效（整组拖、一起改）"], ["⌘Z／Ctrl+Z", "复原"], ["⇧⌘Z／Ctrl+Y", "重做"], ["R", "渲染这一段（选中的或播放头前后）"], ["Delete", "删除选中的字卡／特效；选中字幕＝把那句剪掉"], ["Esc", "取消选取"], ["M", "声音开关"], ["+ −", "时间轴放大缩小"], ["?", "这张表"]];
   modal('<h2>快捷键</h2><div class="keys">' + k.map((x) => '<span class="kbd">' + esc(x[0]) + "</span><span>" + esc(x[1]) + "</span>").join("") + '</div><p class="hint">画面上的字卡是近似样子，停下来会换成引擎的真样子；动态、转场、组合卡以「渲染这一段」为准。</p>' +
     '<div class="acts"><button class="btn" data-a="hist">历史版本</button><button class="btn" data-a="tour">再看一次导览</button><button class="btn" data-a="diag">诊断报告</button><button class="btn primary" data-a="close">好</button></div>', (a) => { if (a === "diag") diag(); if (a === "tour") tour(0); if (a === "hist") openHistory("sb"); });
 }
@@ -1484,6 +1639,7 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "Delete" || e.key === "Backspace") { if (sel) { e.preventDefault(); deleteSel(); } }
   else if (e.key === "g" || e.key === "G") $("tgSafe").click();
   else if (e.key === "s" || e.key === "S") splitAtPlayhead();
+  else if (e.key === "n" || e.key === "N") { e.preventDefault(); addNote(); }
   else if (e.key === "Escape") { multi = []; select(null); }
   else if (e.key === "r" || e.key === "R") renderRange();
   else if (e.key === "m" || e.key === "M") $("mute").click();

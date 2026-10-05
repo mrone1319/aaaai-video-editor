@@ -127,6 +127,16 @@ p = subprocess.run([sys.argv[1], "mcp"], input="\n".join(json.dumps(m) for m in 
 rs = [json.loads(l) for l in p.stdout.splitlines() if l.strip()]
 assert len(rs) == 3 and rs[1]["result"]["tools"], p.stdout[-400:] + p.stderr[-400:]
 PY
+t mcp-storyboard python3 - "$A" "$SB" <<'PY'
+import json, subprocess, sys
+def call(i, name, args): return {"jsonrpc": "2.0", "id": i, "method": "tools/call", "params": {"name": name, "arguments": args}}
+msgs = [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}, call(2, "storyboard_show", {"file": sys.argv[2]}),
+        call(3, "storyboard_patch", {"file": sys.argv[2], "expect": "000000000000", "set": {"output.fps": 30}})]
+p = subprocess.run([sys.argv[1], "mcp"], input="\n".join(json.dumps(m) for m in msgs) + "\n", capture_output=True, text=True, timeout=60)
+rs = [json.loads(l) for l in p.stdout.splitlines() if l.strip()]
+assert json.loads(rs[1]["result"]["content"][0]["text"])["version"], p.stdout[-300:]
+assert "版本已变" in rs[2]["result"]["content"][0]["text"], p.stdout[-300:]
+PY
 echo "==========================================="
 echo "通过 $pass 项，失败 $fail 项${failed:+：$failed}"
 [ "$fail" = 0 ]

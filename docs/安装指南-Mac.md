@@ -205,7 +205,7 @@ bash install.sh --no-model
 
 ## 四、在其他平台使用（MCP）
 
-B-roll 生成可以做成标准 MCP 工具，给任何支持 MCP 的 AI 用：
+B-roll 生成、读写剪辑表、渲染一段、Studio 留言都可以做成标准 MCP 工具，给任何支持 MCP 的 AI 用：
 
 | 平台 | 设置 |
 |---|---|
@@ -225,9 +225,14 @@ B-roll 生成可以做成标准 MCP 工具，给任何支持 MCP 的 AI 用：
 | `broll_plan` | 整个项目的估价、生成、审片、放进成片 |
 | `broll_library` | 素材库 |
 | `doctor` | 检查依赖 |
+| `storyboard_show` | 读剪辑表／字幕轨的内容与版本 |
+| `storyboard_patch` | 带版本检查地改剪辑表／字幕轨（和 Studio、对话同一个存取口，不会互相覆盖） |
+| `render_range` | 只渲染一段（预览画质，几秒钟） |
+| `studio_notes` | 看 Studio 的留言、回覆 |
 
 - 要花钱的工具一律两步：先返回报价，你同意后才真正生成。
 - 相对路径按项目目录解析。
+- 读写剪辑表的工具只能碰项目里的 `storyboard.json` 与 `work/captions.json`，别的文件一律拒绝。
 
 ---
 

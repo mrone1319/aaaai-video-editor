@@ -144,7 +144,9 @@ class Studio:
             except Exception:   # noqa: BLE001
                 pass
         final = os.path.join(d, "out", "final.mp4")
-        return {"id": i, "source_duration": src_dur, "name": os.path.basename(d), "dir": d, "storyboard": raw, "sb_version": ver,
+        from .. import notes as NT
+        nd, nv = NT.load(d)
+        return {"id": i, "source_duration": src_dur, "notes": nd.get("notes", []), "notes_version": nv, "name": os.path.basename(d), "dir": d, "storyboard": raw, "sb_version": ver,
                 "captions": cap_doc, "cap_version": cap_ver, "captions_auto": auto,
                 "duration": dur, "fps": fps, "W": int(out.get("width", 1080)), "H": int(out.get("height", 1920)),
                 "styles": styles, "source_ok": source_ok, "proxy": proxy,
@@ -155,8 +157,10 @@ class Studio:
 
     def versions(self, i: str) -> dict:
         capp = self.capp(i)
+        from .. import notes as NT
         return {"sb_version": store.current_version(self.sbp(i)),
-                "cap_version": store.current_version(capp) if os.path.isfile(capp) else ""}
+                "cap_version": store.current_version(capp) if os.path.isfile(capp) else "",
+                "notes_version": store.current_version(NT.path(self.projects[i]))}
 
     def save(self, body: dict) -> dict:
         i = body["p"]
@@ -312,14 +316,18 @@ class Studio:
                                 "url": "f/%s/%s" % (i, rel), "icon": rel.startswith("assets/icons/")})
         return {"assets": out}
 
-    def upload(self, i: str, name: str, rfile, n: int) -> dict:
+    def upload(self, i: str, name: str, rfile, n: int, sub: str = "assets") -> dict:
         """把用户拖进来的文件放进 项目/assets/（只收图片、影片、声音；同名不覆盖，自动加编号）。"""
         base = os.path.basename(name.replace("\\", "/")).strip()
         stem, ext = os.path.splitext(base)
         if not stem or ext.lower() not in self.ASSET_EXT:
             raise ValueError("只收图片（png／jpg／webp）、影片（mp4／mov）、声音（mp3／m4a／wav）")
+        if sub not in ("assets", "raw"):
+            raise ValueError("只能放进 assets／raw")
+        if sub == "raw" and self.ASSET_EXT[ext.lower()] != "video":
+            raise ValueError("原片要是影片（mp4／mov）")
         stem = re.sub(r"[\\/:*?\"<>|\x00-\x1f]", "_", stem)[:80]
-        d = os.path.join(self.projects[i], "assets")
+        d = os.path.join(self.projects[i], sub)
         os.makedirs(d, exist_ok=True)
         path, k = os.path.join(d, stem + ext.lower()), 2
         while os.path.exists(path):
@@ -348,6 +356,84 @@ class Studio:
         tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"])
         fc = faces.track(sb, tl, int(sb["output"]["width"]), int(sb["output"]["height"]))
         return {"step": faces.STEP, "faces": [[t, list(b) if b else None] for t, b in fc]}
+
+    # ------------------------------------------------------------ 时间点留言
+    def notes(self, body: dict) -> dict:
+        from .. import notes as NT
+        d = self.projects[body["p"]]
+        act = body.get("action")
+        if act == "add":
+            NT.add(d, body.get("text", ""), float(body.get("t", 0)), body.get("to", "claude"), body.get("a"), body.get("b"),
+                   body.get("ref"))
+        elif act == "change":
+            NT.change(d, int(body["id"]), status=body.get("status"), text=body.get("text"), to=body.get("to"),
+                      delete=bool(body.get("delete")))
+        doc, ver = NT.load(d)
+        return {"notes": doc.get("notes", []), "notes_version": ver}
+
+    # ------------------------------------------------------------ 频道规则：档案文字＋可自动检查的规则（studio-checks.json）
+    def rules(self, i: Optional[str] = None) -> dict:
+        prof = config.load().get("profile") or ""
+        files, checks = [], {}
+        for d in config.profile_dirs():
+            p = os.path.join(d, "rules.md")
+            if os.path.isfile(p):
+                files.append({"name": p.replace(os.path.expanduser("~"), "~"), "text": open(p, encoding="utf-8").read()[:20000]})
+            c = os.path.join(d, "studio-checks.json")
+            if os.path.isfile(c):
+                try:
+                    checks.update({k: v for k, v in json.load(open(c, encoding="utf-8")).items() if not k.startswith("_")})
+                except ValueError:
+                    pass
+        return {"profile": prof, "files": files, "checks": checks}
+
+    def rule_items(self, i: str, sb: dict, tl) -> list:
+        ck = self.rules(i)["checks"]
+        if not ck:
+            return []
+        items, dur = [], tl.duration
+        prof = config.load().get("profile")
+        tag = "频道规则（%s）：" % prof
+        if ck.get("max_seconds") and dur > float(ck["max_seconds"]):
+            items.append({"level": "problem", "kind": "rule", "msg": tag + "片长 %.0f 秒，超过上限 %s 秒" % (dur, ck["max_seconds"])})
+        elif ck.get("warn_seconds") and dur > float(ck["warn_seconds"]):
+            items.append({"level": "note", "kind": "rule", "msg": tag + "片长 %.0f 秒，超过 %s 秒（要回报）" % (dur, ck["warn_seconds"])})
+        if ck.get("require_cover") and not any(os.path.isfile(os.path.join(sb["_base"], "out", n)) for n in
+                                               ("cover_1080x1350.png", "cover_1080x1920.png", "cover_1920x1080.png")):
+            items.append({"level": "problem", "kind": "rule", "msg": tag + "还没有封面（「封面」页做）"})
+        if ck.get("require_captions") and not sb["captions"].get("enabled", True):
+            items.append({"level": "problem", "kind": "rule", "msg": tag + "字幕关掉了"})
+        if ck.get("require_music") and not sb.get("music"):
+            items.append({"level": "problem", "kind": "rule", "msg": tag + "没有配乐"})
+        if ck.get("require_hook") and not sb.get("hook"):
+            items.append({"level": "note", "kind": "rule", "msg": tag + "没有开头钩子（逐字稿页「推荐开头钩子」）"})
+        if ck.get("require_bilingual"):
+            capp = self.capp(i)
+            pcs = json.load(open(capp, encoding="utf-8")).get("pieces", []) if os.path.isfile(capp) else []
+            miss = sum(1 for x in pcs if not (x.get("en") or "").strip())
+            if not pcs or miss:
+                items.append({"level": "problem", "kind": "rule", "msg": tag + "要双语字幕：还有 %d 句没有英文" % miss if pcs else tag + "要双语字幕：还没有字幕轨"})
+        if ck.get("max_cards_per_minute"):
+            n = len([o for o in sb.get("overlays") or [] if o.get("type") not in ("confetti", "glow", "broll", "frame")])
+            per = n / max(1.0, dur / 60.0)
+            if per > float(ck["max_cards_per_minute"]):
+                items.append({"level": "note", "kind": "rule", "msg": tag + "每分钟 %.1f 张字卡，超过 %s 张（宁少勿多）" % (per, ck["max_cards_per_minute"])})
+        if not items:
+            items.append({"level": "ok", "kind": "rule", "msg": tag + "自动检查都通过"})
+        return items
+
+    def new_project(self, body: dict) -> dict:
+        """接入外部成片：在项目文件夹建一个新项目（日期-名字），原片之后上传到 raw/。"""
+        root = config.get("projects_dir")
+        if not root:
+            raise ValueError("还没设定项目文件夹（aaaai-editor config）")
+        name = re.sub(r"[\\/:*?\"<>|\x00-\x1f]", "_", (body.get("name") or "").strip())[:60] or "接入影片"
+        base = os.path.join(root, "%s-%s" % (time.strftime("%Y%m%d"), name))
+        d, k = base, 2
+        while os.path.exists(d):
+            d, k = "%s-%d" % (base, k), k + 1
+        os.makedirs(os.path.join(d, "raw"))
+        return {"id": self.register(d), "dir": d}
 
     # ------------------------------------------------------------ 封面与图卡
     def cardlist(self, i: str) -> dict:
@@ -502,6 +588,10 @@ class Studio:
                                       .replace("的%s卡片" % ov.get("type"), "的%s" % schema.CARDS.get(ov.get("type"), (ov.get("type"),))[0])})
             except Exception as e:   # noqa: BLE001
                 items.append({"level": "note", "kind": "face", "msg": "没检查到字卡与脸的位置：%s" % e})
+        try:
+            items += self.rule_items(i, sb, tl)
+        except Exception as e:   # noqa: BLE001
+            items.append({"level": "note", "kind": "rule", "msg": "频道规则没检查成：%s" % e})
         final = os.path.join(sb["_base"], "out", "final.mp4")
         if os.path.isfile(final):
             if os.path.getmtime(final) < os.path.getmtime(sbp):
@@ -540,6 +630,22 @@ class Studio:
                 if body.get("pick"):
                     cmd += ["--pick", ",".join(str(int(x)) for x in body["pick"])]
                 job.update(label="出图卡", cmd=cmd, total=1.0, t0=0.0)
+            elif kind == "variant":   # 另一个尺寸的成片：暂时的剪辑表只换尺寸与输出路径
+                w_, h_ = int(body["w"]) & ~1, int(body["h"]) & ~1
+                raw, _v = store.read(sbp)
+                out = dict(raw.get("output") or {})
+                out.update(width=w_, height=h_, path="out/final_%dx%d.mp4" % (w_, h_))
+                raw["output"] = out
+                tmp = os.path.join(self.projects[i], ".studio-variant-%dx%d.json" % (w_, h_))
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(raw, f, ensure_ascii=False)
+                job.update(label="出 %d×%d 版" % (w_, h_), cmd=["render", tmp], total=float(body.get("duration") or 1), t0=0.0, tmp=tmp)
+            elif kind == "adopt":
+                rawdir = os.path.join(self.projects[i], "raw")
+                vids = sorted(f for f in os.listdir(rawdir) if not f.startswith(".")) if os.path.isdir(rawdir) else []
+                if not vids:
+                    raise ValueError("raw/ 里还没有影片")
+                job.update(label="接入影片", cmd=["adopt", os.path.join(rawdir, vids[0]), "--out", sbp], total=1.0, t0=0.0)
             elif kind == "audition":   # 试听：用暂时的剪辑表（套上要试的配乐／降噪）渲染一小段，不动真的剪辑表
                 a, b = float(body["a"]), float(body["b"])
                 raw, _v = store.read(sbp)
@@ -885,6 +991,8 @@ def _handler(studio: Studio):
                     return self._json(studio.assets(q["p"][0]))
                 if r == "api/faces":
                     return self._json(studio.faces(q["p"][0]))
+                if r == "api/rules":
+                    return self._json(studio.rules((q.get("p") or [None])[0]))
                 if r == "api/cardlist":
                     return self._json(studio.cardlist(q["p"][0]))
                 if r == "api/pictures":
@@ -913,7 +1021,8 @@ def _handler(studio: Studio):
                     if n > MAX_UPLOAD:
                         self.close_connection = True   # 没读完的内容不能留在连线上
                         return self._json({"error": "文件太大（上限 4 GB）"}, 413)
-                    return self._json(studio.upload(_q["p"][0], unquote(_q["name"][0]), self.rfile, n))
+                    return self._json(studio.upload(_q["p"][0], unquote(_q["name"][0]), self.rfile, n,
+                                                    (_q.get("dir") or ["assets"])[0]))
                 except (KeyError, ValueError, OSError) as e:
                     self.close_connection = True
                     return self._json({"error": str(e)}, 400)
@@ -924,6 +1033,10 @@ def _handler(studio: Studio):
                 body = json.loads(self.rfile.read(n).decode("utf-8") or "{}")
                 if r == "api/save":
                     return self._json(studio.save(body))
+                if r == "api/notes":
+                    return self._json(studio.notes(body))
+                if r == "api/newproject":
+                    return self._json(studio.new_project(body))
                 if r == "api/broll":
                     return self._json(studio.broll(body))
                 if r == "api/tidy":

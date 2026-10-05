@@ -14,6 +14,29 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+
+
+def _iso_home() -> str:
+    """隔离的 aaaai-editor 家目录：项目文件夹、成品文件夹都在暂存区，测试出的片不会跑进用户真的「成品」。
+    字体、模型、频道档案等照用原本的（符号链接）。要在 import aaaai_editor 之前设好。"""
+    real = os.path.expanduser(os.environ.get("AAAAI_EDITOR_HOME") or "~/.aaaai-editor")
+    h = tempfile.mkdtemp(prefix="studio-home-")
+    for n in os.listdir(real) if os.path.isdir(real) else []:
+        if n not in ("config.json", "studio.json"):
+            os.symlink(os.path.join(real, n), os.path.join(h, n))
+    cfg = {}
+    try:
+        cfg = json.load(open(os.path.join(real, "config.json"), encoding="utf-8"))
+    except (OSError, ValueError):
+        pass
+    cfg.update(projects_dir=os.path.join(h, "projects"), exports_dir=os.path.join(h, "exports"))
+    os.makedirs(cfg["projects_dir"])
+    json.dump(cfg, open(os.path.join(h, "config.json"), "w", encoding="utf-8"), ensure_ascii=False)
+    os.environ["AAAAI_EDITOR_HOME"] = h
+    return h
+
+
+HOME = _iso_home()
 from aaaai_editor import env, store  # noqa: E402
 from aaaai_editor.studio import server  # noqa: E402
 
@@ -221,6 +244,60 @@ def main():
     check("试听：渲染一小段、不改剪辑表、不留暂存档", jv["status"] == "done" and os.path.isfile(out) and "audition_" in out
           and store.current_version(sbp) == v_before and not os.path.exists(os.path.join(d, ".studio-audition.json")),
           json.dumps(jv, ensure_ascii=False)[:300])
+
+    print("== 阶段 4：留言、频道规则、多尺寸、接入影片")
+    c, nt, _ = req(B + "api/notes", {"p": pid, "action": "add", "text": "这里太慢", "t": 2.0, "to": "claude", "a": 1.5, "b": 3.0,
+                                     "ref": {"k": "ov", "i": 0, "label": "标题卡"}})
+    check("留言（请 Claude 处理）", c == 200 and nt["notes"][0]["to"] == "claude" and nt["notes_version"], str(nt)[:200])
+    c, ver, _ = req(B + "api/version?p=" + pid)
+    check("版本查询带留言版本", ver.get("notes_version") == nt["notes_version"])
+    cli = subprocess.run([sys.executable, "-m", "aaaai_editor", "notes", d], cwd=ROOT, capture_output=True, text=True)
+    check("Claude 用命令看得到待处理留言", "这里太慢" in cli.stdout, cli.stdout + cli.stderr)
+    subprocess.run([sys.executable, "-m", "aaaai_editor", "notes", d, "--reply", "1", "剪紧了", "--done-too"], cwd=ROOT,
+                   capture_output=True)
+    c, ver2, _ = req(B + "api/version?p=" + pid)
+    c, nt2, _ = req(B + "api/notes", {"p": pid})
+    check("回覆后界面看得到（版本变、内容对）", ver2["notes_version"] != nt["notes_version"] and nt2["notes"][0]["reply"] == "剪紧了"
+          and nt2["notes"][0]["status"] == "done")
+    c, nt3, _ = req(B + "api/notes", {"p": pid, "action": "change", "id": 1, "delete": True})
+    check("删除留言", c == 200 and not nt3["notes"])
+    c, ru, _ = req(B + "api/rules?p=" + pid)
+    check("频道规则", c == 200 and "files" in ru and "checks" in ru)
+    v_before = store.current_version(sbp)
+    c, r, _ = req(B + "api/render", {"p": pid, "kind": "variant", "w": 540, "h": 540, "duration": 8})
+    jid, t0 = r.get("job"), time.time()
+    while time.time() - t0 < 300:
+        _, jv, _ = req(B + "api/job?id=" + jid)
+        if jv["status"] != "running":
+            break
+        time.sleep(0.5)
+    vout = os.path.join(d, "out", "final_540x540.mp4")
+    exp = os.path.join(HOME, "exports", os.path.basename(d) + "-540x540.mp4")
+    check("另一个尺寸：out/final_宽x高、成品加后缀、剪辑表没变、不留暂存档",
+          jv["status"] == "done" and os.path.isfile(vout) and os.path.isfile(exp) and store.current_version(sbp) == v_before
+          and not any(n.startswith(".studio-variant") for n in os.listdir(d)), json.dumps(jv, ensure_ascii=False)[-300:])
+    if os.path.isfile(vout):
+        inf = env.probe(vout)
+        check("尺寸正确", inf.get("width") == 540 and inf.get("height") == 540, str(inf))
+    c, npj, _ = req(B + "api/newproject", {"name": "接入/测试"})
+    nd = npj.get("dir", "")
+    check("建新项目（名字里的斜线不会变成子目录）", c == 200 and os.path.isdir(os.path.join(nd, "raw"))
+          and os.path.dirname(nd) == os.path.join(HOME, "projects"), str(npj))
+    c3, _, _ = req(B + "api/upload?p=%s&dir=raw&name=a.png" % npj["id"], data=png)
+    check("原片只收影片", c3 == 400)
+    vid = open(os.path.join(d, "raw", "a.mp4"), "rb").read()
+    c4, r4, _ = req(B + "api/upload?p=%s&dir=raw&name=%s" % (npj["id"], urllib.request.quote("外部 成片.mp4")), data=vid)
+    check("原片上传进 raw/", c4 == 200 and r4["path"] == "raw/外部 成片.mp4")
+    c, r, _ = req(B + "api/render", {"p": npj["id"], "kind": "adopt"})
+    jid, t0 = r.get("job"), time.time()
+    while time.time() - t0 < 300:
+        _, jv, _ = req(B + "api/job?id=" + jid)
+        if jv["status"] != "running":
+            break
+        time.sleep(0.5)
+    asb = os.path.join(nd, "storyboard.json")
+    check("接入影片：建好剪辑表", jv["status"] == "done" and os.path.isfile(asb) and json.load(open(asb))["cuts"][0][1] > 7,
+          json.dumps(jv, ensure_ascii=False)[-300:])
 
     print("== 体检与诊断")
     c, r, _ = req(B + "api/check", {"p": pid})

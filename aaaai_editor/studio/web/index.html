@@ -10,7 +10,7 @@
 <!-- 项目首页 -->
 <main class="home" id="home" hidden>
   <h1>aaaai-editor Studio</h1>
-  <div class="sub" id="homeSub">选一个项目开始剪辑</div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px"><div class="sub" id="homeSub" style="margin:0">选一个项目开始剪辑</div><span class="spacer"></span><button class="btn" id="adoptBtn" title="把别处做好的影片接进来：转录、字幕、响度、封面">＋ 接入影片</button></div>
   <div class="grid" id="grid"></div>
 </main>
 
@@ -25,6 +25,7 @@
     <label class="chip" for="styleSel">风格
       <select id="styleSel" style="background:none;border:0;padding:0 2px;"></select>
     </label>
+    <button class="btn sm" id="styleAll" title="同一张字卡、同一个画面，一次看所有风格">风格总览</button>
     <button class="btn" id="undo" title="复原（⌘Z／Ctrl+Z）">复原</button>
     <button class="btn" id="redo" title="重做（⇧⌘Z／Ctrl+Y）">重做</button>
     <button class="btn" id="renderRange" title="只渲染选中的那一段（或播放头前后），几秒钟看到引擎的真样子（R）">渲染这一段</button>
@@ -50,6 +51,7 @@
         <button role="tab" id="tab-insp" aria-selected="true" data-pane="insp">属性</button>
         <button role="tab" id="tab-tr" aria-selected="false" data-pane="tr">逐字稿</button>
         <button role="tab" id="tab-chk" aria-selected="false" data-pane="chk">体检<span class="n" id="chkN" hidden></span></button>
+        <button role="tab" id="tab-nt" aria-selected="false" data-pane="nt">留言<span class="n" id="ntN" hidden></span></button>
         <button role="tab" id="tab-ast" aria-selected="false" data-pane="ast">素材</button>
         <button role="tab" id="tab-cov" aria-selected="false" data-pane="cov">封面</button>
         <button role="tab" id="tab-set" aria-selected="false" data-pane="set">设定</button>
@@ -57,6 +59,7 @@
       <div class="pane" id="pane-insp" role="tabpanel" aria-labelledby="tab-insp"></div>
       <div class="pane" id="pane-tr" role="tabpanel" aria-labelledby="tab-tr" hidden></div>
       <div class="pane" id="pane-chk" role="tabpanel" aria-labelledby="tab-chk" hidden></div>
+      <div class="pane" id="pane-nt" role="tabpanel" aria-labelledby="tab-nt" hidden></div>
       <div class="pane" id="pane-ast" role="tabpanel" aria-labelledby="tab-ast" hidden></div>
       <div class="pane" id="pane-cov" role="tabpanel" aria-labelledby="tab-cov" hidden></div>
       <div class="pane" id="pane-set" role="tabpanel" aria-labelledby="tab-set" hidden></div>
@@ -69,6 +72,7 @@
     <span class="tc" id="tc">00:00.00</span>
     <div class="menu-wrap"><button class="btn" id="addCardBtn" aria-haspopup="true" title="在播放头加一张字卡">＋ 字卡</button><div class="menu" id="cardMenu" hidden></div></div>
     <div class="menu-wrap"><button class="btn" id="addFxBtn" aria-haspopup="true" title="在播放头加推近、彩带、音效">＋ 特效</button><div class="menu" id="fxMenu" hidden></div></div>
+    <button class="btn" id="noteBtn" title="在播放头留言，可以请 Claude 处理（N）">＋ 留言</button>
     <button class="btn" id="splitBtn" title="在播放头把画面切成两段（S）">切开</button>
     <button class="btn" id="delBtn" title="删除选中的字卡／特效／画面段（Delete）">删除</button>
     <span class="sep"></span>

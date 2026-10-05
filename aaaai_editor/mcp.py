@@ -65,7 +65,38 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {"query": {"type": "string", "default": ""}}}},
     {"name": "doctor", "description": "检查 aaaai-editor 依赖（ffmpeg、whisper、字体等）。",
      "inputSchema": {"type": "object", "properties": {}}},
+    {"name": "storyboard_show",
+     "description": "读剪辑表（storyboard.json）或字幕轨（work/captions.json）的内容与版本。改之前先读，拿到 version。",
+     "inputSchema": {"type": "object", "properties": {"file": {"type": "string", "description": "项目里的 storyboard.json 或 work/captions.json"}},
+                     "required": ["file"]}},
+    {"name": "storyboard_patch",
+     "description": "带版本检查地改剪辑表／字幕轨（和 Studio、对话同一个存取口，不会互相覆盖）。"
+                    "set／append：{路径: 值}，路径像 overlays.2.text；delete：[路径]。expect＝读到的 version，版本已变就拒绝。",
+     "inputSchema": {"type": "object", "properties": {
+         "file": {"type": "string"}, "expect": {"type": "string"},
+         "set": {"type": "object"}, "append": {"type": "object"}, "delete": {"type": "array", "items": {"type": "string"}}},
+         "required": ["file", "expect"]}},
+    {"name": "render_range",
+     "description": "只渲染成片 start–end 秒这一段（预览画质，几秒钟），回传影片路径。",
+     "inputSchema": {"type": "object", "properties": {"storyboard": {"type": "string"}, "start": {"type": "number"},
+                                                      "end": {"type": "number"}}, "required": ["storyboard", "start", "end"]}},
+    {"name": "studio_notes",
+     "description": "Studio 的时间点留言：action=list 列出要处理的（all=true 全部）；action=reply 回覆第 id 条（done=true 顺便标完成）。",
+     "inputSchema": {"type": "object", "properties": {"project": {"type": "string"}, "action": {"type": "string", "enum": ["list", "reply"]},
+                                                      "all": {"type": "boolean"}, "id": {"type": "integer"}, "text": {"type": "string"},
+                                                      "done": {"type": "boolean"}}, "required": ["project", "action"]}},
 ]
+
+
+def _project_file(p: str, names=("storyboard.json", "captions.json")) -> str:
+    """MCP 只能读写项目里的剪辑表与字幕轨（别的 AI 调用：不让它借这个工具碰其他文件）。"""
+    rp = os.path.realpath(_path(p))
+    if os.path.basename(rp) not in names:
+        raise ValueError("只能是 storyboard.json 或 work/captions.json：%s" % p)
+    proj = os.path.dirname(rp) if os.path.basename(rp) == "storyboard.json" else os.path.dirname(os.path.dirname(rp))
+    if not os.path.isfile(os.path.join(proj, "storyboard.json")):
+        raise ValueError("不在 aaaai-editor 项目里：%s" % p)
+    return rp
 
 
 def _path(p):
@@ -136,6 +167,41 @@ def _call(name: str, a: dict) -> str:
     if name == "doctor":
         env.doctor()
         return ""
+    if name == "storyboard_show":
+        from . import store
+        f = _project_file(a["file"])
+        obj, ver = store.read(f)
+        return json.dumps({"version": ver, "content": obj}, ensure_ascii=False, indent=1)
+    if name == "storyboard_patch":
+        from . import store
+        f = _project_file(a["file"])
+        ops = [("set", k, v) for k, v in (a.get("set") or {}).items()] + \
+              [("append", k, v) for k, v in (a.get("append") or {}).items()] + [("del", k) for k in a.get("delete") or []]
+        if not ops:
+            raise ValueError("没有要改的")
+        obj, _v = store.read(f)
+        store.apply_ops(obj, ops)
+        try:
+            ver = store.write(f, obj, expect=a["expect"], source="mcp")
+        except store.Conflict as e:
+            return "版本已变（%s）：先 storyboard_show 读最新内容再改，不要硬写。" % e
+        return "✅ %d 处修改，版本 %s" % (len(ops), ver)
+    if name == "render_range":
+        from . import render
+        f = _project_file(a["storyboard"], ("storyboard.json",))
+        return "✅ %s" % render.render_range(f, float(a["start"]), float(a["end"]))
+    if name == "studio_notes":
+        from . import notes as N
+        proj = os.path.realpath(_path(a["project"]))
+        proj = os.path.dirname(proj) if os.path.isfile(proj) else proj
+        if not os.path.isfile(os.path.join(proj, "storyboard.json")):
+            raise ValueError("不是项目文件夹：%s" % a["project"])
+        if a["action"] == "reply":
+            n = N.change(proj, int(a["id"]), source="mcp", reply=a.get("text") or "", status="done" if a.get("done") else None)
+            return "✅ 回覆了第 %d 条" % n["id"]
+        doc, _v = N.load(proj)
+        rows = doc.get("notes", []) if a.get("all") else N.pending(proj)
+        return "\n".join(N.describe(n) for n in rows) or "没有要处理的留言。"
     raise KeyError("没有这个工具：%s" % name)
 
 

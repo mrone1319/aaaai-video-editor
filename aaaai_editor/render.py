@@ -384,7 +384,8 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
              "-movflags", "+faststart", "-shortest", out["path"]])
     if not proxy:   # 正式成片：再放一份到「成品」文件夹，不用进项目里找
         from . import config
-        dst = config.export(out["path"], sb["_base"])
+        stem = os.path.splitext(os.path.basename(out["path"]))[0]   # final.mp4 → 不加；final_1080x1350 → -1080x1350
+        dst = config.export(out["path"], sb["_base"], "" if stem == "final" else "-" + stem.replace("final_", "", 1))
         if dst:
             print("📦 成品：%s" % dst)
     return out["path"]

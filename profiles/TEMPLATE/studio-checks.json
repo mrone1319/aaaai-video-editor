@@ -1,0 +1,11 @@
+{
+ "_说明": "Studio「体检」会照这些规则自动检查（全部选填，不写就不检查）。写在你自己的频道档案里：~/.aaaai-editor/profiles/<你的名字>/studio-checks.json",
+ "warn_seconds": 75,
+ "max_seconds": 90,
+ "require_cover": true,
+ "require_captions": true,
+ "require_bilingual": false,
+ "require_music": false,
+ "max_cards_per_minute": 8,
+ "require_hook": false
+}
