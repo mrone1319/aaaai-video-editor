@@ -443,6 +443,11 @@ def main():
     check("使用指南路径只放行两份指南", g3 == 404 and g4 == 404, "%s %s" % (g3, g4))
     zh_ids = _re.findall(r'id="([^"]+)"', h1.decode("utf-8")); en_ids = _re.findall(r'id="([^"]+)"', h2.decode("utf-8"))
     check("中英文指南章节一一对应", zh_ids == en_ids and len(zh_ids) > 20)
+    _, idx, _ = req(B)
+    idx = idx.decode("utf-8") if isinstance(idx, bytes) else idx
+    links = ("https://aaaai.ai/", "https://linktr.ee/mrone.eth", "https://otg.community/")
+    check("Studio 首页与编辑器底部都有版权与相关网站", idx.count('class="foot"') == 2 and all(idx.count(u) == 2 for u in links))
+    check("使用指南版权章节连到权利人网站", all(u.encode() in h1 and u.encode() in h2 for u in links))
 
     print("== 体检与诊断")
     c, r, _ = req(B + "api/check", {"p": pid})

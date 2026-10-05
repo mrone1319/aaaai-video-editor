@@ -121,7 +121,7 @@ button, select, input, textarea { font: inherit; color: inherit; }
 .pcard .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; color: var(--muted); font-size: 12px; }
 
 /* ---------- 编辑器框架 ---------- */
-.app { display: grid; grid-template-rows: auto minmax(0, 1fr) auto minmax(200px, 34vh); gap: 10px; height: 100%; padding: 10px 14px 14px; min-height: 640px; }
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr) auto minmax(200px, 34vh) auto; gap: 10px; height: 100%; padding: 10px 14px 14px; min-height: 640px; }
 .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 40px; }
 .top .mark { margin-left: 2px; }
 .brand { font-weight: 800; letter-spacing: -.01em; font-size: 14px; display: inline-flex; align-items: baseline; gap: 8px; }
@@ -395,9 +395,20 @@ input[type="range"] { accent-color: var(--accent); }
 .blurbox { position: absolute; backdrop-filter: blur(var(--bl, 16px)); -webkit-backdrop-filter: blur(var(--bl, 16px)); outline: 1px dashed rgba(255,255,255,.5); cursor: move; border-radius: 2px; }
 .blurbox.mosaic { backdrop-filter: blur(var(--bl, 16px)) contrast(1.1); background-image: linear-gradient(rgba(255,255,255,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px); background-size: 8px 8px; }
 
+/* ---------- 底部：版权与相关网站 ---------- */
+.foot { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 8px; color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.foot a { color: var(--fg-2); text-decoration: none; border-bottom: 1px solid transparent; }
+.foot a:hover, .foot a:focus-visible { color: var(--accent); border-bottom-color: currentColor; }
+.foot .sep { opacity: .5; }
+.foot .grp { display: inline-flex; gap: 8px; align-items: center; }
+.foot { text-align: center; }
+@media (max-width: 720px) { .foot { flex-direction: column; gap: 4px; } .foot .sep { display: none; } }
+.home .foot { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line); }
+.app .foot { margin-top: -4px; }
+
 /* ---------- 窄屏、减少动效 ---------- */
 @media (max-width: 900px) {
-  .app { height: auto; grid-template-rows: auto auto auto 300px; }
+  .app { height: auto; grid-template-rows: auto auto auto 300px auto; }
   .main { grid-template-columns: minmax(0, 1fr); }
   .stage-wrap { height: 62vh; }
   .side { max-height: 70vh; }

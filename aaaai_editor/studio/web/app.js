@@ -1740,6 +1740,7 @@ function openGuide() {   // 走 Studio 的网址打开，目录跳转、深浅�
   window.open("guide/" + encodeURIComponent(window.STUDIO_LANG === "en" ? "User-Guide.html" : "使用指南.html"), "_blank", "noopener");
 }
 document.querySelectorAll("[data-guide]").forEach((b) => { b.onclick = openGuide; });
+fetch("api/ping").then((r) => r.json()).then((j) => { document.querySelectorAll(".foot .ver").forEach((e) => { e.textContent = "v" + j.version; }); }).catch(() => {});
 async function diag() {
   try {
     const r = await api("api/diag", { p: P ? P.id : null });
