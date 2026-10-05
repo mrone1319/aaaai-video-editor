@@ -12,6 +12,8 @@ ANIMS = [["", "默认"], ["rise", "上浮（带超调）"], ["pop", "弹出"], [
          ["right", "右滑入"], ["fall", "下落"]]
 SFX = [["", "无"], ["pop", "啵"], ["ding", "叮"], ["whoosh", "咻"], ["coin", "金币"], ["click", "喀"],
        ["tick", "滴答"], ["confetti", "拉炮"]]
+OUTS = [["", "淡出（默认）"], ["fall", "下落淡出"], ["rise", "上浮淡出"], ["left", "左滑出"], ["right", "右滑出"],
+        ["cut", "直接消失"]]
 ICON_STYLES = [["", "跟随风格"], ["line", "描边"], ["duo", "双色"], ["bold", "加粗"]]
 
 TITLE_HINT = "**两个星号**包住＝强调色；换行直接按 Enter"
@@ -56,9 +58,11 @@ CARDS = {
     "broll": ("B-roll", [("file", "文件（assets/…）", "text"), ("from", "从素材第几秒开始", "num"),
                          ("mode", "方式", "select", [["", "满版"], ["letterbox", "上下黑边"], ["blur", "模糊垫底"]])]),
     "cutout": ("去背人像", [("width", "宽度（0–1）", "num"), ("pos", "位置", "text")]),
+    "blur": ("打码", [("mode", "方式", "select", [["", "模糊"], ["mosaic", "马赛克"]]), ("strength", "强度（1＝标准，越大越糊）", "num"),
+                      ("box", "范围 [x, y, 宽, 高]（0–1；画面上拖框更方便）", "json")]),
 }
 
-COMMON = [("anim", "入场动画", "select", ANIMS), ("sfx", "音效", "select", SFX), ("scale", "大小", "num"),
+COMMON = [("anim", "入场动画", "select", ANIMS), ("out", "出场动画", "select", OUTS), ("sfx", "音效", "select", SFX), ("scale", "大小", "num"),
           ("lite", "遮罩版（看得见画面）", "bool"), ("avoid_face", "自动避开脸", "bool"),
           ("behind_subject", "放到人后面（文字穿插，需要人像去背）", "bool")]
 

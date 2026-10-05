@@ -60,14 +60,24 @@ def master(source: str, voice_graph: str, total: float, work: str, target: float
         im, _ = measure(music["file"], 0, 120)
         gm = (VOICE_REF - im if im > -69 else 0.0) + float(music.get("db", -18))
         rep["music_gain"] = gm
+        mf = ""   # 配乐自己的淡入／淡出（选填；不写就和以前完全一样）
+        if float(music.get("fade_in") or 0) > 0:
+            mf += ",afade=t=in:d=%.3f" % float(music["fade_in"])
+        if float(music.get("fade_out") or 0) > 0:
+            fo = float(music["fade_out"])
+            end = min(total, float(music.get("end") or total))   # end：配乐在成片第几秒前收掉
+            mf += ",afade=t=out:st=%.3f:d=%.3f" % (max(0.0, end - fo), fo)
+        elif music.get("end"):
+            mf += ",afade=t=out:st=%.3f:d=0.6" % max(0.0, float(music["end"]) - 0.6)
         g = ("[0:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=%.3fdB[vo];"
-             "[1:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=%.3fdB[bgm]" % (gv, gm))
+             "[1:a]aformat=sample_rates=48000:channel_layouts=stereo,volume=%.3fdB%s[bgm]" % (gv, gm, mf))
         if music.get("duck", True):   # 人声出现时压低配乐
             g += (";[vo]asplit=2[vs][vk];[bgm][vk]sidechaincompress=threshold=0.04:ratio=8:attack=20:"
                   "release=500[bd];[vs][bd]amix=inputs=2:duration=first:normalize=0[m]")
         else:
             g += ";[vo][bgm]amix=inputs=2:duration=first:normalize=0[m]"
-        env.run([ff, "-y", "-v", "error", "-i", voice, "-stream_loop", "-1", "-i", music["file"],
+        start = ["-ss", "%.3f" % float(music["start"])] if float(music.get("start") or 0) > 0 else []   # 从配乐第几秒开始
+        env.run([ff, "-y", "-v", "error", "-i", voice, "-stream_loop", "-1"] + start + ["-i", music["file"],
                  "-filter_complex", g, "-map", "[m]", "-t", "%.3f" % total, "-c:a", "pcm_s24le", mix])
     else:
         env.run([ff, "-y", "-v", "error", "-i", voice, "-af", "volume=%.3fdB" % gv, "-c:a", "pcm_s24le", mix])

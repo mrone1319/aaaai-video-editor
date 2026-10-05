@@ -210,12 +210,24 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
 
     _cv = curve(it.get("curve"))
 
+    ex = it.get("exit")
+
+    def exit_at(t):   # 与 overlays.exit_expr 同一条曲线
+        if not ex or ex["do"] <= 0:
+            return 0.0, 0.0
+        k = min(1.0, max(0.0, (t - (ex["t1"] - ex["do"])) / ex["do"])) ** 2
+        return ex["ox"] * k, ex["oy"] * k
+
     def pos_at(t):
         k = 1.0 - _cv((t - t_in) / di)
-        return x + dx * k, y + dy * k + float_y(t)
+        ex_x, ex_y = exit_at(t)
+        return x + dx * k + ex_x, y + dy * k + float_y(t) + ex_y
 
     def alpha_at(t):
-        return 1.0 - min(1.0, max(0.0, (t - t_in) / di))   # 0＝不透明
+        a_in = 1.0 - min(1.0, max(0.0, (t - t_in) / di))   # 0＝不透明
+        if ex and ex["do"] > 0 and fade_out:   # 有出场位移：淡出分摊到出场那几段（不能只靠最后一小段的 \fad）
+            return max(a_in, min(1.0, max(0.0, (t - (ex["t1"] - ex["do"])) / ex["do"])))
+        return a_in
 
     # 时间断点：入场 4 段 + 静止段
     cuts = [t_in + di * j / (6.0 if it.get("curve") == "back" else 4.0)
@@ -225,13 +237,16 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
         while tt < a1:
             cuts.append(tt)
             tt += 0.2
+    if ex and ex["do"] > 0:   # 出场：最后 do 秒切 4 段，折线逼近加速曲线
+        cuts += [ex["t1"] - ex["do"] * (1 - j / 4.0) for j in range(4)]
     pts = sorted({a0, a1} | {c for c in cuts if a0 < c < a1})
     out = []
     for u, v in zip(pts, pts[1:]):
         if v - u < 0.005:
             continue
         tags = list(base)
-        moving = (u < t_in + di - 1e-6 and (dx or dy)) or bool(fl and v > fl["s"])
+        moving = (u < t_in + di - 1e-6 and (dx or dy)) or bool(fl and v > fl["s"]) or \
+            bool(ex and ex["do"] > 0 and v > ex["t1"] - ex["do"] + 1e-6)
         x0, y0 = pos_at(u)
         if moving:
             x1, y1 = pos_at(v)
@@ -241,7 +256,7 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
         au, av = alpha_at(u), alpha_at(v)
         if au > 0.001 or av > 0.001:
             tags.append("\\alpha&H%02X&\\t(\\alpha&H%02X&)" % (int(round(au * 255)), int(round(av * 255))))
-        if fade_out and abs(v - t_end) < 1e-6 and do > 0:
+        if fade_out and abs(v - t_end) < 1e-6 and do > 0 and not (ex and ex["do"] > 0):
             tags.append("\\fad(0,%d)" % int(round(min(do, v - u) * 1000)))
         out.append("Dialogue: 0,%s,%s,C,,0,0,0,,{%s}%s" % (_ts(u), _ts(v), "".join(tags), body))
     return out

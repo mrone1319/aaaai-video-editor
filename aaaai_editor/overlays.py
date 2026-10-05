@@ -43,6 +43,14 @@ def float_expr(fl: Optional[dict]) -> str:
             % (fl["a"], fl["s"], fl["p"], fl["s"]))
 
 
+def exit_expr(ex: Optional[dict]) -> Tuple[str, str]:
+    """出场位移（fall／rise／left／right）：最后 do 秒加速移走，和淡出同时。没有就回传空字串（与以前完全一样）。"""
+    if not ex or ex.get("do", 0) <= 0:
+        return "", ""
+    e = "pow(min(1\\,max(0\\,(t-%.3f)/%.3f))\\,2)" % (ex["t1"] - ex["do"], ex["do"])
+    return ("+(%d)*%s" % (ex["ox"], e) if ex["ox"] else ""), ("+(%d)*%s" % (ex["oy"], e) if ex["oy"] else "")
+
+
 def alpha_expr(t0: float, t1: float, di: float, do: float) -> str:
     return ("min(1\\,max(0\\,(t-%.3f)/%.3f))*min(1\\,max(0\\,(%.3f-t)/%.3f))"
             % (t0, max(di, 0.01), t1, max(do, 0.01)))
@@ -79,6 +87,8 @@ def _drawtext(it: dict, work: str, fps: float) -> List[str]:
     if it.get("dy"):
         y = "%s+(%d)*(1-%s)" % (y, it["dy"], s)
     y += y_fl
+    xe_, ye_ = exit_expr(it.get("exit"))
+    x, y = x + xe_, y + ye_
     common = ("fontfile=%s:fontsize=%d:fontcolor=%s:x=%s:y=%s:alpha='%s':expansion=none"
               % (q(font), it["size"], col(it["color"]), x, y, alpha_expr(t0, t1, di, do)))
     if it.get("stroke"):
@@ -303,8 +313,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
     """返回 (输入参数, 组装函数)。组装函数接 base 标签、字幕滤镜、推近滤镜，产出滤镜尾段。"""
     # 印章、标注是小徽章：画在其他卡片上面，不被标题的遮罩盖住（其余保持原顺序）
     # 卡片接管（整屏底）最先画；印章、标注、关注框、倒数圈、彩带最后画；其余照原顺序
-    ovs = sorted(sb.get("overlays") or [],
-                 key=lambda o: 0 if o.get("type") == "frame" else
+    ovs = sorted(sb.get("overlays") or [],   # 打码最先：它改的是画面本身，卡片、字幕都在它上面
+                 key=lambda o: -1 if o.get("type") == "blur" else 0 if o.get("type") == "frame" else
                  (2 if o.get("type") in ("stamp", "callout", "glow", "ring", "confetti") else 1))
     mc = dict({"quality": "balanced", "scale": 0.5, "feather": 2.0}, **(sb.get("matte") or {}))
     inputs: List[List[str]] = []
@@ -480,6 +490,16 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             prepared.append({"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions")),
                              "behind": False, "layers": [], "items": [], "cutout": len(subjects) - 1})
             continue
+        if typ == "blur":   # 打码：画面上一块模糊或马赛克（车牌、屏幕上的个资）；box＝[x, y, 宽, 高]（0–1）
+            bx = [float(v) for v in (ov.get("box") or [0.35, 0.40, 0.30, 0.15])]
+            x_ = max(0, min(W - 2, int(W * bx[0]))) & ~1
+            y_ = max(0, min(H - 2, int(H * bx[1]))) & ~1
+            w_ = max(2, min(W - x_, int(round(W * bx[2])))) & ~1
+            h_ = max(2, min(H - y_, int(round(H * bx[3])))) & ~1
+            prepared.append({"ov": ov, "t0": t0, "t1": t1, "under": True, "behind": False, "layers": [], "items": [],
+                             "cutout": None, "blur": {"x": x_, "y": y_, "w": w_, "h": h_, "mode": ov.get("mode", "blur"),
+                                                      "s": float(ov.get("strength", 1.0))}})
+            continue
         rec = {"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions")),
                "behind": bool(ov.get("behind_subject")), "layers": [], "items": [], "cutout": None}
         if typ in ("proof_img", "ring", "confetti", "glow"):
@@ -571,8 +591,11 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             L = cards.layout(ov, th, W, H, fps)
             fl = L.get("float") if sb.get("float", True) else None
             fe = float_expr(fl)
+            xe, ye = exit_expr(L.get("exit"))
             for it_ in L["items"]:
                 it_["float"] = fl
+                if L.get("exit"):
+                    it_["exit"] = L["exit"]
             rec["th"], rec["engine"] = th, th.get("text_engine", "drawtext")
             loose = list(L.get("icons") or [])
             if L["plate"]:
@@ -642,6 +665,8 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     if p["dy"]:
                         y = "%s+(%d)*(1-%s)" % (y, p["dy"], s_)
                     y += fe
+                    if not p.get("scrim") and not bleed:   # 遮罩、整屏底不跟着移走，只淡出
+                        x, y = x + xe, y + ye
                     rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": t0, "t1": t1,
                                           "scale": None, "di": p["di"], "do": p["do"], "fade": True})
                     idx += 1
@@ -664,7 +689,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 src = gauge_src(int(gg_["size"]), fps, gg_["color"], gg_["track"], gg_["w"],
                                 float(gg_["ratio"]), gg_["t0"], float(gg_["dur"]))
                 inputs.append(["-f", "lavfi", "-t", "%.3f" % max(0.2, gg_["t1"] - gg_["t0"]), "-i", src])
-                rec["layers"].append({"idx": idx, "x": "%d" % gg_["x"], "y": "%d" % gg_["y"],
+                rec["layers"].append({"idx": idx, "x": "%d" % gg_["x"] + xe, "y": "%d" % gg_["y"] + ye,
                                       "t0": gg_["t0"], "t1": gg_["t1"], "scale": None,
                                       "di": gg_["di"], "do": gg_["do"], "fade": True})
                 idx += 1
@@ -691,6 +716,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     if ph["dy"]:
                         y = "%s+(%d)*(1-%s)" % (y, ph["dy"], s_)
                     y += fe
+                    x, y = x + xe, y + ye
                     rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": t0, "t1": t1, "scale": None,
                                           "di": ph["di"], "do": ph["do"], "fade": True})
                     idx += 1
@@ -718,6 +744,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 if ic["dy"]:
                     y = "%s+(%d)*(1-%s)" % (y, ic["dy"], s_)
                 y += fe
+                x, y = x + xe, y + ye
                 rec["layers"].append({"idx": idx, "x": x, "y": y, "t0": it0, "t1": t1,
                                       "scale": None, "di": ic["di"], "do": ic["do"], "fade": True})
                 idx += 1
@@ -820,6 +847,23 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
 
         def emit(rec):
             nonlocal cur
+            bl = rec.get("blur")
+            if bl:   # 打码：同一帧切出那一块 → 模糊或马赛克 → 贴回原位（只在那段时间）
+                n[0] += 1
+                k = n[0]
+                parts.append("[%s]split=2[bA%d][bB%d]" % (cur, k, k))
+                if bl["mode"] == "mosaic":
+                    blk = max(4, int(round(min(W, H) * 0.022 * bl["s"])))
+                    fx_ = "scale=%d:%d,scale=%d:%d:flags=neighbor" % (max(1, bl["w"] // blk), max(1, bl["h"] // blk),
+                                                                      bl["w"], bl["h"])
+                else:
+                    fx_ = "gblur=sigma=%.1f:steps=3" % max(4.0, min(W, H) * 0.02 * bl["s"])
+                parts.append("[bB%d]crop=%d:%d:%d:%d,%s[bC%d]" % (k, bl["w"], bl["h"], bl["x"], bl["y"], fx_, k))
+                out = "c%d" % k
+                parts.append("[bA%d][bC%d]overlay=x=%d:y=%d:enable='between(t\\,%.3f\\,%.3f)'[%s]"
+                             % (k, k, bl["x"], bl["y"], rec["t0"], rec["t1"], out))
+                cur = out
+                return
             if rec["cutout"] is not None:
                 sj = subjects[rec["cutout"]]
                 ov = rec["ov"]

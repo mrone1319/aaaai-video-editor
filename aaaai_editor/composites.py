@@ -225,7 +225,7 @@ def expand(sb: dict) -> dict:
     # 落在接管期间的卡片：底板版、放进面板区；纸面背景改白卡深字
     for o in out:
         if o.get("type") in ("frame", "broll", "proof_img", "ring", "confetti", "glow", "image", "clip", "cutout",
-                             "cta_box"):
+                             "cta_box", "blur"):
             continue
         win = _in_window(o, wins)
         if not win or o.get("_raw"):

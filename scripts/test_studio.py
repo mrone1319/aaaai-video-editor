@@ -69,7 +69,8 @@ def project(d):
     os.makedirs(os.path.join(d, "raw"))
     os.makedirs(os.path.join(d, "work"))
     env.run([env.ffmpeg(), "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=540x960:r=30:d=8",
-             "-f", "lavfi", "-i", "sine=f=220:d=8", "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+             "-f", "lavfi", "-i", "sine=f=220:d=8", "-shortest", "-vf", "noise=alls=30:allf=t",   # 加噪点：画面有细节，测得出打码
+             "-c:v", "libx264", "-pix_fmt", "yuv420p",
              "-c:a", "aac", os.path.join(d, "raw", "a.mp4")])
     segs = [{"start": 0.2, "end": 1.8, "text": "第一句话"}, {"start": 2.0, "end": 3.6, "text": "第二句要剪掉"},
             {"start": 3.8, "end": 5.6, "text": "第三句"}, {"start": 5.8, "end": 7.6, "text": "最后一句"}]
@@ -298,6 +299,57 @@ def main():
     asb = os.path.join(nd, "storyboard.json")
     check("接入影片：建好剪辑表", jv["status"] == "done" and os.path.isfile(asb) and json.load(open(asb))["cuts"][0][1] > 7,
           json.dumps(jv, ensure_ascii=False)[-300:])
+
+    print("== 阶段 5 第一批：出场动画、单卡颜色、打码、配乐淡入淡出")
+    from aaaai_editor import overlays as OV, loud
+    lay = cards.layout(dict(sb0["overlays"][0], anim="fade", t=[1, 3], out="fall"), th, 540, 960, 30)
+    xe, ye = OV.exit_expr(lay.get("exit"))
+    check("出场动画：下落＝最后 0.3 秒往下移", lay.get("exit", {}).get("oy", 0) > 0 and "pow(" in ye and not xe, str(lay.get("exit")))
+    lay0 = cards.layout(dict(sb0["overlays"][0], anim="fade", t=[1, 3]), th, 540, 960, 30)
+    check("不写出场＝和以前一样（没有出场位移）", "exit" not in lay0)
+    cut = cards.layout(dict(sb0["overlays"][0], anim="fade", t=[1, 3], out="cut"), th, 540, 960, 30)
+    check("直接消失＝不淡出", all(i_["do"] == 0 for i_ in cut["items"]))
+    from aaaai_editor import richtext
+    dl = richtext.dialogues(dict(lay["items"][0], exit=lay["exit"]), th, runs=lay["items"][0].get("runs"))
+    check("富文本也跟着移走（出场段用 \\move）", sum("\\move" in x for x in dl) >= 3, "\n".join(dl[-3:]))
+    lc = cards.layout(dict(sb0["overlays"][0], anim="fade", t=[1, 3], colors={"accent": "#FF3366"}), th, 540, 960, 30)
+    check("单卡改强调色：高亮也跟着换", any((i_.get("hl") or "").upper() == "#FF3366" or i_.get("color", "").upper() == "#FF3366"
+                                       for i_ in lc["items"]) or lc["shapes"] and lc["shapes"][0]["fill"].upper() == "#FF3366")
+    s5 = json.loads(json.dumps(sb0))
+    s5["overlays"] = [dict(s5["overlays"][0], out="left"), {"type": "blur", "t": [0.5, 3.0], "box": [0.1, 0.1, 0.5, 0.3], "mode": "mosaic"},
+                      {"type": "blur", "t": [0.5, 3.0], "box": [0.5, 0.6, 0.4, 0.2]}]
+    store.write(sbp, s5, source="test")
+    try:
+        rp = R.render_range(sbp, 0.0, 3.0)
+        ok5 = os.path.isfile(rp) and env.probe(rp)["duration"] > 2.5
+    except Exception as e:   # noqa: BLE001
+        ok5, rp = False, str(e)
+    check("打码（马赛克＋模糊）＋出场动画渲染得出来", ok5, rp)
+    if ok5:   # 马赛克那块和原片同位置比：应该变平滑（相邻像素差小很多）
+        def frame(src, t):
+            return subprocess.run([env.ffmpeg(), "-v", "error", "-ss", str(t), "-i", src, "-frames:v", "1", "-vf",
+                                   "scale=540:960,crop=200:100:80:260,format=gray", "-f", "rawvideo", "-"],
+                                  capture_output=True).stdout
+        def flat(b):   # 相邻像素几乎一样的比例：马赛克是一块块平色，会高很多
+            pairs = [(b[i_], b[i_ + 1]) for i_ in range(0, len(b) - 1) if (i_ + 1) % 200]
+            return sum(1 for x_, y_ in pairs if abs(x_ - y_) <= 1) / max(1, len(pairs))
+        a_, b_ = frame(rp, 1.5), frame(os.path.join(d, "raw", "a.mp4"), 1.5)
+        check("马赛克那一块真的变成一格一格", a_ and b_ and flat(a_) > flat(b_) + 0.15, "%.2f vs %.2f" % (flat(a_), flat(b_)))
+    store.write(sbp, sb0, source="test")
+    sil = os.path.join(d, "work", "silent.wav")
+    subprocess.run([env.ffmpeg(), "-v", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-t", "8", sil])
+    bgm = os.path.join(ROOT, "assets", "bgm", "upbeat-energetic.m4a")
+    mw = os.path.join(d, "work", "mt")
+    os.makedirs(mw, exist_ok=True)
+    aud, _ = loud.master(sil, "[0:a]atrim=0:8[voice]", 8.0, mw, -14.0,
+                         {"file": bgm, "db": -18, "duck": False, "fade_in": 2, "fade_out": 2, "start": 5})
+    def mv(a, b):
+        p_ = subprocess.run([env.ffmpeg(), "-v", "info", "-ss", str(a), "-t", str(b - a), "-i", aud, "-af", "volumedetect",
+                             "-f", "null", "-"], capture_output=True, text=True)
+        import re as _re
+        return float(_re.search(r"mean_volume: (-?[\d.]+)", p_.stderr).group(1))
+    v0, v1, v2 = mv(0, 0.3), mv(3.5, 4.5), mv(7.6, 7.95)
+    check("配乐淡入、淡出", v0 < v1 - 10 and v2 < v1 - 10, "%.1f %.1f %.1f" % (v0, v1, v2))
 
     print("== 体检与诊断")
     c, r, _ = req(B + "api/check", {"p": pid})

@@ -293,6 +293,12 @@ function visibleCards() {
   (S.sb.recipes || []).forEach((o, i) => { if (Array.isArray(o.t) && tOut >= o.t[0] && tOut < o.t[1]) out.push({ k: "rc", i, o }); });
   return out;
 }
+const BLUR_BOX = [0.35, 0.40, 0.30, 0.15];
+function boxOf(o) {
+  if (o && o.type === "blur") return (o.box || BLUR_BOX).map(Number);
+  const pg = o && PNG.get(pngKey(o));
+  return pg && pg.box;
+}
 function boxCss(b) { return "left:" + b[0] * 100 + "%;top:" + b[1] * 100 + "%;width:" + b[2] * 100 + "%;height:" + b[3] * 100 + "%"; }
 function renderStage() {
   if (!S) return;
@@ -302,6 +308,11 @@ function renderStage() {
   let h = "", t = "", hits = "", top = false, anyTrue = false, anyApprox = false;
   for (const v of vis) {
     const o = v.o, isSel = sel && sel.k === v.k && sel.i === v.i;
+    if (v.k === "ov" && o.type === "blur") {   // 打码：画面上直接用模糊近似（马赛克要渲染才看得到格子）
+      const bb = boxOf(o), px = Math.max(4, 16 * (+o.strength || 1));
+      h += '<div class="hit blurbox' + (o.mode === "mosaic" ? " mosaic" : "") + '" data-k="ov" data-i="' + v.i + '" style="' + boxCss(bb) + ";--bl:" + px + 'px"></div>';
+      continue;
+    }
     const pg = showTrue && v.k === "ov" ? PNG.get(pngKey(o)) : null;
     if (pg) {
       t += '<img alt="" data-i="' + v.i + '" src="' + esc(pg.url) + '">'; anyTrue = true;
@@ -338,9 +349,9 @@ function renderStage() {
 function renderSelBox() {
   const el = $("selLayer");
   if (!sel || sel.k !== "ov" || playing || cdrag) { if (!cdrag) el.innerHTML = ""; return; }
-  const o = findSel(), pg = o && PNG.get(pngKey(o));
-  if (!o || !pg || !pg.box || !(tOut >= o.t[0] && tOut < o.t[1])) { el.innerHTML = ""; return; }
-  el.innerHTML = '<div class="selbox" id="selbox" style="' + boxCss(pg.box) + '"><span class="lbl">' + (RO ? "只读" : "拖动＝移位置 · 拉角＝大小") + "</span>" + (RO ? "" : '<i class="hd" title="拉动放大缩小"></i>') + "</div>";
+  const o = findSel(), bx = o && boxOf(o);
+  if (!o || !bx || !(tOut >= o.t[0] && tOut < o.t[1])) { el.innerHTML = ""; return; }
+  el.innerHTML = '<div class="selbox" id="selbox" style="' + boxCss(bx) + '"><span class="lbl">' + (RO ? "只读" : o.type === "blur" ? "拖动＝移范围 · 拉角＝大小" : "拖动＝移位置 · 拉角＝大小") + "</span>" + (RO ? "" : '<i class="hd" title="拉动改大小"></i>') + "</div>";
 }
 // 画面叠层：安全区、脸的位置、平台按钮遮挡（大概位置）
 const PLAT = {
@@ -722,6 +733,11 @@ function renderInspector() {
     h += '<h3><span class="tag" style="background:var(--card-t);color:#1a1406">' + esc(sc.name) + '</span>字卡 #' + (sel.i + 1) + "</h3>";
     h += '<div class="row2">' + inp("f_t0", "出现（成片秒）", "num", o.t[0]) + inp("f_t1", "消失（成片秒）", "num", o.t[1]) + "</div>";
     for (const f of sc.fields) { h += inp("f_" + f.key, f.label, f.kind, o[f.key], f.options); fields.push(f.key); }
+    if (!["blur", "confetti", "image", "clip", "broll", "cutout", "glow", "countdown"].includes(o.type)) {
+      const C = [["accent", "强调色"], ["text", "文字色"], ["plate", "底板色"], ["value", "数值色"]], cc = o.colors || {};
+      h += '<fieldset><legend>颜色（这张卡；不改＝跟随风格）</legend><div class="row2">' + C.map(([k, lb]) => '<div class="field"><label>' + lb + '</label><div style="display:flex;gap:6px;align-items:center"><input type="color" data-col="' + k + '" value="' + esc(/^#[0-9a-fA-F]{6}$/.test(cc[k] || "") ? cc[k] : (P.styles[S.sb.style] || {}).accent && k === "accent" ? P.styles[S.sb.style].accent : "#ffffff") + '"' + (RO ? " disabled" : "") + ">" +
+        (cc[k] ? '<button class="btn sm" data-colreset="' + k + '" title="回到风格的颜色">×</button>' : '<span class="hint">风格</span>') + "</div></div>").join("") + "</div></fieldset>";
+    }
     h += "<fieldset><legend>出场</legend>";
     for (const f of SCHEMA.common) { h += inp("f_" + f.key, f.label, f.kind, o[f.key], f.options); fields.push(f.key); }
     h += "</fieldset>";
@@ -789,6 +805,15 @@ function renderInspector() {
     return;
   }
   const rx = $("resetXY"); if (rx) rx.onclick = () => { const before = snap(); delete o.xy; commit(before); };
+  $("pane-insp").querySelectorAll("[data-col]").forEach((x) => {
+    let before = null;
+    x.addEventListener("focus", () => { before = snap(); });
+    x.addEventListener("input", () => { if (!before) before = snap(); o.colors = Object.assign({}, o.colors || {}, { [x.dataset.col]: x.value }); });
+    x.addEventListener("change", () => { o.colors = Object.assign({}, o.colors || {}, { [x.dataset.col]: x.value }); commit(before || snap()); before = null; });
+  });
+  $("pane-insp").querySelectorAll("[data-colreset]").forEach((x) => x.addEventListener("click", () => {
+    const before = snap(); delete o.colors[x.dataset.colreset]; if (!Object.keys(o.colors).length) delete o.colors; commit(before);
+  }));
 }
 function otherFields(o, known) {
   const rest = {};
@@ -1099,6 +1124,8 @@ function renderSettings() {
     '<fieldset><legend>字卡</legend>' + sfield("avoid_face", "字卡自动避开脸", "jsel", [["", "开（默认）"], ["false", "关"]], "手动拖过位置的字卡不会被自动挪。") + "</fieldset>" +
     '<fieldset><legend>声音</legend>' + sfield("music.file", "配乐", "select", bgm) +
     '<div class="row2">' + sfield("music.db", "配乐音量（dB）", "num") + sfield("music.duck", "人声出现时压低", "jsel", [["true", "压低"], ["false", "不压"], ["", "默认"]]) + "</div>" +
+    '<div class="row2">' + sfield("music.fade_in", "配乐淡入（秒）", "num") + sfield("music.fade_out", "配乐淡出（秒）", "num") + "</div>" +
+    '<div class="row2">' + sfield("music.start", "从配乐第几秒开始", "num") + sfield("music.end", "配乐在成片第几秒收掉", "num") + "</div>" +
     sfield("denoise", "降噪", "jsel", [["", "标准（默认）"], ['"strong"', "加强"], ["false", "关（原声）"]]) +
     sfield("loudness", "成片响度（LUFS）", "num", null, "默认 −14（各平台通用）。") +
     '<div class="row2"><div class="field"><label for="audMusic">试听别的配乐</label><select id="audMusic">' + bgm.filter((x) => x[0]).map((x) => '<option value="' + esc(x[0]) + '">' + esc(x[1]) + "</option>").join("") + '</select></div><div class="field"><label>&nbsp;</label><button class="btn sm" id="audMusicGo">▶ 试听 8 秒</button></div></div>' +
@@ -1357,7 +1384,7 @@ function buildMenus() {
     '<button data-r="' + esc(n) + '">' + esc(n) + "<small>" + esc(hint) + "</small></button>").join("");
   const snd = OPT ? OPT.sounds : ["pop", "ding", "whoosh", "coin"];
   const sname = (x) => ((SCHEMA.common.find((c) => c.key === "sfx") || { options: [] }).options.find((y) => y[0] === x) || [x, x])[1];
-  $("fxMenu").innerHTML = '<div class="grp">画面</div><button data-fx="zoom">推近<small>这段画面慢慢放大</small></button><button data-fx="punch">瞬切推近<small>重点落下时冲一下</small></button><button data-fx="confetti">彩带<small>庆祝时刻</small></button>' +
+  $("fxMenu").innerHTML = '<div class="grp">画面</div><button data-fx="zoom">推近<small>这段画面慢慢放大</small></button><button data-fx="punch">瞬切推近<small>重点落下时冲一下</small></button><button data-fx="confetti">彩带<small>庆祝时刻</small></button><button data-fx="blur">打码（模糊）<small>遮车牌、个资</small></button><button data-fx="mosaic">马赛克<small>遮车牌、个资</small></button>' +
     '<div class="grp">音效</div>' + snd.map((x) => '<button data-snd="' + esc(x) + '">' + esc(sname(x)) + "<small>" + esc(x) + "</small></button>").join("");
 }
 function menuToggle(btn, menu) {
@@ -1389,6 +1416,7 @@ $("fxMenu").addEventListener("click", (e) => {
   const b = e.target.closest("button"); if (!b || (!b.dataset.fx && !b.dataset.snd)) return;
   const before = snap();
   if (b.dataset.snd) { (S.sb.sfx = S.sb.sfx || []).push({ t: r2(tOut), sound: b.dataset.snd }); sel = { k: "sx", i: S.sb.sfx.length - 1 }; }
+  else if (b.dataset.fx === "blur" || b.dataset.fx === "mosaic") { (S.sb.overlays = S.sb.overlays || []).push(Object.assign({ type: "blur", t: startAt(3), box: BLUR_BOX.slice() }, b.dataset.fx === "mosaic" ? { mode: "mosaic" } : {})); sel = { k: "ov", i: S.sb.overlays.length - 1 }; toast("画面上拖框盖住要遮的地方，拉右下角改大小。"); }
   else if (b.dataset.fx === "confetti") { (S.sb.overlays = S.sb.overlays || []).push({ type: "confetti", t: startAt(2.6) }); sel = { k: "ov", i: S.sb.overlays.length - 1 }; }
   else { const punch = b.dataset.fx === "punch"; (S.sb.zooms = S.sb.zooms || []).push(Object.assign({ t: startAt(punch ? 0.6 : 2.5), to: punch ? 1.14 : 1.12 }, punch ? { style: "punch" } : {})); sel = { k: "zm", i: S.sb.zooms.length - 1 }; }
   commit(before); showPane("insp");
@@ -1469,10 +1497,10 @@ function renderMulti(el) {
 // ------------------------------------------------------------------ 画面上拖拉：移位置、放大缩小（写进 xy、scale）
 let cdragJustEnded = false;
 function startCanvasDrag(e, mode) {
-  const o = findSel(), pg = o && PNG.get(pngKey(o));
-  if (RO || !o || !pg || !pg.box) return false;
+  const o = findSel(), bx = o && boxOf(o);
+  if (RO || !o || !bx) return false;
   const r = stage.getBoundingClientRect();
-  cdrag = { mode, o, box: pg.box, sx: e.clientX, sy: e.clientY, W: r.width, H: r.height, before: snap(), s0: +(o.scale || 1), k: 1, moved: false };
+  cdrag = { mode, o, box: bx, blur: o.type === "blur", sx: e.clientX, sy: e.clientY, W: r.width, H: r.height, before: snap(), s0: +(o.scale || 1), k: 1, moved: false };
   $("selLayer").setPointerCapture(e.pointerId);
   e.preventDefault(); e.stopPropagation();
   return true;
@@ -1488,7 +1516,12 @@ $("selLayer").addEventListener("pointermove", (e) => {
   const dx = e.clientX - cdrag.sx, dy = e.clientY - cdrag.sy;
   if (!cdrag.moved && Math.abs(dx) + Math.abs(dy) < 3) return;
   cdrag.moved = true;
-  const img = $("truelook").querySelector('img[data-i="' + sel.i + '"]'), sb_ = $("selbox"), b = cdrag.box;
+  const img = $("truelook").querySelector('img[data-i="' + sel.i + '"]') || (cdrag.blur ? layer.querySelector('.blurbox[data-i="' + sel.i + '"]') : null), sb_ = $("selbox"), b = cdrag.box;
+  if (cdrag.blur && cdrag.mode !== "move") {   // 打码：宽、高分开拉
+    cdrag.nw = Math.max(0.03, Math.min(1 - b[0], b[2] + dx / cdrag.W)); cdrag.nh = Math.max(0.02, Math.min(1 - b[1], b[3] + dy / cdrag.H));
+    for (const el_ of [img, sb_]) if (el_) { el_.style.width = cdrag.nw * 100 + "%"; el_.style.height = cdrag.nh * 100 + "%"; }
+    return;
+  }
   if (cdrag.mode === "move") {
     const tr = "translate(" + dx + "px," + dy + "px)";
     if (img) img.style.transform = tr; if (sb_) sb_.style.transform = tr;
@@ -1506,7 +1539,11 @@ $("selLayer").addEventListener("pointerup", (e) => {
   if (d.moved) {
     cdragJustEnded = true; setTimeout(() => { cdragJustEnded = false; }, 50);
     const b = d.box;
-    if (d.mode === "move") {
+    if (d.blur) {
+      const nx = d.mode === "move" ? b[0] + (e.clientX - d.sx) / d.W : b[0], ny = d.mode === "move" ? b[1] + (e.clientY - d.sy) / d.H : b[1];
+      const nw = d.mode === "move" ? b[2] : d.nw, nh = d.mode === "move" ? b[3] : d.nh;
+      d.o.box = [r3(Math.max(0, Math.min(1 - nw, nx))), r3(Math.max(0, Math.min(1 - nh, ny))), r3(nw), r3(nh)];
+    } else if (d.mode === "move") {
       const cx = b[0] + b[2] / 2 + (e.clientX - d.sx) / d.W, top = b[1] + (e.clientY - d.sy) / d.H;
       d.o.xy = [r3(Math.max(0, Math.min(1, cx))), r3(Math.max(0, Math.min(0.97, top)))];
     } else d.o.scale = r2(d.s0 * d.k);

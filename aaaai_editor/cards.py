@@ -556,7 +556,10 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         th = dict(th, plate=th["accent"], plate_alpha=1.0, text=th["on_accent"], muted=th["on_accent"],
                   accent=th["on_accent"], border={"w": 0})   # 实色结果卡：不要描边，柔影就够
     if ov.get("colors"):  # 单张卡片改色，可写 "@value" 引用语义色
-        th = resolve_colors(dict(th, **ov["colors"]))
+        cs = dict(ov["colors"])
+        if cs.get("accent") and "hl" not in cs and not ov.get("_raw"):   # 只改强调色：**关键词** 的高亮也跟着换（不然遮罩版卡片的高亮还是风格色）
+            cs["hl"] = cs["accent"]
+        th = resolve_colors(dict(th, **cs))
     typ = ov["type"]
     lite = is_lite(ov, th)
     outro = (bool(ov.get("bleed")) and typ == "title" and bool(th.get("lite", 1)) and ov.get("lite", True)
@@ -720,6 +723,11 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     if anim == "pop":
         di = min(di, 0.28)
     cv = "back" if anim in ("pop", "rise") and typ not in ("lower_third", "avatar", "text") else "smooth"
+    # 出场：默认淡出；fall／rise／left／right＝边淡出边移走；cut＝直接消失（不写就和以前完全一样）
+    out_ = ov.get("out")
+    ox0, oy0 = {"fall": (0, round(H * 0.026)), "rise": (0, -round(H * 0.026)), "left": (-round(W * 0.05), 0),
+                "right": (round(W * 0.05), 0)}.get(out_, (0, 0))
+    do_ = 0.0 if out_ == "cut" else DO
 
     if mode == "bleed":
         px, py, plate_h = 0, 0, H
@@ -749,7 +757,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         a_ = float(ov.get("dim", 0.82)) if bleed_lite else float(ov.get("opacity", 0.97))
         plate = {"w": W, "h": H, "radius": 0, "fill": th.get("scrim_color") or th["plate"],
                  "alpha": a_, "border": {"w": 0}, "shadow": {},
-                 "x": 0, "y": 0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
+                 "x": 0, "y": 0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": do_}
     elif lite:   # 渐变遮罩（不是方块）：标题／金句在画面上沿，人名条在下沿；颜色取风格底板色，字直接排在上面
         pl = th["plate"]
         sc_col = th.get("scrim_color") or (pl[-1] if isinstance(pl, (list, tuple)) else pl)
@@ -779,7 +787,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                                                      (0.72 if typ in LOWER_TYPES
                                                       else min(0.72, max(0.45, (py + plate_h) / band)))),
                            "dir": "mid" if mid else ("up" if typ in LOWER_TYPES else "down")},
-                 "x": 0, "y": by0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": DO}
+                 "x": 0, "y": by0, "dx": 0, "dy": 0, "t0": t0, "t1": t1, "di": di, "do": do_}
     elif mode != "none":
         if mode == "pill":
             plate = {"w": int(round(plate_w)), "h": int(round(plate_h)),
@@ -801,7 +809,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                     v["color"] = th["accent"]
                 plate[k_] = v
         plate.update({"x": int(round(px)), "y": int(round(py)), "dx": dx0, "dy": dy0,
-                      "t0": t0, "t1": t1, "di": di, "do": DO, "curve": cv})
+                      "t0": t0, "t1": t1, "di": di, "do": do_, "curve": cv})
 
     items: List[dict] = []
     icons: List[dict] = []
@@ -819,7 +827,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         bw = max(round(U * 0.10), 40)
         shapes.append({"x": cbox_x, "y": py, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
     ccx = cbox_x + cbox_w / 2.0
-    common = {"t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0, "curve": cv}
+    common = {"t1": t1, "di": di, "do": do_, "dx": dx0, "dy": dy0, "curve": cv}
 
     def add_icon(name, x, y, size, color, badge, delay, style=None):
         icons.append(dict(common, name=name, x=round(x, 1), y=round(y, 1), size=int(round(size)),
@@ -854,7 +862,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             gauge = {"cx": gx + sz / 2.0, "cy": cur + sz / 2.0, "r": r_, "w": w_, "size": sz,
                      "ratio": b["ratio"], "color": b["color"], "track": b["track"],
                      "t0": t0, "t1": t1, "dur": b["count_dur"] if b["count"] else 0.0,
-                     "di": di, "do": DO, "x": int(round(gx)), "y": int(round(cur))}
+                     "di": di, "do": do_, "x": int(round(gx)), "y": int(round(cur))}
             csz = round(sz * 0.30)
             it_g = dict(common, size=csz, color=b["text_color"], mono=True, t0=t0,
                         y=int(round(cur + sz / 2.0 - csz * 0.62)), stroke=False, soft=bool(lite),
@@ -973,7 +981,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         for li, ln in enumerate(ls):
             y = cur
             it = {"size": b["size"], "color": b["color"], "mono": b["mono"], "curve": cv,
-                  "t0": t0 + b["delay"], "t1": t1, "di": di, "do": DO,
+                  "t0": t0 + b["delay"], "t1": t1, "di": di, "do": do_,
                   "dx": dx0, "dy": dy0, "y": int(round(y)), "stroke": mode == "none" and not lite and ov.get("halo", True),
                   "soft": bool(lite), "hl": th.get("hl") if lite else None,
                   "role": b.get("role", "text"), "runs": b["_runs"][li]}
@@ -1007,7 +1015,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                          b["lead_color"], None, b["delay"])
             elif li == 0 and b["lead"]:
                 items.append({"size": int(round(b["size"] * 0.62)), "color": b["lead_color"],
-                              "mono": True, "t0": t0 + b["delay"], "t1": t1, "di": di, "do": DO,
+                              "mono": True, "t0": t0 + b["delay"], "t1": t1, "di": di, "do": do_,
                               "dx": dx0, "dy": dy0, "x": int(round(cbox_x)),
                               "y": int(round(y + b["size"] * 0.30)), "text": b["lead"],
                               "stroke": False, "role": "lead"})
@@ -1041,12 +1049,14 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
     # 悬浮呼吸：进场落定后整张卡轻轻上下浮动（整屏章节／片尾不浮）
     if ov.get("float", th.get("float", True)) and mode != "bleed" and ov.get("chapter") is None and t1 - t0 > 1.2:
         L["float"] = {"a": max(2.0, round(U * 0.0036, 1)), "p": 3.2, "s": round(t0 + di + 0.05, 3)}
+    if ox0 or oy0:
+        L["exit"] = {"ox": ox0, "oy": oy0, "t1": t1, "do": do_}
     L["_box"] = [round(px if mode != "bleed" else 0), round(py if mode != "bleed" else 0),
                  round(plate_w), round(plate_h)]   # 字卡占的范围（Studio 画选取框用；渲染不读）
     if photo_sz:
         L["photo"] = {"file": ov.get("file", ""), "x": round(cbox_x), "y": round(py + pad + (body_h - photo_sz) / 2.0),
                       "size": photo_sz, "ring": th["accent"], "focus": float(ov.get("focus", 0.35)),
-                      "t0": t0, "t1": t1, "di": di, "do": DO, "dx": dx0, "dy": dy0, "curve": cv}
+                      "t0": t0, "t1": t1, "di": di, "do": do_, "dx": dx0, "dy": dy0, "curve": cv}
     return L
 
 
