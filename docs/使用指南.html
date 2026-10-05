@@ -262,7 +262,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.2.0</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.3.0</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
@@ -752,6 +752,13 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       <tr><td>确认不压脸、不被挡</td><td>工具列的「安全区」「脸」「平台」（抖音、Reels、Shorts、小红书的按钮大概位置）；「体检」把问题标成红点。</td></tr>
       <tr><td>换字幕样式、配乐、降噪</td><td>「设定」：字幕样式与高度、配乐与音量、降噪、响度、结尾淡出。</td></tr>
       <tr><td>放进自己的图、影片</td><td>「素材」：拖文件进来就放进项目的 assets/；图片可放进画面，影片当 B-roll，声音当配乐。</td></tr>
+      <tr><td>修剪剪辑点</td><td>时间轴「画面」轨拖一段的两端＝改原片入点／出点；<span class="kbd">S</span> 在播放头切开、选中多余的一段按 <span class="kbd">Delete</span>；选中一段可以「试听入点／出点」（前后 2 秒）。</td></tr>
+      <tr><td>一次改好几张</td><td>Shift／⌘ 点时间轴上的字卡加选：整组一起拖，右边一次改入场动画、音效、大小。</td></tr>
+      <tr><td>字幕一起改</td><td>「逐字稿」→「字幕批量」：查找替换、每句都高亮某个词、全部字幕提早／延后。</td></tr>
+      <tr><td>做封面、出图卡</td><td>「封面」：播放到满意的画面按「用播放头的画面」，填标题按「做封面」；勾选字卡按「出图卡」。</td></tr>
+      <tr><td>试听配乐、降噪</td><td>「设定」里选一首或一档按「试听 8 秒」：真正的混音，不会改到片子。</td></tr>
+      <tr><td>机位太远</td><td>「设定」→「取景」放大 1.15–1.25，整支片推近。</td></tr>
+      <tr><td>回到之前的版本</td><td>右上「⋯」→「历史版本」：每次存档都留一份（最近 100 份），点「回到这版」。</td></tr>
       <tr><td>看真正的成品</td><td>「渲染这一段」几秒钟出那一段的成品画面；满意按「出片」。</td></tr>
     </tbody>
   </table></div>
@@ -765,6 +772,8 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       <tr><td><span class="kbd">Delete</span></td><td>删除选中的字卡或特效；选中字幕＝把那句剪掉</td></tr>
       <tr><td><span class="kbd">R</span></td><td>渲染这一段</td></tr>
       <tr><td><span class="kbd">G</span></td><td>安全区开关</td></tr>
+      <tr><td><span class="kbd">S</span></td><td>在播放头把画面切开</td></tr>
+      <tr><td>Shift／⌘＋点</td><td>多选字卡与特效</td></tr>
       <tr><td><span class="kbd">?</span></td><td>快捷键表、再看一次导览、诊断报告</td></tr>
     </tbody>
   </table></div>
@@ -848,7 +857,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">社群风格</b><span><code>mrone</code> 与 <code>otg</code> 是两个频道／社群的品牌风格：你可以用，但名称、配色和品牌元素归原权利人，不要用它们做冒充该品牌、或让人误以为是官方的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.2.0 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
+    <span>aaaai-editor v1.3.0 · © aaaai.ai。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
 </section>

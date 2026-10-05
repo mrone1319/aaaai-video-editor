@@ -100,6 +100,25 @@ def main():
     m, changed = store.migrate(dict(sample))
     check("第 1 版剪辑表不需要升级", not changed and m == sample)
 
+    print("== 历史版本")
+    hp = os.path.join(d, "h", "storyboard.json")
+    os.makedirs(os.path.dirname(hp))
+    open(hp, "w", encoding="utf-8").write('{"n": 0}')
+    for k in range(1, 4):
+        store.write(hp, {"n": k}, source="test")
+    hs = store.history(hp)
+    check("每次写入留一份＋最早的原样", len(hs) == 4 and hs[-1]["source"] == "原样", str(hs))
+    first = json.load(open(os.path.join(store.history_dir(hp), hs[-1]["name"])))
+    check("原样内容没变", first == {"n": 0})
+    store.write(hp, {"n": 3}, source="test")
+    check("内容没变就不多留", len(store.history(hp)) == 4)
+    old_keep = store.HISTORY_KEEP
+    store.HISTORY_KEEP = 5
+    for k in range(10, 20):
+        store.write(hp, {"n": k}, source="test")
+    store.HISTORY_KEEP = old_keep
+    check("只留最近的几份", len(store.history(hp)) == 5)
+
     print("通过 %d 项，失败 %d 项" % (ok, fail))
     return 0 if fail == 0 else 1
 

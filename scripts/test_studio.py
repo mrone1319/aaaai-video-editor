@@ -189,6 +189,39 @@ def main():
           str(hr)[:200] + str(hsb.get("cuts")))
     store.write(sbp, sb0, source="test")
 
+    print("== 阶段 3：修剪剪辑点、历史版本、图卡清单、试听")
+    _, j3, _ = req(B + "api/open?p=" + pid)
+    s3 = j3["storyboard"]
+    check("打开时附原片长度（拖剪辑点不出界）", abs((j3.get("source_duration") or 0) - 8.0) < 0.2, str(j3.get("source_duration")))
+    c, r, _ = req(B + "api/recut", {"storyboard": json.loads(json.dumps(s3)), "set": [[0.0, 3.0], [4.0, 8.0]]})
+    t_new = r["storyboard"]["overlays"][1]["t"]
+    check("修剪剪辑点＝字卡跟着换算", c == 200 and r["storyboard"]["cuts"] == [[0.0, 3.0], [4.0, 8.0]] and abs(t_new[0] - 3.0) < 1e-6,
+          str(r.get("storyboard", {}).get("cuts")) + str(t_new))
+    c, r, _ = req(B + "api/recut", {"storyboard": json.loads(json.dumps(s3)), "set": [[0.0, 2.5], [2.5, 8.0]]})
+    check("切开＝时间不变", c == 200 and r["storyboard"]["overlays"] == s3["overlays"] and r["saved"] == 0)
+    c, hi, _ = req(B + "api/history?p=%s&which=sb" % pid)
+    names = [x["name"] for x in hi.get("items", [])]
+    check("每次存档都留历史版本", c == 200 and len(names) >= 3 and any(x["source"] == "studio" for x in hi["items"]), str(hi)[:300])
+    c, old, _ = req(B + "api/history?p=%s&which=sb&name=%s" % (pid, urllib.request.quote(names[-1])))
+    check("能取回任一历史版本的内容", c == 200 and old["content"].get("cuts"))
+    c, _, _ = req(B + "api/history?p=%s&which=sb&name=%s" % (pid, urllib.request.quote("../../storyboard.json")))
+    check("历史版本不能读到别的文件", c == 404)
+    c, cl, _ = req(B + "api/cardlist?p=" + pid)
+    check("图卡清单", c == 200 and any(x["type"] == "stat" for x in cl["cards"]), str(cl)[:200])
+    v_before = store.current_version(sbp)
+    c, r, _ = req(B + "api/render", {"p": pid, "kind": "audition", "a": 1.0, "b": 3.0, "override": {"denoise": False}})
+    jid = r.get("job")
+    t0 = time.time()
+    while time.time() - t0 < 180:
+        _, jv, _ = req(B + "api/job?id=" + jid)
+        if jv["status"] != "running":
+            break
+        time.sleep(0.5)
+    out = os.path.join(d, (jv.get("result") or "x/x/x")[len("f/%s/" % pid):])
+    check("试听：渲染一小段、不改剪辑表、不留暂存档", jv["status"] == "done" and os.path.isfile(out) and "audition_" in out
+          and store.current_version(sbp) == v_before and not os.path.exists(os.path.join(d, ".studio-audition.json")),
+          json.dumps(jv, ensure_ascii=False)[:300])
+
     print("== 体检与诊断")
     c, r, _ = req(B + "api/check", {"p": pid})
     check("体检回传清单", c == 200 and isinstance(r.get("items"), list), str(r)[:300])

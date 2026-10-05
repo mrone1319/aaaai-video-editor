@@ -137,8 +137,14 @@ class Studio:
                 proxy = self.rel_url(i, pp) if os.path.isfile(pp) else None
             except Exception as e:   # noqa: BLE001
                 self.note("代理影片：%s" % e)
+        src_dur = None
+        if source_ok:
+            try:
+                src_dur = float(env.probe(src)["duration"])
+            except Exception:   # noqa: BLE001
+                pass
         final = os.path.join(d, "out", "final.mp4")
-        return {"id": i, "name": os.path.basename(d), "dir": d, "storyboard": raw, "sb_version": ver,
+        return {"id": i, "source_duration": src_dur, "name": os.path.basename(d), "dir": d, "storyboard": raw, "sb_version": ver,
                 "captions": cap_doc, "cap_version": cap_ver, "captions_auto": auto,
                 "duration": dur, "fps": fps, "W": int(out.get("width", 1080)), "H": int(out.get("height", 1920)),
                 "styles": styles, "source_ok": source_ok, "proxy": proxy,
@@ -183,7 +189,9 @@ class Studio:
         old = Timeline(old_cuts, fps)
         st = sb.setdefault("studio", {})
         removed = [tuple(x) for x in st.get("removed") or []]
-        if body.get("remove"):
+        if body.get("set") is not None:   # 拖剪辑点、切开：整组换成新的剪辑点
+            new_cuts = [(round(float(a), 3), round(float(b), 3)) for a, b in body["set"] if float(b) - float(a) >= 0.1]
+        elif body.get("remove"):
             rm = [(float(a), float(b)) for a, b in body["remove"]]
             new_cuts = edit._subtract(old_cuts, rm)
             removed += rm
@@ -341,6 +349,87 @@ class Studio:
         fc = faces.track(sb, tl, int(sb["output"]["width"]), int(sb["output"]["height"]))
         return {"step": faces.STEP, "faces": [[t, list(b) if b else None] for t, b in fc]}
 
+    # ------------------------------------------------------------ 封面与图卡
+    def cardlist(self, i: str) -> dict:
+        from .. import cardpics, render
+        sb = render.load_storyboard(self.sbp(i))
+        out = []
+        for n, ov in enumerate(cardpics.listing(sb), start=1):
+            txt = ov.get("kicker") or ov.get("title") or ov.get("text") or ov.get("label") or ""
+            out.append({"n": n, "type": ov.get("type"), "t": (ov.get("t") or [None])[0],
+                        "text": str(txt).replace("**", "").replace("\n", " ")[:40]})
+        return {"cards": out}
+
+    def pictures(self, i: str) -> dict:
+        d = os.path.join(self.projects[i], "out")
+        out = []
+        if os.path.isdir(d):
+            for n in sorted(os.listdir(d)):
+                if n.lower().endswith(".png") and (n.startswith("cover_") or n.startswith("图卡")):
+                    p = os.path.join(d, n)
+                    out.append({"name": n, "url": "f/%s/out/%s?v=%d" % (i, n, int(os.path.getmtime(p))),
+                                "kind": "cover" if n.startswith("cover_") else "card"})
+        return {"pictures": out}
+
+    # ------------------------------------------------------------ 历史版本
+    def history(self, i: str, which: str, name: Optional[str] = None) -> dict:
+        path = self.sbp(i) if which != "cap" else self.capp(i)
+        if name:
+            hd = store.history_dir(path)
+            p = os.path.realpath(os.path.join(hd, os.path.basename(name)))
+            if not p.startswith(os.path.realpath(hd) + os.sep) or not os.path.isfile(p):
+                raise KeyError(name)
+            return {"content": json.load(open(p, encoding="utf-8"))}
+        return {"items": store.history(path)}
+
+    # ------------------------------------------------------------ B-roll：素材库与 Pexels 免费素材（花钱的生成留在对话里先报价）
+    def broll(self, body: dict) -> dict:
+        from .. import broll as BR, keys, net, render
+        act = body.get("action")
+        sb = render.load_storyboard(self.sbp(body["p"]))
+        w, h = int(sb["output"]["width"]), int(sb["output"]["height"])
+        aspect = "9:16" if h > w else ("16:9" if w > h else "1:1")
+        if act == "status":
+            return {"pexels": bool(keys.get("PEXELS_API_KEY")), "library": len(BR.library_search(""))}
+        if act == "library":
+            rows = BR.library_search(body.get("q") or "")
+            return {"items": [{"key": r["key"], "text": r.get("prompt") or r.get("query") or "", "provider": r.get("provider"),
+                               "aspect": r.get("aspect"), "credit": r.get("credit", "")} for r in rows[:80]]}
+        if act == "search":
+            res = BR.pexels_search(body["q"], aspect)
+            self.pexels = {str(x["id"]): x for x in res}   # 只能下载自己搜出来的，不接受界面传来的网址
+            return {"items": [{"id": x["id"], "thumb": x["thumb"], "user": x["user"], "duration": x["duration"]} for x in res]}
+        if act == "get":
+            dst_dir = os.path.join(self.projects[body["p"]], "assets", "broll")
+            os.makedirs(dst_dir, exist_ok=True)
+            if body.get("key"):
+                row = next((r for r in BR.library_search("") if r["key"] == body["key"]), None)
+                if not row:
+                    raise KeyError("素材库里没有这一条")
+                dst, credit = os.path.join(dst_dir, "lib_%s.mp4" % row["key"][:16]), row.get("credit", "")
+                if not os.path.isfile(dst):
+                    import shutil
+                    shutil.copyfile(row["file"], dst)
+            else:
+                x = (getattr(self, "pexels", None) or {}).get(str(body.get("id")))
+                if not x:
+                    raise KeyError("先搜寻再选")
+                dst, credit = os.path.join(dst_dir, "pexels_%s.mp4" % x["id"]), "Pexels / %s（%s）" % (x["user"], x.get("url") or "")
+                if not os.path.isfile(dst):
+                    tmp = dst + ".dl"
+                    net.download(x["file"], tmp)
+                    BR.normalize(tmp, dst, aspect)
+                    os.remove(tmp)
+            if credit:   # 署名：交付时贴进简介
+                cf = os.path.join(self.projects[body["p"]], "out", "broll_credits.txt")
+                os.makedirs(os.path.dirname(cf), exist_ok=True)
+                old = open(cf, encoding="utf-8").read() if os.path.isfile(cf) else ""
+                if credit not in old:
+                    with open(cf, "a", encoding="utf-8") as f:
+                        f.write(credit + "\n")
+            return {"path": os.path.relpath(dst, self.projects[body["p"]]).replace(os.sep, "/"), "credit": credit}
+        raise ValueError("不认识的动作")
+
     # ------------------------------------------------------------ 口误清理、开头钩子（引擎命令，直接写剪辑表）
     def tidy(self, body: dict) -> dict:
         from .. import edit
@@ -444,6 +533,25 @@ class Studio:
                 job.update(label="出片", cmd=["render", sbp], total=float(body.get("duration") or 1), t0=0.0)
             elif kind == "proxy":
                 job.update(label="准备播放用的影片", total=1.0, t0=0.0)
+            elif kind == "cover":
+                job.update(label="做封面", cmd=["cover", sbp], total=1.0, t0=0.0)
+            elif kind == "cardpics":
+                cmd = ["cardpics", sbp, "--bg", body.get("bg") or "frame", "--size", str(body.get("size") or "1350")]
+                if body.get("pick"):
+                    cmd += ["--pick", ",".join(str(int(x)) for x in body["pick"])]
+                job.update(label="出图卡", cmd=cmd, total=1.0, t0=0.0)
+            elif kind == "audition":   # 试听：用暂时的剪辑表（套上要试的配乐／降噪）渲染一小段，不动真的剪辑表
+                a, b = float(body["a"]), float(body["b"])
+                raw, _v = store.read(sbp)
+                for k_, v_ in (body.get("override") or {}).items():
+                    if k_ in ("music", "denoise", "loudness", "sfx_level"):
+                        raw[k_] = v_
+                tmp = os.path.join(self.projects[i], ".studio-audition.json")
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(raw, f, ensure_ascii=False)
+                job.update(label="试听 %.0f 秒" % (b - a), cmd=["render", tmp, "--range", "%.3f" % a, "%.3f" % b],
+                           total=b - a, t0=a, tmp=tmp,
+                           tag=hashlib.sha1(json.dumps(body.get("override"), sort_keys=True).encode()).hexdigest()[:10])
             else:
                 raise ValueError("不认识的工作：%s" % kind)
             self.job = job
@@ -477,6 +585,11 @@ class Studio:
                     job["stage"] = "混音、响度、封装"
                 time.sleep(0.4)
             reader.join(timeout=2)
+            if job.get("tmp"):
+                try:
+                    os.remove(job["tmp"])
+                except OSError:
+                    pass
             if job["status"] == "cancelled":
                 return
             if proc.returncode != 0:
@@ -484,11 +597,26 @@ class Studio:
                 job["stage"] = "失败"
                 self.note("%s 失败：%s" % (job["label"], "\n".join(job["log"][-8:])))
                 return
-            m = None
-            for line in job["log"]:
-                m = re.search(r"[：:]\s*(/.+?\.mp4|[A-Za-z]:\\.+?\.mp4)\s*$", line) or m
-            if m:
-                job["result"] = self.rel_url(job["p"], m.group(1))
+            base = os.path.realpath(self.projects[job["p"]])
+            if job["kind"] in ("cover", "cardpics"):   # 回传项目里的图（成品文件夹的复本不算）
+                pics = []
+                for line in job["log"]:
+                    for mm in re.finditer(r"(/[^\s：:]+?\.png|[A-Za-z]:\\[^\s：:]+?\.png)", line):
+                        pth = os.path.realpath(mm.group(1))
+                        if pth.startswith(base + os.sep) and os.path.isfile(pth):
+                            pics.append(self.rel_url(job["p"], pth) + "?v=%d" % int(time.time()))
+                job["result"] = pics
+            else:
+                m = None
+                for line in job["log"]:
+                    m = re.search(r"[：:]\s*(/.+?\.mp4|[A-Za-z]:\\.+?\.mp4)\s*$", line) or m
+                if m:
+                    out = m.group(1)
+                    if job["kind"] == "audition":
+                        dst = os.path.join(base, "work", "studio", "audition_%s_%d.mp4" % (job["tag"], int(job["t0"] * 1000)))
+                        os.replace(out, dst)
+                        out = dst
+                    job["result"] = self.rel_url(job["p"], out)
             job["progress"], job["status"], job["stage"] = 1.0, "done", "完成"
         except Exception as e:   # noqa: BLE001
             job["status"], job["stage"] = "error", str(e)
@@ -757,6 +885,12 @@ def _handler(studio: Studio):
                     return self._json(studio.assets(q["p"][0]))
                 if r == "api/faces":
                     return self._json(studio.faces(q["p"][0]))
+                if r == "api/cardlist":
+                    return self._json(studio.cardlist(q["p"][0]))
+                if r == "api/pictures":
+                    return self._json(studio.pictures(q["p"][0]))
+                if r == "api/history":
+                    return self._json(studio.history(q["p"][0], (q.get("which") or ["sb"])[0], (q.get("name") or [None])[0]))
                 if r == "api/peaks":
                     return self._json(studio.peaks(q["p"][0]))
                 if r == "api/job":
@@ -790,6 +924,8 @@ def _handler(studio: Studio):
                 body = json.loads(self.rfile.read(n).decode("utf-8") or "{}")
                 if r == "api/save":
                     return self._json(studio.save(body))
+                if r == "api/broll":
+                    return self._json(studio.broll(body))
                 if r == "api/tidy":
                     return self._json(studio.tidy(body))
                 if r == "api/hook":

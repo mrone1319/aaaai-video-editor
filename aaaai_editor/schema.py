@@ -59,7 +59,8 @@ CARDS = {
 }
 
 COMMON = [("anim", "入场动画", "select", ANIMS), ("sfx", "音效", "select", SFX), ("scale", "大小", "num"),
-          ("lite", "遮罩版（看得见画面）", "bool")]
+          ("lite", "遮罩版（看得见画面）", "bool"), ("avoid_face", "自动避开脸", "bool"),
+          ("behind_subject", "放到人后面（文字穿插，需要人像去背）", "bool")]
 
 # 能直接出「真样子」PNG 的基本字卡（组合卡、配方要渲染一段才看得到）
 TRUE_LOOK = ("title", "stat", "bullets", "quote", "lower_third", "stamp", "callout", "text", "rows", "icons",
@@ -91,7 +92,21 @@ NEW = [
     ("互动", [("cta", {"question": "你最想学**哪一个**？", "keyword": "工具", "badge": "留言领取"}, "评论框打字"),
               ("countdown", {"from": 3}, "3、2、1")]),
 ]
-NEW_LEN = {"cta": 6.0, "countdown": 3.0, "stamp": 2.0, "callout": 2.0, "lower_third": 3.0}
+# 「＋ 字卡」里的配方（一个配方展开成几张卡＋推近；真样子要「渲染这一段」）
+NEW_RECIPES = [
+    ("hook", {"text": "开场**金句**", "kicker": "小标"}, "开场钩子：印章＋大标题＋推近"),
+    ("stat_hit", {"value": 100, "suffix": "%", "label": "说明一行"}, "数字跳动＋落定推近"),
+    ("quote_pull", {"text": "一句值得记住的话"}, "金句＋推近"),
+    ("steps", {"title": "三个步骤", "items": ["第一步", "第二步", "第三步"]}, "一步步出现"),
+    ("speaker", {"name": "名字", "role": "头衔"}, "人名条"),
+    ("chapter", {"title": "第一章", "index": 1}, "章节断章（画面压暗）"),
+    ("takeover", {"text": "结论**一句话**", "kicker": "重点"}, "卡片接管：画面收进圆角框"),
+    ("outro", {"text": "谢谢观看", "sub": "关注我"}, "片尾：整屏卡片＋淡出"),
+    ("brand_open", {"text": "品牌名"}, "品牌片头"),
+    ("brand_close", {"text": "品牌名"}, "品牌片尾"),
+]
+NEW_LEN = {"takeover": 6.0, "outro": 3.0, "brand_open": 2.6, "brand_close": 3.0, "chapter": 2.0, "hook": 3.0,
+           "cta": 6.0, "countdown": 3.0, "stamp": 2.0, "callout": 2.0, "lower_third": 3.0}
 
 
 def as_dict() -> dict:
@@ -106,4 +121,5 @@ def as_dict() -> dict:
         rec[name] = {"name": name, "desc": r.get("desc", ""), "required": list(req), "optional": list(opt)}
     return {"cards": {k: {"name": v[0], "fields": f(v[1])} for k, v in CARDS.items()},
             "common": f(COMMON), "true_look": list(TRUE_LOOK), "recipes": rec,
-            "new": [[g, [[t, d, h] for t, d, h in items]] for g, items in NEW], "new_len": NEW_LEN}
+            "new": [[g, [[t, d, h] for t, d, h in items]] for g, items in NEW], "new_len": NEW_LEN,
+            "new_recipes": [[n, d, h] for n, d, h in NEW_RECIPES]}

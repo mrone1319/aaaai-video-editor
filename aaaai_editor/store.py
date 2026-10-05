@@ -16,6 +16,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import tempfile
 import time
 from typing import Any, Callable, Iterator, Optional, Tuple
@@ -101,6 +102,58 @@ def _log(path: str, source: str, before: str, after: str) -> None:
         pass
 
 
+HISTORY_KEEP = 100
+
+
+def history_dir(path: str) -> str:
+    """每份文件的历史版本放在 项目/work/history/<文件名>/。"""
+    d = os.path.dirname(os.path.abspath(path))
+    work = d if os.path.basename(d) == "work" else os.path.join(d, "work")
+    return os.path.join(work, "history", os.path.splitext(os.path.basename(path))[0])
+
+
+def _snap(path: str, old: Optional[bytes], data: bytes, ver: str, source: str) -> None:
+    """留一份历史版本（Studio「历史版本」用）。第一次留时，连改之前的原样也存一份。最多留最近 100 份。"""
+    try:
+        hd = history_dir(path)
+        os.makedirs(hd, exist_ok=True)
+        names = sorted(n for n in os.listdir(hd) if n.endswith(".json"))
+        stamp = time.strftime("%Y%m%d-%H%M%S") + "-%03d" % int((time.time() % 1) * 1000)
+        if not names and old:
+            with open(os.path.join(hd, "%s-0_%s_原样.json" % (stamp, version_of(old))), "wb") as f:
+                f.write(old)
+        src = re.sub(r"[^\w.-]", "_", source)[:24]
+        with open(os.path.join(hd, "%s-1_%s_%s.json" % (stamp, ver, src)), "wb") as f:
+            f.write(data)
+        names = sorted(n for n in os.listdir(hd) if n.endswith(".json"))
+        for n in names[:-HISTORY_KEEP]:
+            os.remove(os.path.join(hd, n))
+    except OSError:
+        pass
+
+
+def history(path: str) -> list:
+    """历史版本清单（新到旧）：[{name, time, version, source}]。"""
+    hd = history_dir(path)
+    out = []
+    if os.path.isdir(hd):
+        for n in sorted((n for n in os.listdir(hd) if n.endswith(".json")), reverse=True):
+            parts = n[:-5].split("_", 2)
+            if len(parts) == 3:
+                t = parts[0][:15]
+                out.append({"name": n, "time": "%s-%s-%s %s:%s:%s" % (t[:4], t[4:6], t[6:8], t[9:11], t[11:13], t[13:15]),
+                            "version": parts[1], "source": parts[2]})
+    return out
+
+
+def _old(path: str) -> Optional[bytes]:
+    try:
+        with open(path, "rb") as f:
+            return f.read()
+    except OSError:
+        return None
+
+
 def _atomic(path: str, data: bytes) -> None:
     """先写同目录临时文件、落盘，再整个替换：中途当掉也不会留下半个文件。"""
     d = os.path.dirname(os.path.abspath(path))
@@ -127,8 +180,11 @@ def write(path: str, obj: Any, expect: Optional[str] = None, source: str = "engi
         before = current_version(path)
         if expect is not None and before != expect:
             raise Conflict(path, expect, before)
+        old = _old(path)
         _atomic(path, data)
         after = version_of(data)
+        if after != before:
+            _snap(path, old, data, after, source)
     if after != before:
         _log(path, source, before, after)
     return after
@@ -137,12 +193,15 @@ def write(path: str, obj: Any, expect: Optional[str] = None, source: str = "engi
 def update(path: str, fn: Callable[[Any], Any], source: str = "engine") -> str:
     """锁住文件做「读→改→写」：fn 收到现在的内容，回传（或就地改好）新内容。回传新版本。"""
     with lock(path):
+        old = _old(path)
         obj, ver = read(path)
         new = fn(obj)
         obj = obj if new is None else new
         data = _dump(obj)
         _atomic(path, data)
         after = version_of(data)
+        if after != ver:
+            _snap(path, old, data, after, source)
     if after != ver:
         _log(path, source, ver, after)
     return after

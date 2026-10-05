@@ -41,6 +41,9 @@ let pps = 18, tOut = 0, playing = false;
 let PEAKS = null, ISSUES = [], CHECKED = false, CONFLICT = false;
 const PNG = new Map();  // 字卡真样子缓存：key → { url, box:[x,y,w,h]（相对画面） }
 let OPT = null, FACES = null, FACES_BUSY = false;
+let multi = [];          // 多选：[{k, i}]（字卡、配方、推近、音效）
+let stopAt = null;       // 试听剪点：播到这里自己停
+let BROLL = null;        // B-roll 状态与搜寻结果
 const SHOW = { safe: false, face: false, plat: "" };   // 画面叠层：安全区、脸、平台遮挡
 const TOOLS = { tidy: null, hooks: null, busy: "" };    // 逐字稿页的口误清理／开头钩子结果
 let pngBusy = false, idleTimer = null;
@@ -116,7 +119,7 @@ async function openProject(id) {
 
 function load(j, first) {
   const keepSel = sel, keepT = tOut;
-  P = { id: j.id, name: j.name, fps: j.fps, W: j.W, H: j.H, styles: j.styles, source_ok: j.source_ok, proxy: j.proxy, final: j.final };
+  P = { id: j.id, name: j.name, fps: j.fps, W: j.W, H: j.H, styles: j.styles, source_ok: j.source_ok, proxy: j.proxy, final: j.final, srcDur: j.source_duration || 1e9 };
   S = { sb: j.storyboard, cap: j.captions };
   AUTO = j.captions_auto || [];
   V = { sb: j.sb_version, cap: j.cap_version };
@@ -124,7 +127,7 @@ function load(j, first) {
   RO = !j.source_ok;
   CONFLICT = false;
   T = TL();
-  if (first) { FACES = null; TOOLS.tidy = null; TOOLS.hooks = null; OPT = null; }
+  if (first) { FACES = null; TOOLS.tidy = null; TOOLS.hooks = null; OPT = null; multi = []; BROLL = null; }
   if (first) { undoStack = []; redoStack = []; sel = null; tOut = 0; ISSUES = []; CHECKED = false; $("chkN").hidden = true; PNG.clear(); }
   else { sel = keepSel && findSel(keepSel) ? keepSel : null; tOut = Math.min(keepT, Math.max(0, T.dur - 0.01)); }
   document.title = P.name + " · Studio";
@@ -134,7 +137,7 @@ function load(j, first) {
   $("app").classList.toggle("ro-mode", RO);
   $("roNote").hidden = !RO;
   $("roNote").innerHTML = RO ? '<span class="ro">原片不见了：只能看、不能改（把原片放回 storyboard.json 的 source 指向的位置后重新打开）</span>' : "";
-  ["undo", "redo", "renderRange", "export", "styleSel", "addCardBtn", "addFxBtn", "delBtn"].forEach((x) => { $(x).disabled = RO; });
+  ["undo", "redo", "renderRange", "export", "styleSel", "addCardBtn", "addFxBtn", "delBtn", "splitBtn"].forEach((x) => { $(x).disabled = RO; });
   updUndo(); setSave(); fitStage(); renderAll();
 }
 
@@ -365,6 +368,7 @@ function cardHTML(v) {
 }
 stage.addEventListener("click", (e) => {
   if (e.target.closest("#selLayer") || cdragJustEnded) return;
+  multi = [];
   const el = e.target.closest("[data-k]");
   if (!el) { select(null); return; }
   select({ k: el.dataset.k, i: +el.dataset.i });
@@ -418,6 +422,7 @@ function loop() {
     if (i + 1 < T.cuts.length) { video.currentTime = T.cuts[i + 1][0]; tOut = T.off[i + 1] + 0.001; }
     else { togglePlay(); return; }
   } else if (c && video.currentTime >= c[0] - 0.1) tOut = T.off[i] + Math.max(0, video.currentTime - c[0]);
+  if (stopAt !== null && tOut >= stopAt) { stopAt = null; togglePlay(); return; }
   tick();
   const sc = $("tlScroll"), x = tOut * pps;
   if (x > sc.scrollLeft + sc.clientWidth - 40 || x < sc.scrollLeft) sc.scrollLeft = x - 80;
@@ -481,9 +486,10 @@ function renderTimeline() {
   inner.innerHTML = h;
   drawWave();
 }
+const inMulti = (k, i) => multi.some((m) => m.k === k && m.i === i);
 function block(k, i, a, b, text, top, bad) {
   const isSel = sel && sel.k === k && sel.i === i;
-  return '<div class="tl-block ' + k + (isSel ? " sel" : "") + (bad ? " bad" : "") + '" tabindex="0" data-k="' + k + '" data-i="' + i + '" style="left:' + a * pps + "px;width:" + Math.max(6, (b - a) * pps) + "px" + (top !== undefined ? ";top:" + top + "px" : "") + '" title="' + esc(plain(text)) + '">' + esc(plain(text)) + "</div>";
+  return '<div class="tl-block ' + k + (isSel ? " sel" : "") + (inMulti(k, i) && multi.length > 1 ? " multi" : "") + (k === "cut" && !RO ? " trim" : "") + (bad ? " bad" : "") + '" tabindex="0" data-k="' + k + '" data-i="' + i + '" style="left:' + a * pps + "px;width:" + Math.max(6, (b - a) * pps) + "px" + (top !== undefined ? ";top:" + top + "px" : "") + '" title="' + esc(plain(text)) + '">' + esc(plain(text)) + "</div>";
 }
 function drawWave() {
   const cv = $("wave"); if (!cv) return;
@@ -524,12 +530,26 @@ $("tlInner").addEventListener("pointerdown", (e) => {
   const k = b.dataset.k, i = +b.dataset.i;
   const br = b.getBoundingClientRect(), off = e.clientX - br.left;   // 先量：选取会重画时间轴
   const mode = k === "sx" ? "move" : off < 7 ? "l" : off > br.width - 7 ? "r" : "move";
+  const multiable = ["ov", "rc", "zm", "sx"].includes(k);
+  if (multiable && (e.shiftKey || e.metaKey || e.ctrlKey)) {   // 加选／减选
+    if (!multi.length && sel && ["ov", "rc", "zm", "sx"].includes(sel.k)) multi = [sel];
+    multi = inMulti(k, i) ? multi.filter((m) => !(m.k === k && m.i === i)) : multi.concat([{ k, i }]);
+    sel = multi.length ? multi[multi.length - 1] : null;
+    renderTimeline(); renderInspector(); renderStage(); return;
+  }
+  if (!inMulti(k, i)) multi = [];
   select({ k, i });
+  if (k === "cut" && !RO && mode !== "move") {   // 拖画面段的两端＝修剪剪辑点（原片入点／出点）
+    tdrag = { k, i, mode, sx: e.clientX, before: snap(), sbBefore: clone(S.sb), orig: clone(S.sb.cuts), moved: false };
+    $("tlInner").setPointerCapture(e.pointerId); e.preventDefault(); return;
+  }
   if (RO || k === "cut") { seek((e.clientX - rect.left) / pps); return; }
   if (k === "cap" && !ensureCapTrack()) return;
   const o = findSel();
   const a0 = k === "cap" ? +o.s[0] : k === "sx" ? +o.t : +o.t[0], b0 = k === "cap" ? +o.s[1] : k === "sx" ? +o.t : +o.t[1];
-  tdrag = { k, o, mode, sx: e.clientX, before: tdragBefore || snap(), a0, b0, moved: false };
+  const others = multi.length > 1 ? multi.filter((m) => !(m.k === k && m.i === i)).map((m) => ({ o: findSel(m), k: m.k })).filter((x) => x.o)
+    .map((x) => ({ o: x.o, k: x.k, t: clone(x.o.t) })) : [];
+  tdrag = { k, o, mode, sx: e.clientX, before: tdragBefore || snap(), a0, b0, moved: false, others };
   tdragBefore = null;
   $("tlInner").setPointerCapture(e.pointerId);
   e.preventDefault();
@@ -542,6 +562,15 @@ $("tlInner").addEventListener("pointermove", (e) => {
   const d = (e.clientX - tdrag.sx) / pps, o = tdrag.o;
   if (Math.abs(e.clientX - tdrag.sx) < 3 && !tdrag.moved) return;
   tdrag.moved = true;
+  if (tdrag.k === "cut") {
+    const c = tdrag.orig[tdrag.i].slice();
+    if (tdrag.mode === "l") c[0] = r2(Math.max(0, Math.min(c[1] - 0.2, c[0] + d)));
+    else c[1] = r2(Math.min(P.srcDur, Math.max(c[0] + 0.2, c[1] + d)));
+    S.sb.cuts = tdrag.orig.map((x, j) => (j === tdrag.i ? c : x)); T = TL();
+    renderTimeline(); seek(tdrag.mode === "l" ? T.off[tdrag.i] : T.off[tdrag.i] + c[1] - c[0] - 0.05);
+    toast("原片 " + fmt(c[0]) + " – " + fmt(c[1]) + "（放开后字卡会跟着换算）");
+    return;
+  }
   if (tdrag.k === "cap") {
     // 字幕在原片时间里移动／改长短；不能和前后句重叠
     const pcs = pieces(), idx = pcs.indexOf(o);
@@ -563,11 +592,27 @@ $("tlInner").addEventListener("pointermove", (e) => {
     if (tdrag.mode === "r") b = Math.max(a + 0.3, Math.min(T.dur, snapv(tdrag.b0 + d)));
     o.t = [r2(a), r2(b)];
   }
+  if (tdrag.others.length && tdrag.mode === "move") {   // 多选：整组一起移
+    const dt = (tdrag.k === "sx" ? +o.t : +o.t[0]) - tdrag.a0;
+    for (const x of tdrag.others) x.o.t = Array.isArray(x.t) ? [r2(Math.max(0, x.t[0] + dt)), r2(Math.max(0.3, x.t[1] + dt))] : r2(Math.max(0, x.t + dt));
+  }
   renderTimeline(); renderStage(); renderInspector();
 });
-$("tlInner").addEventListener("pointerup", () => {
-  if (tdrag && tdrag.before && tdrag.moved) commit(tdrag.before);
-  tdrag = null; scheduleTrueLook();
+$("tlInner").addEventListener("pointerup", async () => {
+  const d = tdrag; tdrag = null;
+  if (d && d.k === "cut") {
+    if (!d.moved) return;
+    const newCuts = clone(S.sb.cuts);
+    S.sb = d.sbBefore;   // 用拖之前的剪辑表换算字卡时间，再整组换上新剪辑点
+    try {
+      const r = await api("api/recut", { storyboard: clone(S.sb), set: newCuts });
+      S.sb = r.storyboard; T = TL(); commit(d.before);
+      toast("剪辑点改好了，片长 " + fmt(T.dur) + "；字卡已跟着换算。", false, [["复原", undo]]);
+    } catch (e) { T = TL(); renderAll(); toast("没改成：" + e.message, true); }
+    return;
+  }
+  if (d && d.before && d.moved) commit(d.before);
+  scheduleTrueLook();
 });
 $("tlInner").addEventListener("dblclick", (e) => { const b = e.target.closest(".tl-block:not(.aud)"); if (b) { const r = rangeOf(); if (r) seek(r[0] + 0.01); } });
 $("zoom").oninput = (e) => { const keep = tOut * pps - $("tlScroll").scrollLeft; pps = +e.target.value; renderTimeline(); $("tlScroll").scrollLeft = tOut * pps - keep; };
@@ -585,7 +630,8 @@ function ensureCapTrack() {
 // ------------------------------------------------------------------ 右栏：属性／逐字稿／体检
 function showPane(name) {
   for (const b of document.querySelectorAll(".tabs button")) b.setAttribute("aria-selected", String(b.dataset.pane === name));
-  for (const n of ["insp", "tr", "chk", "ast", "set"]) $("pane-" + n).hidden = n !== name;
+  for (const n of ["insp", "tr", "chk", "ast", "cov", "set"]) $("pane-" + n).hidden = n !== name;
+  if (name === "cov") renderCover();
   if (name === "tr") renderTranscript();
   if (name === "ast") renderAssets();
   if (name === "set") renderSettings();
@@ -623,6 +669,7 @@ function readVal(el) {
 
 function renderInspector() {
   const el = $("pane-insp"); if (!S) return;
+  if (multi.length > 1) { renderMulti(el); return; }
   const o = findSel();
   if (!o) {
     el.innerHTML = '<h3>还没选东西</h3><p class="empty">点画面上的<b>字卡</b>或<b>字幕</b>，或点下面时间轴上的任何一块，就能在这里改。</p>' +
@@ -676,12 +723,33 @@ function renderInspector() {
   } else if (sel.k === "cut") {
     h += '<h3><span class="tag" style="background:var(--cut-t)">画面</span>第 ' + (sel.i + 1) + " 段</h3>";
     h += '<p class="hint">原片 ' + fmt(o[0]) + " – " + fmt(o[1]) + "（" + (o[1] - o[0]).toFixed(2) + " 秒），成片从 " + fmt(T.off[sel.i]) + " 开始。</p>";
-    h += '<p class="hint">要剪掉讲错、重讲的句子，到<b>逐字稿</b>里删那一句；字卡会自动跟着往前。拖剪辑点留到之后的版本。</p>';
+    if (!RO) h += '<div class="row2">' + inp("c_a", "原片入点（秒）", "num", o[0]) + inp("c_b", "原片出点（秒）", "num", o[1]) + "</div>";
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="audIn"' + (sel.i ? "" : " disabled") + '>▶ 试听入点（前后 2 秒）</button><button class="btn sm" id="audOut"' + (sel.i + 1 < T.cuts.length ? "" : " disabled") + ">▶ 试听出点</button>" +
+      (RO ? "" : '<button class="btn danger sm" id="cutDel">删除这段</button>') + "</div>";
+    h += '<p class="hint">时间轴上拖这一段的<b>两端</b>＝修剪入点／出点（字卡会自动跟着换算）；<span class="kbd">S</span> 在播放头切开；讲错的句子也可以到<b>逐字稿</b>里删。</p>';
   }
   if (!RO && ["ov", "rc", "zm", "sx"].includes(sel.k)) h += '<button class="btn danger sm" id="delSel">删除' + ({ ov: "这张字卡", rc: "这个配方", zm: "这个推近", sx: "这个音效" }[sel.k]) + "</button>";
   el.innerHTML = h;
   bindInspector(o);
   const ds = $("delSel"); if (ds) ds.onclick = deleteSel;
+  if (sel.k === "cut") {
+    const ai = $("audIn"), ao = $("audOut"), cd = $("cutDel"), i = sel.i;
+    if (ai) ai.onclick = () => playRange(T.off[i] - 2, T.off[i] + 2);
+    if (ao) ao.onclick = () => playRange(T.off[i + 1] - 2, T.off[i + 1] + 2);
+    if (cd) cd.onclick = deleteSel;
+    for (const id of ["c_a", "c_b"]) {
+      const x = $(id); if (!x) continue;
+      x.onchange = async () => {
+        const v = parseFloat(x.value); if (isNaN(v)) return;
+        const c = T.cuts[i].slice(); if (id === "c_a") c[0] = r3(Math.max(0, v)); else c[1] = r3(Math.min(P.srcDur, v));
+        if (c[1] - c[0] < 0.2) { x.classList.add("err"); return; }
+        const before = snap();
+        try { const r = await api("api/recut", { storyboard: clone(S.sb), set: T.cuts.map((y, j) => (j === i ? c : y)) }); S.sb = r.storyboard; T = TL(); commit(before); }
+        catch (e) { toast("没改成：" + e.message, true); }
+      };
+    }
+    return;
+  }
   const rx = $("resetXY"); if (rx) rx.onclick = () => { const before = snap(); delete o.xy; commit(before); };
 }
 function otherFields(o, known) {
@@ -773,7 +841,9 @@ function renderTranscript() {
         (RO ? "<span></span>" : o ? '<button class="btn sm x" data-cut="' + i + '" title="把这句剪掉" aria-label="剪掉这句">✕</button>' : '<button class="btn sm x" data-restore="' + i + '">还原</button>') + "</div>";
     }).join("");
   markTranscript();
+  const bt = $("batch"); if (bt) bt.addEventListener("toggle", () => { TOOLS.batch = bt.open; });
 }
+$("pane-tr").addEventListener("input", (e) => { if (["bFind", "bRep", "bHl"].includes(e.target.id)) (TOOLS.bv = TOOLS.bv || {})[e.target.id] = e.target.value; });
 $("pane-tr").addEventListener("click", (e) => {
   const tb = e.target.closest("[data-tool]"); if (tb) { runTool(tb.dataset.tool, tb.dataset.arg); return; }
   const c = e.target.closest("[data-cut]"); if (c) { cutPiece(+c.dataset.cut); return; }
@@ -784,6 +854,11 @@ $("pane-tr").addEventListener("click", (e) => {
 function toolsHTML() {
   if (RO) return "";
   let h = '<div class="tool"><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-tool="tidy">找口误／重讲</button><button class="btn sm" data-tool="hooks">推荐开头钩子</button></div>';
+  const bv = TOOLS.bv || {};
+  h += '<details id="batch"' + (TOOLS.batch ? " open" : "") + '><summary class="hint" style="cursor:pointer">字幕批量：查找替换、全部高亮、整体前后移</summary><div style="display:grid;gap:6px;margin-top:6px">' +
+    '<div class="row2"><input id="bFind" placeholder="找" class="field-in" value="' + esc(bv.bFind || "") + '"><input id="bRep" placeholder="换成" class="field-in" value="' + esc(bv.bRep || "") + '"></div><button class="btn sm" data-tool="replace">全部替换（中文和英文）</button>' +
+    '<div class="row2"><input id="bHl" placeholder="要高亮的词" class="field-in" value="' + esc(bv.bHl || "") + '"><button class="btn sm" data-tool="hlAll">每句都高亮</button></div>' +
+    '<div style="display:flex;gap:6px;align-items:center"><span class="hint">全部字幕</span><button class="btn sm" data-tool="shift" data-arg="-0.05">早 0.05 秒</button><button class="btn sm" data-tool="shift" data-arg="0.05">晚 0.05 秒</button></div></div></details>';
   if (TOOLS.busy) h += '<p class="hint">' + esc(TOOLS.busy) + "</p>";
   if (TOOLS.tidy) {
     h += TOOLS.tidy.length ? "<b>找到 " + TOOLS.tidy.length + " 处（勾选要剪的）</b>" + TOOLS.tidy.map((x) => '<label class="it"><input type="checkbox" class="tidyck" value="' + x.id + '" checked><span>' + (x.t != null ? '<span class="hint">' + fmt(x.t).slice(0, 5) + "</span> " : "") + "【" + esc(x.kind) + "】" + esc(x.text || "") + ' <span class="hint">' + x.len + " 秒</span></span></label>").join("") +
@@ -799,6 +874,28 @@ function toolsHTML() {
 async function runTool(name, arg) {
   if (RO) return;
   if (name === "close") { TOOLS.tidy = TOOLS.hooks = null; renderTranscript(); return; }
+  if (name === "replace" || name === "hlAll" || name === "shift") {
+    const before = snap();
+    if (!ensureCapTrack()) return;
+    tdragBefore = null;
+    let n = 0;
+    if (name === "replace") {
+      const f = $("bFind").value, r = $("bRep").value;
+      if (!f) { toast("先填要找的字。"); return; }
+      for (const pc of S.cap.pieces) for (const key of ["text", "en"]) if (pc[key] && pc[key].includes(f)) { n += pc[key].split(f).length - 1; pc[key] = pc[key].split(f).join(r); }
+      if (!n) { toast("没找到「" + f + "」。"); return; }
+      commit(before); toast("换了 " + n + " 处。", false, [["复原", undo]]); return;
+    }
+    if (name === "hlAll") {
+      const w = $("bHl").value.trim(); if (!w) { toast("先填要高亮的词。"); return; }
+      for (const pc of S.cap.pieces) if ((pc.text || "").includes(w) && !(pc.hl || []).includes(w) && !(pc.text || "").includes("**" + w)) { pc.hl = (pc.hl || []).concat([w]); n++; }
+      if (!n) { toast("没有句子含「" + w + "」，或已经高亮了。"); return; }
+      commit(before); toast(n + " 句的「" + w + "」高亮了。", false, [["复原", undo]]); return;
+    }
+    const dt = +arg;
+    for (const pc of S.cap.pieces) pc.s = [r3(Math.max(0, +pc.s[0] + dt)), r3(Math.max(0.1, +pc.s[1] + dt))];
+    commit(before); toast("全部字幕" + (dt < 0 ? "提早" : "延后") + " " + Math.abs(dt) + " 秒。", false, [["复原", undo]]); return;
+  }
   if (name === "tidy" || name === "hooks") {
     await flushSave(); if (CONFLICT) return;
     TOOLS.tidy = TOOLS.hooks = null;
@@ -857,6 +954,8 @@ async function renderAssets() {
       return '<div class="asset">' + th + '<div><div class="nm">' + esc(a.path) + ' <span class="hint">' + (a.size / 1048576).toFixed(1) + " MB</span></div><div class=\"acts\">" + acts + "</div></div></div>";
     }).join("") : '<p class="empty">这个项目还没有素材。</p>');
   el._list = list;
+  el.insertAdjacentHTML("beforeend", brollHTML());
+  bindBroll();
   const fi = $("fileIn"); if (!fi) return;
   $("pickFile").onclick = () => fi.click();
   fi.onchange = () => uploadFiles([...fi.files]);
@@ -891,6 +990,47 @@ $("pane-ast").addEventListener("click", (e) => {
   if (act === "image" || act === "broll") showPane("insp");
 });
 
+// ------------------------------------------------------------------ B-roll：素材库、Pexels 免费素材（AI 生成要花钱，留在对话里先报价）
+function brollHTML() {
+  if (RO) return "";
+  const st = BROLL && BROLL.status;
+  let h = '<fieldset><legend>B-roll（盖在人像上的画面）</legend>';
+  if (!st) { loadBroll(); return h + '<p class="hint">读取中…</p></fieldset>'; }
+  h += st.pexels ? '<div class="row2"><input id="pxQ" placeholder="英文关键词，例：city night" value="' + esc(BROLL.q || "") + '"><button class="btn sm" id="pxGo">搜 Pexels 免费素材</button></div>'
+    : '<p class="hint">绑定 Pexels 密钥（免费）就能在这里搜素材：在你自己的终端执行 <code>aaaai-editor keys set PEXELS_API_KEY</code>。</p>';
+  if (BROLL.busy) h += '<p class="hint">' + esc(BROLL.busy) + "</p>";
+  if (BROLL.res && BROLL.res.length) h += '<div class="pex">' + BROLL.res.map((x) => '<button data-px="' + x.id + '" title="Pexels / ' + esc(x.user) + '"><img alt="" src="' + esc(x.thumb) + '"><span>' + esc(x.user) + " · " + x.duration + "s</span></button>").join("") + "</div><p class=\"hint\">点一个＝下载进 assets/broll/ 并放在播放头（署名自动记在 out/broll_credits.txt）。</p>";
+  if (BROLL.lib && BROLL.lib.length) h += "<b>素材库（以前生成或下载过的）</b>" + BROLL.lib.map((x) => '<div class="it" style="display:flex;justify-content:space-between;gap:8px"><span class="hint">' + esc(x.text || x.key) + "（" + esc(x.provider || "") + '）</span><button class="btn sm" data-lib="' + esc(x.key) + '">用这个</button></div>').join("");
+  return h + '<p class="hint">要 AI 生成画面：在对话里说「这一段帮我生成 B-roll」，Claude 会先报价、你同意才花钱。</p></fieldset>';
+}
+async function loadBroll() {
+  BROLL = BROLL || {};
+  try { BROLL.status = await api("api/broll", { p: P.id, action: "status" }); BROLL.lib = (await api("api/broll", { p: P.id, action: "library" })).items; }
+  catch (e) { BROLL.status = { pexels: false }; }
+  renderAssets();
+}
+function bindBroll() {
+  const go = $("pxGo");
+  if (go) go.onclick = async () => {
+    const q = $("pxQ").value.trim(); if (!q) return;
+    BROLL.q = q; BROLL.busy = "搜寻中…"; renderAssets();
+    try { BROLL.res = (await api("api/broll", { p: P.id, action: "search", q })).items; } catch (e) { toast("搜不到：" + e.message, true); }
+    BROLL.busy = ""; renderAssets();
+  };
+  const pane = $("pane-ast");
+  pane.querySelectorAll("[data-px], [data-lib]").forEach((b) => b.onclick = async () => {
+    BROLL.busy = "下载并转成片子的画幅…（十几秒）"; renderAssets();
+    try {
+      const r = await api("api/broll", b.dataset.px ? { p: P.id, action: "get", id: b.dataset.px } : { p: P.id, action: "get", key: b.dataset.lib });
+      const before = snap();
+      (S.sb.overlays = S.sb.overlays || []).push(Object.assign({ type: "broll", t: startAt(3), file: r.path }, r.credit ? { credit: r.credit } : {}));
+      sel = { k: "ov", i: S.sb.overlays.length - 1 }; multi = [];
+      commit(before); toast("B-roll 放好了：时间轴上拖它对准要盖的句子。", false, [["复原", undo]]);
+    } catch (e) { toast("没拿到：" + e.message, true); }
+    BROLL.busy = ""; renderAssets();
+  });
+}
+
 // ------------------------------------------------------------------ 设定：字幕样式、声音、出片
 function getPath(o, path) { return path.split(".").reduce((x, k) => (x == null ? undefined : x[k]), o); }
 function setPath(o, path, v) {
@@ -922,13 +1062,21 @@ function renderSettings() {
     '<fieldset><legend>声音</legend>' + sfield("music.file", "配乐", "select", bgm) +
     '<div class="row2">' + sfield("music.db", "配乐音量（dB）", "num") + sfield("music.duck", "人声出现时压低", "jsel", [["true", "压低"], ["false", "不压"], ["", "默认"]]) + "</div>" +
     sfield("denoise", "降噪", "jsel", [["", "标准（默认）"], ['"strong"', "加强"], ["false", "关（原声）"]]) +
-    sfield("loudness", "成片响度（LUFS）", "num", null, "默认 −14（各平台通用）。") + "</fieldset>" +
+    sfield("loudness", "成片响度（LUFS）", "num", null, "默认 −14（各平台通用）。") +
+    '<div class="row2"><div class="field"><label for="audMusic">试听别的配乐</label><select id="audMusic">' + bgm.filter((x) => x[0]).map((x) => '<option value="' + esc(x[0]) + '">' + esc(x[1]) + "</option>").join("") + '</select></div><div class="field"><label>&nbsp;</label><button class="btn sm" id="audMusicGo">▶ 试听 8 秒</button></div></div>' +
+    '<div class="row2"><div class="field"><label for="audDn">试听降噪</label><select id="audDn"><option value="true">标准</option><option value="&quot;strong&quot;">加强</option><option value="false">关（原声）</option></select></div><div class="field"><label>&nbsp;</label><button class="btn sm" id="audDnGo">▶ 试听 8 秒</button></div></div>' +
+    '<p class="hint" style="margin:-4px 0 0">从播放头开始渲染 8 秒（真正的混音与响度），不会改到剪辑表。</p></fieldset>' +
+    '<fieldset><legend>取景（推近整支片）</legend><div class="row2">' + sfield("framing.zoom", "放大（1–1.4）", "num") + sfield("framing.cy", "垂直中心（0–1）", "num") + "</div>" +
+    sfield("framing.cx", "水平中心（0–1）", "num", null, "机位太远时用，约 1.15–1.25 安全；改了会重做播放用的影片。") + "</fieldset>" +
     '<fieldset><legend>出片</legend>' + sfield("ending.fade", "结尾淡出（秒）", "num") +
     sfield("output.encoder", "编码", "select", [["", "软件编码（画质最好）"], ["hw", "硬件编码（快几倍、文件稍大）"]]) +
     '<p class="hint">尺寸：' + P.W + "×" + P.H + "，" + P.fps + " fps（多尺寸出片在之后的版本）。</p></fieldset>";
-  if (RO) el.querySelectorAll("[data-path]").forEach((x) => { x.disabled = true; });
+  if (RO) el.querySelectorAll("[data-path], button").forEach((x) => { x.disabled = true; });
+  const aud = (ov) => startJob({ kind: "audition", a: r3(tOut), b: r3(Math.min(T.dur, tOut + 8)), override: ov });
+  const am = $("audMusicGo"); if (am) am.onclick = () => aud({ music: Object.assign({ db: -18, duck: true }, S.sb.music || {}, { file: $("audMusic").value }) });
+  const ad = $("audDnGo"); if (ad) ad.onclick = () => aud({ denoise: JSON.parse($("audDn").value) });
 }
-$("pane-set").addEventListener("change", (e) => {
+function pathChange(e) {
   const x = e.target.closest("[data-path]"); if (!x || RO) return;
   let v = readVal(x);
   if (x.dataset.json) v = x.value === "" ? undefined : JSON.parse(x.value);
@@ -940,7 +1088,58 @@ $("pane-set").addEventListener("change", (e) => {
   else setPath(S.sb, path, v);
   commit(before);
   if (path.startsWith("captions.")) PNG.clear();
-});
+  if (path.startsWith("framing.") && P.source_ok) flushSave().then(() => { P.proxy = null; prepareProxy(); });
+}
+$("pane-set").addEventListener("change", pathChange);
+$("pane-cov").addEventListener("change", pathChange);
+
+// ------------------------------------------------------------------ 封面与图卡
+async function renderCover() {
+  const el = $("pane-cov"); if (!S || el.hidden) return;
+  if (document.activeElement && el.contains(document.activeElement)) return;
+  let pics = [], cards = [];
+  try { pics = (await api("api/pictures?p=" + encodeURIComponent(P.id))).pictures; } catch (_) {}
+  try { cards = (await api("api/cardlist?p=" + encodeURIComponent(P.id))).cards; } catch (_) {}
+  const cv = S.sb.cover || {};
+  el.innerHTML = '<fieldset><legend>封面</legend>' +
+    '<div class="row2">' + sfield("cover.at", "画面（成片秒）", "num") + '<div class="field"><label>&nbsp;</label><button class="btn sm" id="covNow"' + (RO ? " disabled" : "") + ">用播放头的画面</button></div></div>" +
+    sfield("cover.title", "大标题（用 | 自己断行）", "text") + sfield("cover.kicker", "小标签", "text") + sfield("cover.sub", "第三行说明", "text") +
+    sfield("cover.layout", "版式", "select", [["", "招牌版（默认）"], ["center", "居中简洁版"]]) +
+    '<button class="btn primary sm" id="covGo"' + (RO || !cv.title || cv.at == null ? " disabled" : "") + ">做封面</button>" +
+    (cv.title && cv.at != null ? "" : '<p class="hint">先选画面（播放到满意的地方按「用播放头的画面」）并填大标题。背景取原片干净的那一帧，没有字幕和卡片。</p>') + "</fieldset>" +
+    '<fieldset><legend>图卡（把字卡出成静态图，发图文用）</legend>' +
+    (cards.length ? cards.map((c) => '<label class="it" style="display:flex;gap:8px"><input type="checkbox" class="cpk" value="' + c.n + '" checked><span>' + c.n + ". " + esc((SCHEMA.cards[c.type] || {}).name || c.type) + "　" + esc(c.text) + "</span></label>").join("") : '<p class="hint">这支片还没有能出图卡的字卡。</p>') +
+    '<div class="row2"><div class="field"><label for="cpBg">背景</label><select id="cpBg"><option value="frame">原片干净帧</option><option value="blur">模糊帧</option><option value="solid">纯色</option></select></div>' +
+    '<div class="field"><label for="cpSize">尺寸</label><select id="cpSize"><option value="1350">1080×1350（小红书／IG）</option><option value="1080">1080×1080</option><option value="1920">1080×1920</option></select></div></div>' +
+    '<button class="btn primary sm" id="cpGo"' + (RO || !cards.length ? " disabled" : "") + ">出图卡</button></fieldset>" +
+    (pics.length ? "<h3>项目里的封面与图卡</h3><div class=\"pics\">" + pics.map((x) => '<a href="' + esc(x.url) + '" target="_blank" rel="noopener" title="' + esc(x.name) + '"><img alt="' + esc(x.name) + '" src="' + esc(x.url) + '"></a>').join("") + "</div>" : "");
+  const n = $("covNow"); if (n) n.onclick = () => { const before = snap(); setPath(S.sb, "cover.at", r2(tOut)); commit(before); renderCover(); };
+  const g = $("covGo"); if (g) g.onclick = () => startJob({ kind: "cover" });
+  const c = $("cpGo"); if (c) c.onclick = () => startJob({ kind: "cardpics", pick: [...el.querySelectorAll(".cpk:checked")].map((x) => +x.value), bg: $("cpBg").value, size: $("cpSize").value });
+}
+
+// ------------------------------------------------------------------ 历史版本
+async function openHistory(which) {
+  which = which || "sb";
+  let items = [];
+  try { items = (await api("api/history?p=" + encodeURIComponent(P.id) + "&which=" + which)).items; } catch (e) { toast("读不到历史：" + e.message, true); return; }
+  const SRC = { studio: "界面", claude: "对话", "原样": "最早的样子", cover: "封面", tidy: "清口误", hook: "开头钩子", edit: "命令", engine: "引擎", test: "测试", captions: "字幕", align: "对时" };
+  modal("<h2>历史版本</h2><div style=\"display:flex;gap:6px\"><button class=\"btn sm" + (which === "sb" ? " primary" : "") + "\" data-a=\"sb\">剪辑表</button><button class=\"btn sm" + (which === "cap" ? " primary" : "") + "\" data-a=\"cap\">字幕轨</button></div>" +
+    '<p class="hint">每次存档都会留一份（最近 100 份）。回到某一版＝把那一版存成最新版本，之后还能复原。</p>' +
+    (items.length ? '<div class="hist">' + items.map((x, k) => "<span>" + esc(x.time) + '</span><span class="src">' + esc(SRC[x.source] || x.source) + '</span><span class="hint">' + esc(x.version) + '</span><button class="btn sm" data-a="r' + k + '"' + (RO ? " disabled" : "") + ">回到这版</button>").join("") + "</div>" : '<p class="empty">还没有历史版本（这个功能装好之后的修改才会留）。</p>') +
+    '<div class="acts"><button class="btn primary" data-a="close">关闭</button></div>', async (a) => {
+    if (a === "sb" || a === "cap") { openHistory(a); return; }
+    if (!a.startsWith("r")) return;
+    const x = items[+a.slice(1)];
+    try {
+      const r = await api("api/history?p=" + encodeURIComponent(P.id) + "&which=" + which + "&name=" + encodeURIComponent(x.name));
+      const before = snap();
+      if (which === "cap") S.cap = r.content; else S.sb = r.content;
+      commit(before); PNG.clear();
+      toast("回到 " + x.time + " 的版本了。", false, [["复原", undo]], 8000);
+    } catch (e) { toast("没回去：" + e.message, true); }
+  }, true);
+}
 
 // ------------------------------------------------------------------ 新手导览（第一次打开时；? 里可以再看）
 const TOUR = [
@@ -1015,6 +1214,8 @@ function buildMenus() {
   if (!SCHEMA) return;
   $("cardMenu").innerHTML = SCHEMA.new.map(([g, items]) => '<div class="grp">' + esc(g) + "</div>" + items.map(([t, _d, hint], k) =>
     '<button data-t="' + esc(t) + '">' + esc((SCHEMA.cards[t] || {}).name || t) + "<small>" + esc(hint) + "</small></button>").join("")).join("");
+  $("cardMenu").innerHTML += '<div class="grp">配方（一组卡＋推近；真样子要渲染）</div>' + (SCHEMA.new_recipes || []).map(([n, _d, hint]) =>
+    '<button data-r="' + esc(n) + '">' + esc(n) + "<small>" + esc(hint) + "</small></button>").join("");
   const snd = OPT ? OPT.sounds : ["pop", "ding", "whoosh", "coin"];
   const sname = (x) => ((SCHEMA.common.find((c) => c.key === "sfx") || { options: [] }).options.find((y) => y[0] === x) || [x, x])[1];
   $("fxMenu").innerHTML = '<div class="grp">画面</div><button data-fx="zoom">推近<small>这段画面慢慢放大</small></button><button data-fx="punch">瞬切推近<small>重点落下时冲一下</small></button><button data-fx="confetti">彩带<small>庆祝时刻</small></button>' +
@@ -1027,6 +1228,15 @@ menuToggle("addCardBtn", "cardMenu"); menuToggle("addFxBtn", "fxMenu");
 document.addEventListener("click", () => { $("cardMenu").hidden = true; $("fxMenu").hidden = true; });
 function startAt(len) { const a = r2(Math.max(0, Math.min(tOut, T.dur - 0.5))); return [a, r2(Math.min(T.dur, a + len))]; }
 $("cardMenu").addEventListener("click", (e) => {
+  const rb = e.target.closest("button[data-r]");
+  if (rb) {
+    const n = rb.dataset.r, data = SCHEMA.new_recipes.find((x) => x[0] === n)[1], before = snap();
+    (S.sb.recipes = S.sb.recipes || []).push(Object.assign({ use: n, t: startAt((SCHEMA.new_len || {})[n] || 4) }, clone(data)));
+    sel = { k: "rc", i: S.sb.recipes.length - 1 }; multi = [];
+    commit(before); showPane("insp");
+    toast("加了配方 " + n + "：右边改内容，按「渲染这一段」看真样子。", false, [["复原", undo]]);
+    return;
+  }
   const b = e.target.closest("button[data-t]"); if (!b) return;
   const type = b.dataset.t, data = SCHEMA.new.flatMap((g) => g[1]).find((x) => x[0] === type)[1];
   const before = snap();
@@ -1044,9 +1254,32 @@ $("fxMenu").addEventListener("click", (e) => {
   else { const punch = b.dataset.fx === "punch"; (S.sb.zooms = S.sb.zooms || []).push(Object.assign({ t: startAt(punch ? 0.6 : 2.5), to: punch ? 1.14 : 1.12 }, punch ? { style: "punch" } : {})); sel = { k: "zm", i: S.sb.zooms.length - 1 }; }
   commit(before); showPane("insp");
 });
+function splitAtPlayhead() {
+  if (RO) return;
+  const m = T.toSrc(tOut), c = T.cuts[m.i];
+  if (!c || m.src - c[0] < 0.2 || c[1] - m.src < 0.2) { toast("播放头太靠近这一段的头尾，换个位置再切。"); return; }
+  const before = snap();
+  S.sb.cuts = T.cuts.flatMap((x, j) => (j === m.i ? [[x[0], r3(m.src)], [r3(m.src), x[1]]] : [x]));
+  sel = { k: "cut", i: m.i + 1 }; commit(before);
+  toast("在原片 " + fmt(m.src) + " 切开了。选中多余的一段按 Delete 就能剪掉。");
+}
+$("splitBtn").onclick = splitAtPlayhead;
+function playRange(a, b) {   // 剪点试听：从 a 播到 b 自己停（会开声音）
+  if (!video.src) { toast("播放用的影片还在准备中。"); return; }
+  if (playing) togglePlay();
+  video.muted = false; $("mute").textContent = "🔊";
+  seek(Math.max(0, a)); stopAt = Math.min(T.dur, b); togglePlay();
+}
 function deleteSel() {
   if (RO || !sel) return;
+  if (multi.length > 1) { deleteMulti(); return; }
   if (sel.k === "cap") { cutPiece(sel.i); return; }
+  if (sel.k === "cut") {
+    if (T.cuts.length < 2) { toast("至少要留一段画面。"); return; }
+    const c = T.cuts[sel.i]; sel = null;
+    recut({ remove: [c] }, (r) => "剪掉这一段画面（" + r.saved.toFixed(1) + " 秒），后面的字卡已跟着往前。");
+    return;
+  }
   const key = { ov: "overlays", rc: "recipes", zm: "zooms", sx: "sfx" }[sel.k];
   if (!key || !(S.sb[key] || [])[sel.i]) return;
   const before = snap(), what = { ov: "字卡", rc: "配方", zm: "推近", sx: "音效" }[sel.k];
@@ -1055,6 +1288,44 @@ function deleteSel() {
   toast("删掉了这个" + what + "。", false, [["复原", undo]]);
 }
 $("delBtn").onclick = deleteSel;
+function deleteMulti() {
+  const before = snap(), key = { ov: "overlays", rc: "recipes", zm: "zooms", sx: "sfx" };
+  const n = multi.length;
+  for (const m of [...multi].sort((x, y) => y.i - x.i)) { const L = S.sb[key[m.k]]; if (L && L[m.i]) L.splice(m.i, 1); }
+  multi = []; sel = null; commit(before);
+  toast("删掉了 " + n + " 个。", false, [["复原", undo]]);
+}
+function renderMulti(el) {
+  const items = multi.map((m) => ({ m, o: findSel(m) })).filter((x) => x.o);
+  const ovs = items.filter((x) => x.m.k === "ov");
+  let h = "<h3>已选 " + items.length + " 个</h3><p class=\"hint\">Shift／⌘ 点时间轴上的块加选或减选；拖其中一个，整组一起移。下面改的会套用到选中的每一张字卡（留空＝不改）。</p>";
+  if (ovs.length && !RO) {
+    h += "<fieldset><legend>套用到 " + ovs.length + " 张字卡</legend>";
+    for (const f of SCHEMA.common) {
+      const opts = f.kind === "bool" ? [["", "不改"], ["true", "是"], ["false", "否"], ["__del", "还原默认"]] : f.kind === "select" ? [["", "不改"]].concat(f.options.filter((x) => x[0] !== "")).concat([["__del", "还原默认"]]) : null;
+      h += opts ? '<div class="field"><label>' + esc(f.label) + '</label><select data-mk="' + f.key + '" data-bool="' + (f.kind === "bool" ? 1 : "") + '">' + opts.map((x) => '<option value="' + esc(x[0]) + '">' + esc(x[1]) + "</option>").join("") + "</select></div>"
+        : '<div class="field"><label>' + esc(f.label) + '（留空不改）</label><input type="number" step="any" data-mk="' + f.key + '"></div>';
+    }
+    h += "</fieldset>";
+  }
+  if (!RO) h += '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" data-shift="-0.1">整组往前 0.1 秒</button><button class="btn sm" data-shift="0.1">往后 0.1 秒</button><button class="btn danger sm" id="mDel">全部删除</button></div>';
+  el.innerHTML = h;
+  el.querySelectorAll("[data-mk]").forEach((x) => x.addEventListener("change", () => {
+    if (x.value === "") return;
+    const before = snap(), key = x.dataset.mk;
+    for (const { o } of ovs) {
+      if (x.value === "__del") delete o[key];
+      else o[key] = x.dataset.bool ? x.value === "true" : x.type === "number" ? parseFloat(x.value) : x.value;
+    }
+    commit(before); toast("已套用到 " + ovs.length + " 张字卡。", false, [["复原", undo]]);
+  }));
+  el.querySelectorAll("[data-shift]").forEach((x) => x.addEventListener("click", () => {
+    const before = snap(), dt = +x.dataset.shift;
+    for (const { o } of items) o.t = Array.isArray(o.t) ? [r2(Math.max(0, +o.t[0] + dt)), r2(Math.max(0.3, +o.t[1] + dt))] : r2(Math.max(0, +o.t + dt));
+    commit(before);
+  }));
+  const md_ = $("mDel"); if (md_) md_.onclick = deleteMulti;
+}
 
 // ------------------------------------------------------------------ 画面上拖拉：移位置、放大缩小（写进 xy、scale）
 let cdragJustEnded = false;
@@ -1129,6 +1400,13 @@ async function startJob(body) {
   const done = await waitJob(r.job, true);
   curJob = null;
   if (done.status === "done") {
+    if (body.kind === "cover" || body.kind === "cardpics") {
+      const pics = done.result || [];
+      modal("<h2>" + (body.kind === "cover" ? "封面" : "图卡") + '做好了　<span class="hint">' + done.elapsed + " 秒</span></h2><div class=\"pics\">" + pics.map((u) => '<a href="' + esc(u) + '" target="_blank" rel="noopener"><img alt="" src="' + esc(u) + '"></a>').join("") +
+        '</div><p class="hint">在项目的 out/ 文件夹，也复制了一份到「成品」。' + (body.kind === "cover" ? "竖版会出 Reels 全画面与主页 4:5 两种。" : "") + '</p><div class="acts"><button class="btn primary" data-a="close">好</button></div>', null, true);
+      renderCover(); return;
+    }
+    if (body.kind === "audition") { playResult(done.result, "试听（真正的混音与响度）", done.elapsed); return; }
     if (body.kind === "range") playResult(done.result, "这一段的成品画面（预览画质）", done.elapsed);
     else { P.final = done.result; toast("成片出好了（" + done.elapsed + " 秒）：out/final.mp4", false, [["播放", () => playResult(done.result, "成片", null)]], 12000); }
   } else if (done.status === "error") {
@@ -1179,9 +1457,9 @@ function modal(html, onAct, wide) {
   const f = box.querySelector(".primary, button"); if (f) f.focus();
 }
 function help() {
-  const k = [["空格", "播放／暂停"], ["← →", "前后一格（加 Shift＝一秒）"], ["Alt＋方向键", "微调选中字卡的位置（加 Shift＝大步）"], ["G", "安全区开关"], ["⌘Z／Ctrl+Z", "复原"], ["⇧⌘Z／Ctrl+Y", "重做"], ["R", "渲染这一段（选中的或播放头前后）"], ["Delete", "删除选中的字卡／特效；选中字幕＝把那句剪掉"], ["Esc", "取消选取"], ["M", "声音开关"], ["+ −", "时间轴放大缩小"], ["?", "这张表"]];
+  const k = [["空格", "播放／暂停"], ["← →", "前后一格（加 Shift＝一秒）"], ["Alt＋方向键", "微调选中字卡的位置（加 Shift＝大步）"], ["G", "安全区开关"], ["S", "在播放头切开画面"], ["Shift／⌘＋点", "多选字卡与特效（整组拖、一起改）"], ["⌘Z／Ctrl+Z", "复原"], ["⇧⌘Z／Ctrl+Y", "重做"], ["R", "渲染这一段（选中的或播放头前后）"], ["Delete", "删除选中的字卡／特效；选中字幕＝把那句剪掉"], ["Esc", "取消选取"], ["M", "声音开关"], ["+ −", "时间轴放大缩小"], ["?", "这张表"]];
   modal('<h2>快捷键</h2><div class="keys">' + k.map((x) => '<span class="kbd">' + esc(x[0]) + "</span><span>" + esc(x[1]) + "</span>").join("") + '</div><p class="hint">画面上的字卡是近似样子，停下来会换成引擎的真样子；动态、转场、组合卡以「渲染这一段」为准。</p>' +
-    '<div class="acts"><button class="btn" data-a="tour">再看一次导览</button><button class="btn" data-a="diag">诊断报告</button><button class="btn primary" data-a="close">好</button></div>', (a) => { if (a === "diag") diag(); if (a === "tour") tour(0); });
+    '<div class="acts"><button class="btn" data-a="hist">历史版本</button><button class="btn" data-a="tour">再看一次导览</button><button class="btn" data-a="diag">诊断报告</button><button class="btn primary" data-a="close">好</button></div>', (a) => { if (a === "diag") diag(); if (a === "tour") tour(0); if (a === "hist") openHistory("sb"); });
 }
 async function diag() {
   try {
@@ -1205,7 +1483,8 @@ document.addEventListener("keydown", (e) => {
   else if (e.key === "ArrowLeft") { e.preventDefault(); seek(tOut - (e.shiftKey ? 1 : 1 / P.fps)); }
   else if (e.key === "Delete" || e.key === "Backspace") { if (sel) { e.preventDefault(); deleteSel(); } }
   else if (e.key === "g" || e.key === "G") $("tgSafe").click();
-  else if (e.key === "Escape") select(null);
+  else if (e.key === "s" || e.key === "S") splitAtPlayhead();
+  else if (e.key === "Escape") { multi = []; select(null); }
   else if (e.key === "r" || e.key === "R") renderRange();
   else if (e.key === "m" || e.key === "M") $("mute").click();
   else if (e.key === "?") help();
