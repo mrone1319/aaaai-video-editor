@@ -5,6 +5,7 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
+const ICON = (n) => '<svg class="ic" aria-hidden="true"><use href="#i-' + n + '"/></svg>';   // 图标（index.html 里的线条图标）
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const md = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
 const plain = (s) => String(s ?? "").replace(/\*\*/g, "").replace(/\n/g, " ");
@@ -189,7 +190,7 @@ function load(j, first) {
 function stopAll() {
   clearInterval(pollTimer); pollTimer = null;
   playing = false; $("video").pause();
-  $("play").textContent = "▶ 播放";
+  $("play").innerHTML = ICON("play"); $("play").setAttribute("aria-label", "播放");
 }
 
 // ------------------------------------------------------------------ 代理影片（只做一次）
@@ -487,7 +488,8 @@ function tick() {
 }
 function togglePlay() {
   if (!video.src) { toast(P && P.source_ok ? "播放用的影片还在准备中。" : "原片不见了，没办法播放。"); return; }
-  playing = !playing; $("play").textContent = playing ? "❚❚ 暂停" : "▶ 播放";
+  playing = !playing; $("play").innerHTML = ICON(playing ? "pause" : "play"); $("play").setAttribute("aria-label", playing ? "暂停" : "播放");
+  $("play").classList.toggle("on", playing);
   if (playing) { if (tOut >= T.dur - 0.05) seek(0); video.play().catch(() => {}); requestAnimationFrame(loop); }
   else { video.pause(); renderStage(); }
 }
@@ -508,7 +510,8 @@ function loop() {
 }
 $("play").onclick = togglePlay;
 video.addEventListener("pause", () => { if (playing && !video.ended && document.hidden) togglePlay(); });   // 切到别的分页时浏览器会自己暂停
-$("mute").onclick = () => { video.muted = !video.muted; $("mute").textContent = video.muted ? "🔇" : "🔊"; };
+function setMuteIcon() { $("mute").innerHTML = ICON(video.muted ? "mute" : "vol"); $("mute").classList.toggle("on", !video.muted); }
+$("mute").onclick = () => { video.muted = !video.muted; setMuteIcon(); };
 
 // ------------------------------------------------------------------ 时间轴
 const TRACKS = [{ key: "card", label: "字卡", h: 34 }, { key: "fx", label: "特效", h: 34 }, { key: "cap", label: "字幕", h: 34 }, { key: "cut", label: "画面", h: 34 }, { key: "voice", label: "人声", h: 34 }, { key: "music", label: "配乐", h: 30 }];
@@ -536,7 +539,7 @@ function renderTimeline() {
   const D = T.dur, W = Math.max(D * pps + 80, $("tlScroll").clientWidth);
   const items = cardItems(), ln = lanes(items);
   TRACKS[0].h = 8 + 30 * ln.n;
-  $("labels").innerHTML = "<div></div>" + TRACKS.map((t) => '<div style="--h:' + t.h + 'px">' + t.label + "</div>").join("");
+  $("labels").innerHTML = "<div></div>" + TRACKS.map((t) => '<div data-t="' + t.key + '" style="--h:' + t.h + 'px">' + t.label + "</div>").join("");
   const inner = $("tlInner"); inner.style.width = W + "px";
   let h = '<div class="ruler" id="ruler">';
   const step = pps >= 60 ? 1 : pps >= 24 ? 2 : pps >= 12 ? 5 : 10;
@@ -825,7 +828,7 @@ function renderInspector() {
     h += '<div class="field"><label for="c_speed">这一段的速度（声音会一起变快变慢、音高不变）</label><select id="c_speed"' + (RO ? " disabled" : "") + ">" +
       (cur ? "" : '<option value="" selected>混合（段里有不同速度）</option>') + [["0.5", "0.5×（慢动作）"], ["0.75", "0.75×"], ["1", "1×（原速）"], ["1.25", "1.25×"], ["1.5", "1.5×"], ["2", "2×（快一倍）"], ["3", "3×"]]
         .map(([v, lb]) => '<option value="' + v + '"' + (v === cur ? " selected" : "") + ">" + lb + "</option>").join("") + '</select><p class="hint" style="margin:0">只要一部分变速：先在播放头按 <span class="kbd">S</span> 切开，再选那一段。字卡会跟着换算。</p></div>';
-    h += '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="audIn"' + (sel.i ? "" : " disabled") + '>▶ 试听入点（前后 2 秒）</button><button class="btn sm" id="audOut"' + (sel.i + 1 < T.cuts.length ? "" : " disabled") + ">▶ 试听出点</button>" +
+    h += '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" id="audIn"' + (sel.i ? "" : " disabled") + '>' + ICON("play") + '试听入点</button><button class="btn sm" id="audOut"' + (sel.i + 1 < T.cuts.length ? "" : " disabled") + ">" + ICON("play") + "试听出点</button>" +
       (RO ? "" : '<button class="btn danger sm" id="cutDel">删除这段</button>') + "</div>";
     h += '<p class="hint">时间轴上拖这一段的<b>两端</b>＝修剪入点／出点（字卡会自动跟着换算）；<span class="kbd">S</span> 在播放头切开；讲错的句子也可以到<b>逐字稿</b>里删。</p>';
   }
@@ -967,11 +970,11 @@ function renderTranscript() {
   const el = $("pane-tr"); if (!S || el.hidden) return;
   const pcs = pieces();
   if (!pcs.length) { el.innerHTML = '<p class="empty">这个项目没有转录文字。</p>'; return; }
-  el.innerHTML = toolsHTML() + '<p class="hint">点一句跳过去；<b>✕</b> 把那句从片子里剪掉（连同后面的停顿），被剪的句子划线，可以<b>还原</b>。' + (RO ? "" : "要改错字，点句子后在「属性」改。") + "</p>" +
+  el.innerHTML = toolsHTML() + '<p class="hint">点一句跳过去；<b>×</b> 把那句从片子里剪掉（连同后面的停顿），被剪的句子划线，可以<b>还原</b>。' + (RO ? "" : "要改错字，点句子后在「属性」改。") + "</p>" +
     pcs.map((pc, i) => {
       const o = capOut(pc);
       return '<div class="tr-line' + (o ? "" : " gone") + '" data-i="' + i + '"><span class="tm" data-seek="' + i + '">' + (o ? fmt(o[0]).slice(0, 5) : "已剪") + '</span><span class="tx" data-seek="' + i + '">' + md(hl(pc)) + "</span>" +
-        (RO ? "<span></span>" : o ? '<button class="btn sm x" data-cut="' + i + '" title="把这句剪掉" aria-label="剪掉这句">✕</button>' : '<button class="btn sm x" data-restore="' + i + '">还原</button>') + "</div>";
+        (RO ? "<span></span>" : o ? '<button class="btn sm x" data-cut="' + i + '" title="把这句剪掉" aria-label="剪掉这句">' + ICON("x") + '</button>' : '<button class="btn sm x" data-restore="' + i + '">还原</button>') + "</div>";
     }).join("");
   markTranscript();
   const bt = $("batch"); if (bt) bt.addEventListener("toggle", () => { TOOLS.batch = bt.open; });
@@ -1198,8 +1201,8 @@ function renderSettings() {
     '<div class="row2">' + sfield("music.start", "从配乐第几秒开始", "num") + sfield("music.end", "配乐在成片第几秒收掉", "num") + "</div>" +
     sfield("denoise", "降噪", "jsel", [["", "标准（默认）"], ['"strong"', "加强"], ["false", "关（原声）"]]) +
     sfield("loudness", "成片响度（LUFS）", "num", null, "默认 −14（各平台通用）。") +
-    '<div class="row2"><div class="field"><label for="audMusic">试听别的配乐</label><select id="audMusic">' + bgm.filter((x) => x[0]).map((x) => '<option value="' + esc(x[0]) + '">' + esc(x[1]) + "</option>").join("") + '</select></div><div class="field"><label>&nbsp;</label><button class="btn sm" id="audMusicGo">▶ 试听 8 秒</button></div></div>' +
-    '<div class="row2"><div class="field"><label for="audDn">试听降噪</label><select id="audDn"><option value="true">标准</option><option value="&quot;strong&quot;">加强</option><option value="false">关（原声）</option></select></div><div class="field"><label>&nbsp;</label><button class="btn sm" id="audDnGo">▶ 试听 8 秒</button></div></div>' +
+    '<div class="row2"><div class="field"><label for="audMusic">试听别的配乐</label><select id="audMusic">' + bgm.filter((x) => x[0]).map((x) => '<option value="' + esc(x[0]) + '">' + esc(x[1]) + "</option>").join("") + '</select></div><div class="field"><label>&nbsp;</label><button class="btn sm" id="audMusicGo">' + ICON("play") + '试听 8 秒</button></div></div>' +
+    '<div class="row2"><div class="field"><label for="audDn">试听降噪</label><select id="audDn"><option value="true">标准</option><option value="&quot;strong&quot;">加强</option><option value="false">关（原声）</option></select></div><div class="field"><label>&nbsp;</label><button class="btn sm" id="audDnGo">' + ICON("play") + '试听 8 秒</button></div></div>' +
     '<p class="hint" style="margin:-4px 0 0">从播放头开始渲染 8 秒（真正的混音与响度），不会改到剪辑表。</p></fieldset>' +
     '<fieldset><legend>取景（推近整支片）</legend><div class="row2">' + sfield("framing.zoom", "放大（1–1.4）", "num") + sfield("framing.cy", "垂直中心（0–1）", "num") + "</div>" +
     sfield("framing.cx", "水平中心（0–1）", "num", null, "机位太远时用，约 1.15–1.25 安全；改了会重做播放用的影片。") + "</fieldset>" +
@@ -1458,7 +1461,7 @@ function buildMenus() {
     '<div class="grp">音效</div>' + snd.map((x) => '<button data-snd="' + esc(x) + '">' + esc(sname(x)) + "<small>" + esc(x) + "</small></button>").join("");
 }
 function menuToggle(btn, menu) {
-  $(btn).onclick = (e) => { e.stopPropagation(); if (RO) return; buildMenus(); const m = $(menu), open = m.hidden; $("cardMenu").hidden = true; $("fxMenu").hidden = true; m.hidden = !open; if (open) { const f = m.querySelector("button"); if (f) f.focus(); } };
+  $(btn).onclick = (e) => { e.stopPropagation(); if (RO) return; buildMenus(); const m = $(menu), open = m.hidden; $("cardMenu").hidden = true; $("fxMenu").hidden = true; m.hidden = !open; if (open) { m.style.maxHeight = Math.max(160, $(btn).getBoundingClientRect().top - 20) + "px"; const f = m.querySelector("button"); if (f) f.focus(); } };   // 选单在按钮上方：高度不超过上面剩下的空间
 }
 menuToggle("addCardBtn", "cardMenu"); menuToggle("addFxBtn", "fxMenu");
 document.addEventListener("click", () => { $("cardMenu").hidden = true; $("fxMenu").hidden = true; });
@@ -1504,7 +1507,7 @@ $("splitBtn").onclick = splitAtPlayhead;
 function playRange(a, b) {   // 剪点试听：从 a 播到 b 自己停（会开声音）
   if (!video.src) { toast("播放用的影片还在准备中。"); return; }
   if (playing) togglePlay();
-  video.muted = false; $("mute").textContent = "🔊";
+  video.muted = false; setMuteIcon();
   seek(Math.max(0, a)); stopAt = Math.min(T.dur, b); togglePlay();
 }
 function deleteSel() {

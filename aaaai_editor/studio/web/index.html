@@ -7,30 +7,64 @@
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
+<!-- 图标（线条风格，跟着文字颜色走；不用 emoji） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.4-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1.2" fill="currentColor" stroke="none"/><rect x="14" y="4.5" width="4" height="15" rx="1.2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="m22 9-6 6M16 9l6 6"/></symbol>
+    <symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="19" cy="12" r="1.4" fill="currentColor"/></symbol>
+    <symbol id="i-cut" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.12 15.88M14.47 14.48 20 20M8.12 8.12 12 12"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-type" viewBox="0 0 24 24"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/></symbol>
+    <symbol id="i-safe" viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></symbol>
+    <symbol id="i-face" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.3 1.8 3.5 1.8 3.5-1.8 3.5-1.8M9 9.5h.01M15 9.5h.01"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M11 18.5h2"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M7 3v18M17 3v18M3 12h18M3 7.5h4M3 16.5h4M17 7.5h4M17 16.5h4"/></symbol>
+    <symbol id="i-export" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></symbol>
+  </defs>
+</svg>
+
 <!-- 项目首页 -->
 <main class="home" id="home" hidden>
-  <h1>aaaai-editor Studio</h1>
-  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px"><div class="sub" id="homeSub" style="margin:0">选一个项目开始剪辑</div><span class="spacer"></span><button class="btn" id="adoptBtn" title="把别处做好的影片接进来：转录、字幕、响度、封面">＋ 接入影片</button></div>
+  <header class="home-hd">
+    <div class="home-brand"><span class="mark" aria-hidden="true"></span><div><h1>aaaai-editor <span>Studio</span></h1><div class="sub" id="homeSub">选一个项目开始剪辑</div></div></div>
+    <button class="btn" id="adoptBtn" title="把别处做好的影片接进来：转录、字幕、响度、封面"><svg class="ic"><use href="#i-import"/></svg>接入影片</button>
+  </header>
   <div class="grid" id="grid"></div>
 </main>
 
 <!-- 编辑器 -->
 <div class="app" id="app" hidden>
   <header class="top">
-    <button class="btn sm" id="back" title="回到项目首页">← 项目</button>
+    <button class="btn ghost icon" id="back" title="回到项目首页" aria-label="回到项目首页"><svg class="ic"><use href="#i-back"/></svg></button>
+    <span class="mark" aria-hidden="true"></span>
     <span class="brand">Studio<small id="projName"></small></span>
     <span class="save" id="save"></span>
     <span class="spacer"></span>
     <div class="job" id="job" hidden><span id="jobLabel"></span><span class="pbar"><i id="jobBar"></i></span><span id="jobPct"></span><button class="btn sm" id="jobCancel">取消</button></div>
-    <label class="chip" for="styleSel">风格
-      <select id="styleSel" style="background:none;border:0;padding:0 2px;"></select>
+    <label class="chip select" for="styleSel">风格
+      <select id="styleSel"></select>
     </label>
-    <button class="btn sm" id="styleAll" title="同一张字卡、同一个画面，一次看所有风格">风格总览</button>
-    <button class="btn" id="undo" title="复原（⌘Z／Ctrl+Z）">复原</button>
-    <button class="btn" id="redo" title="重做（⇧⌘Z／Ctrl+Y）">重做</button>
-    <button class="btn" id="renderRange" title="只渲染选中的那一段（或播放头前后），几秒钟看到引擎的真样子（R）">渲染这一段</button>
-    <button class="btn primary" id="export" title="按目前的剪辑表出正式成片">出片</button>
-    <button class="btn sm" id="more" title="快捷键、诊断报告">⋯</button>
+    <button class="btn ghost" id="styleAll" title="同一张字卡、同一个画面，一次看所有风格"><svg class="ic"><use href="#i-grid"/></svg>风格总览</button>
+    <div class="seg" role="group" aria-label="复原与重做">
+      <button class="btn icon" id="undo" title="复原（⌘Z／Ctrl+Z）" aria-label="复原"><svg class="ic"><use href="#i-undo"/></svg></button>
+      <button class="btn icon" id="redo" title="重做（⇧⌘Z／Ctrl+Y）" aria-label="重做"><svg class="ic"><use href="#i-redo"/></svg></button>
+    </div>
+    <button class="btn" id="renderRange" title="只渲染选中的那一段（或播放头前后），几秒钟看到引擎的真样子（R）"><svg class="ic"><use href="#i-film"/></svg>渲染这一段</button>
+    <button class="btn primary" id="export" title="按目前的剪辑表出正式成片"><svg class="ic"><use href="#i-export"/></svg>出片</button>
+    <button class="btn ghost icon" id="more" title="快捷键、历史版本、诊断报告" aria-label="更多"><svg class="ic"><use href="#i-more"/></svg></button>
   </header>
 
   <section class="main">
@@ -67,25 +101,28 @@
   </section>
 
   <div class="transport">
-    <button class="btn" id="play" title="播放／暂停（空格）">▶ 播放</button>
-    <button class="btn sm" id="mute" title="声音开关（M）">🔇</button>
+    <div class="seg play-grp">
+      <button class="btn play" id="play" title="播放／暂停（空格）" aria-label="播放"><svg class="ic"><use href="#i-play"/></svg></button>
+      <button class="btn icon" id="mute" title="声音开关（M）" aria-label="声音开关"><svg class="ic"><use href="#i-mute"/></svg></button>
+    </div>
     <span class="tc" id="tc">00:00.00</span>
-    <div class="menu-wrap"><button class="btn" id="addCardBtn" aria-haspopup="true" title="在播放头加一张字卡">＋ 字卡</button><div class="menu" id="cardMenu" hidden></div></div>
-    <div class="menu-wrap"><button class="btn" id="addFxBtn" aria-haspopup="true" title="在播放头加推近、彩带、音效">＋ 特效</button><div class="menu" id="fxMenu" hidden></div></div>
-    <button class="btn" id="noteBtn" title="在播放头留言，可以请 Claude 处理（N）">＋ 留言</button>
-    <button class="btn" id="splitBtn" title="在播放头把画面切成两段（S）">切开</button>
-    <button class="btn" id="delBtn" title="删除选中的字卡／特效／画面段（Delete）">删除</button>
     <span class="sep"></span>
-    <button class="btn sm toggle" id="tgSafe" aria-pressed="false" title="显示安全区（G）">安全区</button>
-    <button class="btn sm toggle" id="tgFace" aria-pressed="false" title="显示脸的位置">脸</button>
-    <label class="chip" for="platSel">平台
-      <select id="platSel" style="background:none;border:0;padding:0 2px;">
-        <option value="">不显示</option><option value="douyin">抖音／TikTok</option><option value="reels">IG Reels</option><option value="shorts">YouTube Shorts</option><option value="xhs">小红书</option>
+    <div class="menu-wrap"><button class="btn ghost" id="addCardBtn" aria-haspopup="true" title="在播放头加一张字卡"><svg class="ic"><use href="#i-type"/></svg>字卡</button><div class="menu" id="cardMenu" hidden></div></div>
+    <div class="menu-wrap"><button class="btn ghost" id="addFxBtn" aria-haspopup="true" title="在播放头加推近、彩带、打码、音效"><svg class="ic"><use href="#i-spark"/></svg>特效</button><div class="menu" id="fxMenu" hidden></div></div>
+    <button class="btn ghost" id="noteBtn" title="在播放头留言，可以请 Claude 处理（N）"><svg class="ic"><use href="#i-note"/></svg>留言</button>
+    <button class="btn ghost" id="splitBtn" title="在播放头把画面切成两段（S）"><svg class="ic"><use href="#i-cut"/></svg>切开</button>
+    <button class="btn ghost" id="delBtn" title="删除选中的字卡／特效／画面段（Delete）"><svg class="ic"><use href="#i-trash"/></svg>删除</button>
+    <span class="sep"></span>
+    <button class="btn ghost toggle" id="tgSafe" aria-pressed="false" title="显示安全区（G）"><svg class="ic"><use href="#i-safe"/></svg>安全区</button>
+    <button class="btn ghost toggle" id="tgFace" aria-pressed="false" title="显示脸的位置"><svg class="ic"><use href="#i-face"/></svg>脸</button>
+    <label class="chip select" for="platSel"><svg class="ic"><use href="#i-phone"/></svg>
+      <select id="platSel" aria-label="平台遮挡">
+        <option value="">平台遮挡</option><option value="douyin">抖音／TikTok</option><option value="reels">IG Reels</option><option value="shorts">YouTube Shorts</option><option value="xhs">小红书</option>
       </select>
     </label>
     <span class="hint" id="roNote" hidden></span>
     <span class="spacer"></span>
-    <label class="zoom" for="zoom">缩放 <input id="zoom" type="range" min="6" max="120" value="18"></label>
+    <label class="zoom" for="zoom"><svg class="ic"><use href="#i-zoom"/></svg><input id="zoom" type="range" min="6" max="120" value="18" aria-label="时间轴缩放"></label>
   </div>
   <div class="timeline" id="timeline">
     <div class="tl-labels" id="labels"></div>
