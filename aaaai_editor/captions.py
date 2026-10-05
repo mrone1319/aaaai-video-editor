@@ -229,11 +229,11 @@ def export_track(sb: dict, segments: List[dict], maxw: float, force: bool = Fals
         pcs.append({"s": [round(x["s"][0], 3), round(x["s"][1], 3)], "text": t, "en": "", "hl": []})
     if fixed:
         print("📖 词表自动修正 %d 处：%s" % (len(fixed), "、".join(sorted(set(fixed)))))
-    os.makedirs(os.path.dirname(p), exist_ok=True)
-    json.dump({"version": 1,
-               "note": "s 是原片时间（改剪辑点不会错位）。可改 text 修错字、填 en 出双语、"
-                       "hl 列出要高亮的词，或在 text 里写 **关键词**。删掉本文件即回到自动字幕。",
-               "pieces": pcs}, open(p, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    from . import store
+    store.write(p, {"version": 1,
+                    "note": "s 是原片时间（改剪辑点不会错位）。可改 text 修错字、填 en 出双语、"
+                            "hl 列出要高亮的词，或在 text 里写 **关键词**。删掉本文件即回到自动字幕。",
+                    "pieces": pcs}, source="captions")
     return p, len(pcs), True
 
 

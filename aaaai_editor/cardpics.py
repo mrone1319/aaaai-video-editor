@@ -45,6 +45,10 @@ def _bg(sb: dict, ov: dict, W: int, H: int, work: str, mode: str, th: dict) -> s
     """图卡背景：原片干净帧／模糊帧／纯色底。"""
     ff = env.ffmpeg()
     out = os.path.join(work, "cardpic_bg.png")
+    if mode in ("black", "white"):   # 纯黑／纯白底：两张对比算出透明度（见 card_png）
+        env.run([ff, "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=%s:s=%dx%d" % (mode, W, H),
+                 "-frames:v", "1", "-update", "1", out])
+        return out
     if mode == "solid":
         pl = th["plate"][-1] if isinstance(th["plate"], (list, tuple)) else th["plate"]
         env.run([ff, "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=%s:s=%dx%d" % (pl, W, H),
@@ -126,8 +130,8 @@ def one(sb: dict, ov: dict, W: int, H: int, work: str, bg_mode: str, out_path: s
         fc.append("[%s][%d:v]overlay=%d:%d[b%d]" % (cur, i, x, y, i))
         cur = "b%d" % i
     from .overlays import q
-    fc.append("[%s]subtitles=filename=cardpic.ass:fontsdir=%s,select='gte(t\\,0.5)',format=rgb24[v]"
-              % (cur, q(fonts.FONT_DIR)))
+    fc.append("[%s]subtitles=filename=cardpic.ass:fontsdir=%s,select='gte(t\\,0.5)',format=%s[v]"
+              % (cur, q(fonts.FONT_DIR), "rgb24"))
     args = [env.ffmpeg(), "-v", "error", "-y"]
     for g in inputs:
         args += g
@@ -168,3 +172,39 @@ def make(sb_path: str, sizes: Tuple[str, ...] = ("1350",), pick: Optional[List[i
             if ex:
                 files.append(ex)
     return files, warns
+
+
+def card_png(sb_path: str, ov: dict, height: int = 960, out_path: Optional[str] = None) -> str:
+    """一张字卡的「真样子」：引擎排版、透明背景的 PNG（Studio 停下来时用它换掉近似框）。
+    ov＝剪辑表里的一张基本字卡（标题、数据卡、清单、金句、进度圈、评分星、排行榜、时间轴…）。"""
+    import hashlib
+    import json as _json
+    from . import render as R
+    sb = R.load_storyboard(sb_path)
+    W0, H0 = int(sb["output"]["width"]), int(sb["output"]["height"])
+    H = max(2, int(height) & ~1)
+    W = max(2, int(round(W0 * H / float(H0))) & ~1)
+    work = os.path.join(sb["_base"], "work")
+    d = os.path.join(work, "studio", "cards")
+    os.makedirs(d, exist_ok=True)
+    key = hashlib.sha1(_json.dumps([ov, sb.get("style"), sb.get("brand"), W, H], sort_keys=True,
+                                   ensure_ascii=False).encode()).hexdigest()[:16]
+    out_path = out_path or os.path.join(d, "card_%s.png" % key)
+    if os.path.isfile(out_path):
+        return out_path
+    # 字幕滤镜在透明画布上画字时不写透明度（字会跟着底一起变淡），所以改成：同一张卡在纯黑、纯白底上
+    # 各排一次，两者的差就是透明度（差越小越不透明），黑底那张除以透明度就是原本的颜色。结果和叠在影片上一样准。
+    kb, wb = out_path + ".k.png", out_path + ".w.png"
+    one(sb, dict(ov), W, H, work, "black", kb)
+    one(sb, dict(ov), W, H, work, "white", wb)
+    env.run([env.ffmpeg(), "-v", "error", "-y", "-i", kb, "-i", wb, "-filter_complex",
+             "[0:v]format=gbrp,split=2[k1][k2];[1:v]format=gbrp[w];"
+             "[w][k1]blend=all_expr='255-(A-B)'[al];[al]extractplanes=g[a];"
+             "[k2][a]alphamerge,format=rgba,unpremultiply=inplace=1[v]",
+             "-map", "[v]", "-frames:v", "1", "-update", "1", out_path])
+    for f in (kb, wb):
+        try:
+            os.remove(f)
+        except OSError:
+            pass
+    return out_path

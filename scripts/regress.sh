@@ -39,11 +39,38 @@ fi
 cp "$R/work/video.mp4" "$R/run1.mp4"
 "$A" render "$R/storyboard.json" >/dev/null
 if ! cmp -s "$R/work/video.mp4" "$R/run1.mp4"; then echo "❌ 两次渲染结果不同（不确定性）"; exit 1; fi
+UPDATE=0
 if [ "${1:-}" = "--update" ] || [ ! -f "$R/baseline_video.mp4" ]; then
   cp "$R/work/video.mp4" "$R/baseline_video.mp4"; cp "$R/work/captions_full.ass" "$R/baseline.ass"
-  echo "✅ 已建立基准（$R）"; exit 0
+  echo "✅ 已建立基准（$R）"; UPDATE=1
+  [ "${1:-}" = "--update" ] && rm -f "$R/baseline_plates.mp4"
 fi
+# 第二套基准：实心底板、新卡片、卡片接管、品牌片头（第一套只有遮罩版字卡，测不到底板）
+P="$R/plates"; mkdir -p "$P/work"
+cp "$R/work/transcript.json" "$P/work/"
+python3 - "$R" "$P" <<'PY2'
+import json, sys
+R, P = sys.argv[1:]
+s = json.load(open(R + "/storyboard.json"))
+s["source"] = R + "/source.mp4"; s["style"] = "mrone"; s.pop("music", None)
+s["recipes"] = [{"use": "brand_open", "t": [0.2, 1.9], "kicker": "REGRESS", "text": "品牌片头", "sub": "@demo"},
+                {"use": "takeover", "t": [9.6, 12.1], "bg": "paper", "popout": False}]
+s["overlays"] = [{"type": "title", "t": [2.0, 3.6], "kicker": "实心底板", "text": "斜向渐层**噪点**", "lite": False, "icon": "rocket"},
+                 {"type": "stat", "t": [3.7, 5.2], "kicker": "数据卡", "value": 3, "unit": "小时", "label": "量感条", "bar": 0.8, "lite": False},
+                 {"type": "gauge", "t": [5.3, 6.6], "kicker": "进度圈", "value": 0.72, "label": "会动"},
+                 {"type": "rating", "t": [6.7, 7.8], "kicker": "评分", "value": 4.6, "label": "半星"},
+                 {"type": "rank", "t": [7.9, 9.5], "title": "排行", "items": [{"label": "A", "value": 30}, {"label": "B", "value": 12}], "lite": False},
+                 {"type": "flow", "t": [9.8, 12.1], "kicker": "流程", "steps": [{"icon": "camera", "top": "拍", "big": "3 分钟", "at": 9.9}, {"icon": "money", "top": "赚", "big": "进账", "at": 10.6}]}]
+json.dump(s, open(P + "/storyboard.json", "w"), ensure_ascii=False, indent=1)
+PY2
+"$A" render "$P/storyboard.json" >/dev/null
+cp "$P/work/video.mp4" "$P/run1.mp4"
+"$A" render "$P/storyboard.json" >/dev/null
+if ! cmp -s "$P/work/video.mp4" "$P/run1.mp4"; then echo "❌ 底板基准两次渲染结果不同（不确定性）"; exit 1; fi
+if [ ! -f "$R/baseline_plates.mp4" ]; then cp "$P/work/video.mp4" "$R/baseline_plates.mp4"; echo "✅ 已建立底板基准"; fi
 ok=1
 cmp -s "$R/work/video.mp4" "$R/baseline_video.mp4" && echo "✅ 画面与基准逐字节一致" || { echo "❌ 画面与基准不同"; ok=0; }
 cmp -s "$R/work/captions_full.ass" "$R/baseline.ass" && echo "✅ 字幕与基准逐字节一致" || { echo "❌ 字幕与基准不同"; ok=0; }
+cmp -s "$P/work/video.mp4" "$R/baseline_plates.mp4" && echo "✅ 底板与新卡片和基准逐字节一致" || { echo "❌ 底板与新卡片和基准不同"; ok=0; }
+[ "$UPDATE" = 1 ] && exit 0
 [ "$ok" = 1 ]

@@ -99,6 +99,20 @@ json.dump(s, open(S + "/c/storyboard.json", "w"), ensure_ascii=False)
 PYX
 cp "$R/work/transcript.json" "$S/c/work/"
 t card-mode   "$A" preview "$S/c/storyboard.json"
+echo "== Studio 地基"
+t store-tests python3 "$ROOT/scripts/test_store.py"
+t patch-show  "$A" patch "$SB"
+t patch-set   "$A" patch "$SB" --set 'output.fps=30'
+t render-range "$A" render "$SB" --range 1.0 3.5
+t studio-engine python3 - "$ROOT" "$SB" <<'PYS'
+import json, os, sys
+sys.path.insert(0, sys.argv[1])
+from aaaai_editor import render, cardpics
+p = render.proxy_source(sys.argv[2]); assert os.path.getsize(p) > 1000, p
+sb = json.load(open(sys.argv[2]))
+ov = next(o for o in sb["overlays"] if o["type"] in ("title", "stat", "bullets"))
+c = cardpics.card_png(sys.argv[2], ov); assert os.path.getsize(c) > 1000, c
+PYS
 echo "== B-roll（不花钱的部分）与 MCP"
 t broll-status "$A" broll status
 t mcp python3 - "$A" <<'PY'

@@ -88,6 +88,8 @@ aaaai-editor hook storyboard.json --suggest           # 列出最适合当开头
 aaaai-editor hook storyboard.json --text "…"         # 把片中一句剪到开头当预告（--mode move 为搬移）
 aaaai-editor framing storyboard.json --at 3          # 推近倍率对比图（选定写 framing）
 aaaai-editor icons                                           # 图标清单：内建＋图标库（assets/icons/）
+aaaai-editor patch storyboard.json                           # 看剪辑表内容与版本；--set 路径=值 带版本检查地修改
+aaaai-editor render storyboard.json --range 12 18            # 只渲染成片 12–18 秒这一段（预览画质，几秒钟）
 aaaai-editor cardpics storyboard.json --list                 # 图卡：看这支片有哪些卡片能出图
 aaaai-editor cardpics storyboard.json --pick 1,3             # 出图卡（默认 1080×1350，发小红书／IG 图文）
 aaaai-editor cover-frames storyboard.json                    # 封面候选帧（原片干净帧，编号 1–8）

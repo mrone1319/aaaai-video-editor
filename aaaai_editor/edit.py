@@ -27,8 +27,9 @@ def _load(path: str) -> dict:
     return json.load(open(path, encoding="utf-8"))
 
 
-def _save(path: str, sb: dict) -> None:
-    json.dump(sb, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+def _save(path: str, sb: dict, source: str = "edit") -> None:
+    from . import store
+    store.write(path, sb, source=source)
 
 
 def _source(sb: dict, path: str) -> str:
@@ -163,7 +164,7 @@ def hook(sb_path: str, text: Optional[str] = None, a: Optional[float] = None, b:
     sb["cuts"] = [[round(x, 3), round(y, 3)] for x, y in new_cuts]
     sb.setdefault("hook", {})
     sb["hook"] = {"source": [a, b], "mode": mode}
-    _save(sb_path, sb)
+    _save(sb_path, sb, "hook")
     heard = _hear(sb_path, src, a, b)
     miss = bool(text and heard is not None and _tail_missing(text, heard))
     return {"range": (a, b), "len": round(lead, 2), "mode": mode, "duration": round(new.duration, 2),
@@ -440,5 +441,5 @@ def apply(sb_path: str, ids: Optional[List[int]] = None) -> dict:
         lead = new.lengths[0]
     _remap(sb, old, new, skip_first=lead)
     sb["cuts"] = [[x, y] for x, y in new_cuts]
-    _save(sb_path, sb)
+    _save(sb_path, sb, "tidy")
     return {"removed": len(pick), "saved": round(old.duration - new.duration, 2), "duration": round(new.duration, 2)}

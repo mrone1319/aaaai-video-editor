@@ -1,6 +1,7 @@
 """渲染：storyboard.json → 视频通道(裁切+字幕，一次编码) + 音频通道(拼接+配乐闪避+响度) → 封装。"""
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import os
@@ -250,7 +251,8 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
             + venc + ["-movflags", "+faststart", out], cwd=work)
 
 
-def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str:
+def _prepare(sb_path: str, proxy: bool = False) -> dict:
+    """渲染前的共同准备：读剪辑表、算尺寸、HDR、转场、避脸、字幕事件。整片渲染与「渲染一段」共用。"""
     sb = load_storyboard(sb_path)
     cuts: List = [tuple(c) for c in sb["cuts"]]
     if not cuts:
@@ -301,6 +303,15 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
         if long_:
             print("⚠️ %d 句字幕放不进一行（中文每句必须单行，请在标点处拆成两句）：%s"
                   % (len(long_), "；".join(x[:14] for x in long_[:5])))
+
+    return {"sb": sb, "cuts": cuts, "out": out, "w": w, "h": h, "fps": fps, "tl": tl, "work": work,
+            "ff": ff, "info": info, "cap_events": cap_events}
+
+
+def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str:
+    c = _prepare(sb_path, proxy)
+    sb, cuts, out, w, h, fps = c["sb"], c["cuts"], c["out"], c["w"], c["h"], c["fps"]
+    tl, work, ff, info, cap_events = c["tl"], c["work"], c["ff"], c["info"], c["cap_events"]
 
     # ---- 视频通道 ----
     video = os.path.join(work, "video.mp4")
@@ -374,6 +385,88 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
         if dst:
             print("📦 成品：%s" % dst)
     return out["path"]
+
+
+def _studio_dir(work: str) -> str:
+    d = os.path.join(work, "studio")
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def master_audio_cached(c: dict) -> str:
+    """整片混音（人声降噪＋配乐闪避＋音效＋响度），按会影响声音的设定做缓存。
+    「渲染一段」从它截取，所以单段听到的就是成片的声音。在 work/studio/audio 里做，不会和正式渲染互相覆盖。"""
+    from . import loud, sfx as sfx_mod
+    sb, cuts, tl, info = c["sb"], c["cuts"], c["tl"], c["info"]
+    mu = sb.get("music")
+    fade = float((sb.get("ending") or {}).get("fade", 0) or 0)
+    dn = denoise_filter(sb) if info.get("has_audio", True) else ""
+    fx_items = [x for x in sfx_mod.collect(sb) if x[0] < tl.duration]
+    st = os.stat(sb["source"])
+    key = hashlib.sha1(json.dumps([cuts, mu, fade, dn, fx_items, sb["loudness"], sb.get("sfx_level"),
+                                   st.st_size, st.st_mtime_ns], sort_keys=True, default=str).encode()).hexdigest()[:16]
+    d = os.path.join(_studio_dir(c["work"]), "audio")
+    os.makedirs(d, exist_ok=True)
+    cached = os.path.join(d, "mix_%s.m4a" % key)
+    if os.path.isfile(cached):
+        return cached
+    audio, _rep = loud.master(sb["source"], _voice_graph(cuts, info.get("has_audio", True), dn), tl.duration, d,
+                              float(sb["loudness"]), music=mu, fade=fade, sfx=fx_items,
+                              sfx_gain=sfx_mod.gain_for((sb.get("sfx_level") or None)))
+    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", audio, "-c:a", "aac", "-b:a", "128k", cached])
+    return cached
+
+
+def render_range(sb_path: str, a: float, b: float, out_path: Optional[str] = None) -> str:
+    """只渲染成片时间 [a, b] 这一段（预览画质：卡片、字幕、推近、人像都照正式规则；声音截自整片混音）。
+    给 Studio「渲染这一段」用；不影响整片渲染。"""
+    c = _prepare(sb_path, proxy=True)
+    sb, w, h, fps, tl, work = c["sb"], c["w"], c["h"], c["fps"], c["tl"], c["work"]
+    a = max(0.0, min(float(a), tl.duration - 1.0 / fps))
+    b = max(a + 1.0 / fps, min(float(b), tl.duration))
+    nf = max(1, int(round(b * fps)) - int(round(a * fps)))
+    sd = _studio_dir(work)
+    tag = "range_%d_%d" % (int(round(a * 1000)), int(round(b * 1000)))
+    vid = os.path.join(sd, tag + "_v.mp4")
+    src_end = min(tl.duration, b + 3.0 / fps)
+    _render_pass(segment.window(sb, a, b), tl.source_ranges(a, src_end), c["cap_events"], a, w, h, fps,
+                 work, vid, True, "rg", b, nf, tl.duration)
+    audio = master_audio_cached(c)
+    out_path = out_path or os.path.join(sd, tag + ".mp4")
+    env.run([env.ffmpeg(), "-y", "-v", "error", "-i", vid, "-ss", "%.3f" % a, "-t", "%.3f" % (b - a), "-i", audio,
+             "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "128k",
+             "-movflags", "+faststart", "-shortest", out_path])
+    try:
+        os.remove(vid)
+    except OSError:
+        pass
+    return out_path
+
+
+def proxy_source(sb_path: str, height: int = 960) -> str:
+    """Studio 播放用的代理影片：整支原片转成低分辨率（构图与成片相同：同样的推近与裁切），
+    界面按剪辑点跳着播，所以改剪辑点不必重新转。按原片与构图设定缓存。"""
+    sb = load_storyboard(sb_path)
+    out = sb["output"]
+    W, H = int(out["width"]), int(out["height"])
+    ph = max(2, int(height) & ~1)
+    pw = max(2, int(round(W * ph / float(H))) & ~1)
+    info = env.probe(sb["source"])
+    st = os.stat(sb["source"])
+    key = hashlib.sha1(json.dumps([sb["source"], st.st_size, st.st_mtime_ns, pw, ph, sb.get("framing"),
+                                   bool(info.get("hdr"))], sort_keys=True).encode()).hexdigest()[:16]
+    sd = _studio_dir(os.path.join(sb["_base"], "work"))
+    p = os.path.join(sd, "proxy_%s.mp4" % key)
+    if os.path.isfile(p):
+        return p
+    pre, fit = frame_chain(pw, ph, sb.get("framing"), bool(info.get("hdr")))
+    args = [env.ffmpeg(), "-y", "-v", "error", "-i", sb["source"], "-vf", pre + fit + ",format=yuv420p",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-g", "15"]
+    args += (["-c:a", "aac", "-b:a", "96k"] if info.get("has_audio", True) else ["-an"])
+    tmp = p + ".part.mp4"
+    env.run(args + ["-movflags", "+faststart", tmp])
+    os.replace(tmp, p)
+    return p
 
 
 def preview_subs(sb_path: str, t_from: Optional[float] = None, t_to: Optional[float] = None) -> str:

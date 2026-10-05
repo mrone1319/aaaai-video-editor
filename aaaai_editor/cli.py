@@ -6,7 +6,7 @@ import json
 import os
 import sys
 
-from . import __version__, autocut, checks, env, icons, recipes, render, showcase, theme, transcribe
+from . import __version__, autocut, checks, env, icons, recipes, render, showcase, store, theme, transcribe
 
 
 def cmd_new(a) -> int:
@@ -38,7 +38,7 @@ def cmd_adopt(a) -> int:
         sb["captions"] = {"enabled": False}
     elif not a.no_transcribe:
         transcribe.transcribe(a.video, os.path.join(base, "work", "transcript.json"), a.lang)
-    json.dump(sb, open(out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    store.write(out, sb, source="adopt")
     print("✅ 接入 %.1fs 的影片 → %s（整段保留；之后照常 captions／render／cover）" % (info["duration"], out))
     return 0
 
@@ -128,7 +128,7 @@ def cmd_autocut(a) -> int:
     sb = {"version": 1, "source": src,
           "output": {"width": a.width, "height": a.height, "fps": a.fps, "path": "out/final.mp4"},
           "cuts": cuts}
-    json.dump(sb, open(a.out, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    store.write(a.out, sb, source="autocut")
     kept = sum(b - x for x, b in cuts)
     print("✅ %d 段保留 %.1fs / 原片 %.1fs（剪掉 %.0f%%）→ %s" % (len(cuts), kept, info["duration"],
                                                           100 * (1 - kept / info["duration"]), a.out))
@@ -201,6 +201,10 @@ def cmd_render(a) -> int:
         path = render.preview_subs(a.storyboard, a.t_from, a.t_to)
         print("✅ 字幕预览：%s" % path)
         return 0
+    if getattr(a, "range", None):
+        path = render.render_range(a.storyboard, a.range[0], a.range[1])
+        print("✅ 这一段（%.2f–%.2f 秒，预览画质）：%s" % (a.range[0], a.range[1], path))
+        return 0
     path = render.render(a.storyboard, getattr(a, "only", None), proxy=getattr(a, "proxy", False))
     print("✅ 输出：%s" % path)
     if getattr(a, "only", None) is None:
@@ -222,6 +226,61 @@ def cmd_themes(a) -> int:
         t = theme.resolve_colors(dict(t))
         print("%-7s 强调 %s  价值 %s  陈述 %s  %s%s" % (n, t["accent"], t["value"], t["state"], t.get("desc", ""), lock))
     print("\n字体：中文 %s\n      数字 %s" % (theme.cjk_font(), theme.num_font()))
+    return 0
+
+
+def _jval(s: str):
+    """--set 的值：先当 JSON 读（数字、true、"字串"、[...]、{...}），读不了就当普通字串。"""
+    try:
+        return json.loads(s)
+    except ValueError:
+        return s
+
+
+def cmd_patch(a) -> int:
+    """带版本检查的小改动：Claude 改剪辑表／字幕轨一律用它，不直接覆盖文件（Studio 开着时不会互相盖掉）。"""
+    path = os.path.abspath(a.file)
+    if not os.path.isfile(path):
+        print("❌ 找不到文件：%s" % path)
+        return 1
+    if a.show or not (a.set or a.delete or a.append):
+        obj, ver = store.read(path)
+        print("📄 %s　版本 %s" % (os.path.basename(path), ver))
+        if isinstance(obj, dict) and "overlays" in obj:
+            for i, o in enumerate(obj.get("overlays") or []):
+                label = o.get("text") or o.get("kicker") or o.get("name") or o.get("question") or ""
+                print("  overlays.%d  %-11s %s  %s" % (i, o.get("type", "?"), o.get("t"), str(label).replace("\n", " ")[:30]))
+        if isinstance(obj, dict) and "pieces" in obj:
+            for i, p in enumerate(obj["pieces"][:400]):
+                print("  pieces.%d  %s  %s" % (i, p.get("s"), p.get("text", "")[:30]))
+        return 0
+    ops = []
+    for x in a.set or []:
+        if "=" not in x:
+            print("❌ --set 要写成 路径=值，例：overlays.2.keyword=\"工具\"")
+            return 1
+        k, v = x.split("=", 1)
+        ops.append(("set", k, _jval(v)))
+    for x in a.append or []:
+        k, v = x.split("=", 1)
+        ops.append(("append", k, _jval(v)))
+    for k in a.delete or []:
+        ops.append(("del", k))
+    _, ver = store.read(path)
+    expect = a.expect or ver
+    try:
+        obj, now = store.read(path)
+        if now != expect:
+            raise store.Conflict(path, expect, now)
+        store.apply_ops(obj, ops)
+        new = store.write(path, obj, expect=expect, source=a.source)
+    except store.Conflict as e:
+        print("⚠️ %s" % e)
+        return 2
+    except (KeyError, IndexError, TypeError, ValueError) as e:
+        print("❌ 改不了：%s（什么都没写入）" % e)
+        return 1
+    print("✅ %s：%d 处修改　版本 %s → %s" % (os.path.basename(path), len(ops), expect, new))
     return 0
 
 
@@ -290,7 +349,7 @@ def cmd_align(a) -> int:
         return 0
     track["pieces"] = new
     track["aligned"] = True
-    json.dump(track, open(tp, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    store.write(tp, track, source="align")
     print("✅ 已写回 %s。卡片时间若照旧的 cues 排过，重跑 cues 核对一下。" % os.path.relpath(tp, sb["_base"]))
     return 0
 
@@ -528,6 +587,8 @@ def main(argv=None) -> int:
     r.add_argument("storyboard")
     r.add_argument("--only", choices=["video", "audio"])
     r.add_argument("--proxy", action="store_true", help="半分辨率快速预览")
+    r.add_argument("--range", nargs=2, type=float, metavar=("开始", "结束"),
+                   help="只渲染成片的这一段（秒，预览画质，声音截自整片混音），几秒钟就好")
     r.set_defaults(fn=cmd_render)
     pv = sub.add_parser("preview", help="快速预览（等同 render --proxy）；--subs 只烧字幕、约一分钟")
     pv.add_argument("storyboard")
@@ -585,6 +646,15 @@ def main(argv=None) -> int:
     th = sub.add_parser("themes", help="列出风格与字体（给 storyboard 可一并列出项目自定义风格）")
     th.add_argument("storyboard", nargs="?")
     th.set_defaults(fn=cmd_themes)
+    pt = sub.add_parser("patch", help="带版本检查地改剪辑表／字幕轨（Claude 改文件一律用它）；不带修改＝列出内容与版本")
+    pt.add_argument("file", help="storyboard.json 或 work/captions.json")
+    pt.add_argument("--set", action="append", metavar="路径=值", help="例：overlays.2.keyword='\"工具\"'，值用 JSON")
+    pt.add_argument("--delete", action="append", metavar="路径", help="删掉一项，例：overlays.3")
+    pt.add_argument("--append", action="append", metavar="路径=值", help="在清单最后加一项，例：overlays='{...}'")
+    pt.add_argument("--expect", help="你读到的版本；文件在那之后被改过就拒绝（不写就以现在的版本为准）")
+    pt.add_argument("--source", default="claude", help="改动来源，记在 work/edits.log")
+    pt.add_argument("--show", action="store_true", help="只列出内容与版本")
+    pt.set_defaults(fn=cmd_patch)
     ic = sub.add_parser("icons", help="列出图标；--sheet 输出总表图")
     ic.add_argument("--sheet")
     ic.set_defaults(fn=cmd_icons)

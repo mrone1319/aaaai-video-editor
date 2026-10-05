@@ -514,7 +514,8 @@ def place(plan_path: str, sb_path: str) -> Tuple[int, str]:
         ovs.append(o)
         n += 1
     sb["overlays"] = ovs
-    json.dump(sb, open(sb_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    from . import store
+    store.write(sb_path, sb, source="broll")
     credits = [s["credit"] for s in plan.get("shots", []) if s.get("credit")]
     cp = os.path.join(os.path.dirname(os.path.abspath(sb_path)), "out", "broll_credits.txt")
     os.makedirs(os.path.dirname(cp), exist_ok=True)

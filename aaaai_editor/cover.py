@@ -268,9 +268,8 @@ def _saved(sb_path: str) -> dict:
 
 
 def _save(sb_path: str, cov: dict) -> None:
-    s = json.load(open(sb_path, encoding="utf-8"))
-    s["cover"] = cov
-    json.dump(s, open(sb_path, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    from . import store
+    store.update(sb_path, lambda s: s.__setitem__("cover", cov), source="cover")
 
 
 def make(sb_path: str, at: Optional[float] = None, pick: Optional[int] = None, title: Optional[str] = None,

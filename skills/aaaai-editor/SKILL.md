@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.0.35"
+  version: "1.0.36"
 ---
 
 # aaaai-editor 影片总监
@@ -25,6 +25,11 @@ A="$HOME/.aaaai-editor/bin/aaaai-editor"; APP="$HOME/.aaaai-editor/app"; P="<项
 5a. **判定性听写一律不带提示词**（`listen`、`probe-cut`、`check-sync` 都是）：提示词会在静音处幻听出词，
    「窗口里听到」也不等于「在窗口开头」，要逐步收窄。
 5b. **不确定的专有名词、人名、品牌名，不照听写定案**：剪出那一小段问用户确认。
+5c. **改剪辑表（storyboard.json）与字幕轨（work/captions.json）一律用 `"$A" patch`，不直接覆盖文件**
+   （不用编辑器整档改写、不用脚本 json.dump）。`patch` 会检查版本：用户可能正开着 Studio 界面在改同一份剪辑表，
+   直接写档会把对方的修改盖掉。先 `"$A" patch <文件>` 看内容与版本（overlays.N 的编号也在这里），
+   再 `--set 路径=JSON值`／`--append`／`--delete`；退出码 2＝版本已变，重新看一次再改，不要硬写。
+   新建剪辑表（autocut、adopt）与其他命令（hook、tidy、cover、broll place、align、captions）本来就走存取口，照常用。
 6. **社群风格**：`mrone`（© MR ONE）与 `otg`（© OTG 社群）人人可用、不需授权，但**不是首选**：
    一般用户问风格时，只把它们放在选项最后（或写进 Other 的说明），**绝不标 (Recommended)、不放第一个**；
    只有频道档案是 `mrone`（`"$A" config` 的 profile＝mrone，也就是 MR ONE 本人）时，才把 `mrone` 当推荐。
@@ -108,6 +113,8 @@ P=$("$A" new <主题英文短名>)
   `"framing": {"zoom": 1.2, "cx": 0.5, "cy": 0.4}`（约 1.15–1.25× 安全，再大脸会变特写）。
 
 ### 2. 按三问改 storyboard.json
+
+用 `patch` 改（铁律 5c），例：`"$A" patch "$P/storyboard.json" --set 'style="ink"' --set 'music={"file":"bgm:focus-quiet","db":-18,"duck":true}'`。
 
 - `"style": "<风格>"`（字幕样式会自动跟随）
 - 配乐：`"music": {"file": "bgm:<曲名>", "db": -18, "duck": true}`；不要字幕：`"captions": {"enabled": false}`
