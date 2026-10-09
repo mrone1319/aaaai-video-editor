@@ -1,5 +1,15 @@
 # 更新记录
 
+## v1.8.4（2026-10-09）
+
+**macOS 安装：HyperFrames 更稳。** 引擎、剪辑表完全没动。
+
+- 以前只用 `command -v claude` 找 Claude Code：刚用官方安装程序装好、这个终端的 PATH 还没更新时，会误以为没装而跳过 HyperFrames（或重复问要不要安装）。
+  现在也会找 `~/.local/bin`、`~/.claude/local`、`/opt/homebrew/bin`、`/usr/local/bin`，找到就补进 PATH 继续装。
+- 新增 `install.sh --only-hyperframes`，zip 安装包新增 **`补装HyperFrames.command`**：装好 Claude Code 后双击就能补装，其他步骤都不动。
+- 装不上时，结束清单会写出补装方法；没有 Node.js 会提醒 `brew install node`。
+- Mac 安装指南：选项表与「常见问题」补上这一项。
+
 ## v1.8.3（2026-10-09）
 
 **Windows 安装修正。** 引擎、剪辑表完全没动。

@@ -11,7 +11,12 @@ cat > "$STAGE/双击安装.command" <<'C'
 cd "$(dirname "$0")" && xattr -dr com.apple.quarantine . 2>/dev/null; bash install.sh
 echo; read -r -p "按 Enter 关闭" _
 C
-chmod +x "$STAGE/双击安装.command" "$STAGE/install.sh" "$STAGE/uninstall.sh" "$STAGE/bin/aaaai-editor"
+cat > "$STAGE/补装HyperFrames.command" <<'C'
+#!/bin/bash
+cd "$(dirname "$0")" && xattr -dr com.apple.quarantine . 2>/dev/null; bash install.sh --only-hyperframes
+echo; read -r -p "按 Enter 关闭" _
+C
+chmod +x "$STAGE/补装HyperFrames.command" "$STAGE/双击安装.command" "$STAGE/install.sh" "$STAGE/uninstall.sh" "$STAGE/bin/aaaai-editor"
 # 用 Python 打包：中文文件名带 UTF-8 标记（各种解压工具都不乱码），保留可执行权限，不夹带 __MACOSX
 python3 - "$STAGE" "$OUT" <<'PY'
 import os, sys, zipfile

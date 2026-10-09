@@ -21,10 +21,10 @@
 set -u
 SRC="$(cd "$(dirname "$0")" && pwd)"
 HOME_DIR="${AAAAI_EDITOR_HOME:-$HOME/.aaaai-editor}"
-YES=0; DEPS=1; MODEL=1; MG=1; SKILLS=1; HF=1; DEV=0; KEYS=1; CODEX=1
+YES=0; DEPS=1; MODEL=1; MG=1; SKILLS=1; HF=1; DEV=0; KEYS=1; CODEX=1; ONLY_HF=0
 for a in "$@"; do case "$a" in
   --yes) YES=1;; --no-deps) DEPS=0;; --no-model) MODEL=0;; --no-mg) MG=0;; --no-skills) SKILLS=0;;
-  --no-hyperframes) HF=0;; --dev) DEV=1;; --no-keys) KEYS=0;; --no-codex) CODEX=0;; --plugin) PLUGIN_FLAG=1;; *) echo "未知选项：$a"; exit 2;; esac; done
+  --no-hyperframes) HF=0;; --only-hyperframes) ONLY_HF=1;; --dev) DEV=1;; --no-keys) KEYS=0;; --no-codex) CODEX=0;; --plugin) PLUGIN_FLAG=1;; *) echo "未知选项：$a"; exit 2;; esac; done
 PLUGIN=0
 case "$SRC" in */plugins/cache/*|*/.claude/plugins/*) PLUGIN=1;; esac
 [ "${PLUGIN_FLAG:-0}" = 1 ] && PLUGIN=1
@@ -38,6 +38,46 @@ TODO=()   # 没有终端可问（例如由 AI 代跑）而跳过的项目，结�
 todo() { TODO+=("$1"); }
 # 问是否要做：--yes 一律做；没有终端可问就一律「不做」并记下来（绝不替用户默认同意）
 ask()  { [ "$YES" = 1 ] && return 0; [ "$TTY" = 1 ] || return 1; read -r -p "  $1 [Y/n] " r; [ -z "$r" ] || [ "$r" = y ] || [ "$r" = Y ]; }
+
+# ---------- HeyGen HyperFrames（讲解片／网站转影片／产品发布等格式；--only-hyperframes 只做这一步） ----------
+# 找 Claude Code 命令行：PATH 之外，也找原生安装器、旧版本机安装、Homebrew 的位置（刚装好时这个终端的 PATH 可能还没更新）
+find_claude() {
+  command -v claude >/dev/null 2>&1 && return 0
+  for c in "$HOME/.local/bin/claude" "$HOME/.claude/local/claude" /opt/homebrew/bin/claude /usr/local/bin/claude; do
+    if [ -x "$c" ]; then export PATH="$(dirname "$c"):$PATH"; return 0; fi
+  done
+  return 1
+}
+hf_step() {
+  if ! find_claude; then
+    warn "没找到 Claude Code 命令行（HyperFrames 装在 Claude Code 里；aaaai-editor 本身也在 Claude Code 里用）"
+    if ask "现在用 Anthropic 官方安装程序安装 Claude Code？"; then
+      curl -fsSL https://claude.ai/install.sh | bash
+      find_claude || true
+    fi
+  fi
+  if ! command -v claude >/dev/null 2>&1; then
+    warn "没有 Claude Code，HyperFrames 先跳过"
+    todo "（选装）HyperFrames：装好 Claude Code（curl -fsSL https://claude.ai/install.sh | bash）后，执行 bash install.sh --only-hyperframes（或双击「补装HyperFrames.command」）"
+    return 0
+  fi
+  ok "Claude Code：$(command -v claude)"
+  command -v node >/dev/null 2>&1 || warn "没有 Node.js：HyperFrames 需要它——brew install node"
+  claude plugin marketplace add https://github.com/heygen-com/hyperframes.git >/dev/null 2>&1 || true   # 用 https：没设 SSH 的电脑用简写会失败
+  if claude plugin list 2>/dev/null | grep -q "core-skills"; then ok "HyperFrames 已安装"; return 0; fi
+  if claude plugin install core-skills@hyperframes >/dev/null 2>&1 && claude plugin list 2>/dev/null | grep -q "core-skills"; then
+    ok "core-skills@hyperframes"
+  else
+    warn "HyperFrames 没装上"
+    todo "HyperFrames：在 Claude Code 里执行 claude plugin install core-skills@hyperframes（或 bash install.sh --only-hyperframes 再试）"
+  fi
+}
+if [ "$ONLY_HF" = 1 ]; then
+  step "补装 HeyGen HyperFrames"
+  hf_step
+  for t in "${TODO[@]+"${TODO[@]}"}"; do echo "  · $t"; done
+  exit 0
+fi
 
 VER="$(cat "$SRC/VERSION" 2>/dev/null || echo "?")"
 echo "aaaai-editor 影片总监套件 v$VER 安装器"
@@ -202,20 +242,7 @@ else ok "跳过（--no-skills）"; fi
 
 # ---------- 6. HeyGen HyperFrames（其他格式） ----------
 step "6. HeyGen HyperFrames（讲解片／网站转影片／产品发布／音乐影片等格式，Apache-2.0）"
-if [ "$HF" = 1 ] && ! command -v claude >/dev/null 2>&1; then
-  warn "没找到 Claude Code（本套件在 Claude Code 里使用）"
-  if ask "现在用官方安装程序安装 Claude Code？"; then
-    curl -fsSL https://claude.ai/install.sh | bash && export PATH="$HOME/.local/bin:$PATH"
-  else todo "（选装）Claude Code：curl -fsSL https://claude.ai/install.sh | bash"; fi
-fi
-if [ "$HF" = 1 ] && command -v claude >/dev/null 2>&1; then
-  claude plugin marketplace add https://github.com/heygen-com/hyperframes.git >/dev/null 2>&1 || true   # 用 https：没设 SSH 的电脑用简写会失败
-  if claude plugin list 2>/dev/null | grep -q "core-skills"; then ok "已安装"
-  else claude plugin install core-skills@hyperframes >/dev/null 2>&1 && ok "core-skills@hyperframes" \
-       || warn "没装上：之后在 Claude Code 里执行 claude plugin install core-skills@hyperframes"; fi
-elif [ "$HF" = 1 ]; then warn "没找到 claude 命令，HyperFrames 跳过"
-  todo "（选装）HyperFrames：装好 Claude Code 后执行 claude plugin marketplace add https://github.com/heygen-com/hyperframes.git && claude plugin install core-skills@hyperframes"
-else ok "跳过"; fi
+if [ "$HF" = 1 ]; then hf_step; else ok "跳过（--no-hyperframes）"; fi
 
 # ---------- 7. ChatGPT Codex（可选） ----------
 step "7. ChatGPT Codex"

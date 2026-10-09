@@ -164,6 +164,7 @@ bash install.sh --no-model
 | `--no-keys` | 不引导绑定密钥 |
 | `--no-codex` | 不装到 Codex |
 | `--no-hyperframes` | 不装 HyperFrames |
+| `--only-hyperframes` | 只补装 HyperFrames（其他都不动；安装包里的 `补装HyperFrames.command` 就是这个） |
 | `--plugin` | 由 Claude Code 插件调用（skill 由插件提供） |
 | `--dev` | 开发模式：程序指回安装包文件夹（改代码立刻生效） |
 
@@ -296,3 +297,4 @@ claude plugin update aaaai-editor@aaaai-editor
 | 人像穿插报错 | 执行 `xcode-select --install` 装好 Apple 的开发工具 |
 | 想用 mrone／otg 风格 | 直接跟 Claude 说「用 mrone 风格」即可，不需要授权；它们排在清单最后，不会被当首选推荐 |
 | 双击安装被拦下 | 见第二节方法 A 第 3 步 |
+| 体检显示 HyperFrames ⚠️（没装上） | 先装好 Claude Code（安装器会问；或执行 `curl -fsSL https://claude.ai/install.sh \| bash`），再双击安装包里的 `补装HyperFrames.command`，或执行 `bash install.sh --only-hyperframes` |
