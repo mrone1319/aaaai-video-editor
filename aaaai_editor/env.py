@@ -96,8 +96,24 @@ def which(name: str) -> Optional[str]:
     return None
 
 
+def _which_exe_win(name: str) -> Optional[str]:
+    """Windows：只认 .exe，而且不在 Windows 系统文件夹里。
+    （shutil.which 会照 PATHEXT 认 .CPL 等：找旧版 whisper.cpp 的 main.exe 时，曾找到 C:\\Windows\\system32\\main.CPL——那是控制面板的鼠标设定）"""
+    sysroot = os.path.normcase(os.environ.get("SystemRoot", r"C:\Windows"))
+    for d in _extra_bins() + os.environ.get("PATH", "").split(os.pathsep):
+        if not d:
+            continue
+        c = os.path.join(d, name + ".exe")
+        if os.path.isfile(c) and not os.path.normcase(os.path.abspath(c)).startswith(sysroot):
+            return c
+    return None
+
+
 def whisper_cli() -> str:
-    w = os.environ.get("AAAAI_EDITOR_WHISPER") or which("whisper-cli") or (which("main") if WIN else None)
+    if WIN:
+        w = os.environ.get("AAAAI_EDITOR_WHISPER") or _which_exe_win("whisper-cli") or _which_exe_win("main")
+    else:
+        w = os.environ.get("AAAAI_EDITOR_WHISPER") or which("whisper-cli")
     if not w:
         raise ToolError("找不到 whisper-cli。安装：%s" % ("重跑 install.ps1（会从 whisper.cpp 官方下载）" if WIN
                                                     else "brew install whisper-cpp（或重跑安装器）"))
@@ -192,6 +208,36 @@ def find_font() -> str:
     return CJK_FONTS[0]
 
 
+def claude_cli() -> Optional[str]:
+    """找 Claude Code 命令行：PATH，以及原生安装器／npm 的常见位置（刚装好时这个视窗的 PATH 可能还没更新）。"""
+    w = shutil.which("claude")
+    if w:
+        return w
+    cands = [os.path.expanduser("~/.local/bin/claude" + EXE), os.path.expanduser("~/.claude/local/claude" + EXE)]
+    if WIN:
+        ap = os.environ.get("APPDATA")
+        if ap:
+            cands.append(os.path.join(ap, "npm", "claude.cmd"))
+    else:
+        cands += ["/opt/homebrew/bin/claude", "/usr/local/bin/claude"]
+    return next((c for c in cands if os.path.isfile(c)), None)
+
+
+def hyperframes_status():
+    """→ (装好了吗, 说明)。HyperFrames 是选装：讲解片／网站转影片／产品发布等格式才用到。"""
+    c = claude_cli()
+    if not c:
+        return False, "选装：要先装 Claude Code（https://claude.ai/download），再双击「Install-HyperFrames」或重跑安装器"
+    try:
+        r = subprocess.run([c, "plugin", "list"], capture_output=True, text=True, timeout=30,
+                           encoding="utf-8", errors="replace")
+        if "core-skills" in (r.stdout or ""):
+            return True, "core-skills@hyperframes"
+    except Exception:
+        pass
+    return False, "选装：执行 claude plugin marketplace add https://github.com/heygen-com/hyperframes.git ; claude plugin install core-skills@hyperframes"
+
+
 def doctor() -> int:
     ok = True
 
@@ -220,6 +266,8 @@ def doctor() -> int:
         line(True, "人像去背", " ".join(_mt.helper_cmd()))
     except Exception as e:  # 只影响 behind_subject／cutout
         line(False, "人像去背", str(e))
+    hf = hyperframes_status()
+    print("%s %-14s %s" % ("✅" if hf[0] else "⚠️", "HyperFrames", hf[1]))   # 选装：不影响剪口播，不算失败
     try:
         f = ffmpeg()
         for flt in ("loudnorm", "sidechaincompress", "subtitles", "drawtext", "zoompan", "overlay"):

@@ -1,5 +1,19 @@
 # 更新记录
 
+## v1.8.3（2026-10-09）
+
+**Windows 安装修正。** 引擎、剪辑表完全没动。
+
+- **安装视窗中文变成「?」**：旧版黑色 cmd 视窗（conhost）的字体没有中文字形、也不会借用其他字体，中文与 ✔⚠ 都显示成「?」（文字本身没错，安装照常完成）。
+  现在：电脑有 Windows Terminal 时，双击 `Install-Windows.cmd` 会自动改在 Windows Terminal 里打开（中文正常）；
+  整个安装过程另存 `%USERPROFILE%\.aaaai-editor\install-log.txt`，不在 Windows Terminal 里时结束后用记事本打开；体检结果也会进记录。
+- **HyperFrames 常被跳过**：以前只在当下视窗找得到 `claude` 命令才装。现在会重读 PATH、找原生安装器与 npm 的常见位置；
+  真的没有 Claude Code 时会问要不要用 Anthropic 官方安装程序先装；新增 **`Install-HyperFrames.cmd`**，装好 Claude Code 后双击就能补装。
+- **体检误判 whisper-cli**：Windows 上找旧版 whisper.cpp 的 `main` 时，会照 PATHEXT 找到 `C:\Windows\system32\main.CPL`（控制面板的鼠标设定）而误报正常。
+  现在 Windows 上只认 `.exe`、排除系统文件夹——没装 whisper.cpp 会如实显示 ❌。
+- 体检新增 **HyperFrames** 一行（选装：没装显示 ⚠️ 与补装方法，不算失败）。
+- Windows 安装指南「常见问题」补上这三项。
+
 ## v1.8.2（2026-10-05）
 
 **版权归属与相关网站。** 引擎、剪辑表完全没动。

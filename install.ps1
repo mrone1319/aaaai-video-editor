@@ -1,11 +1,11 @@
 ﻿# ============================================================
 # aaaai-editor 影片总监套件 —— Windows 安装器（Windows 10 22H2／11，64 位）
 # 见 LICENSE.md。与 macOS 的 install.sh 同一套步骤；用法（在 PowerShell 里）：
-#   powershell -ExecutionPolicy Bypass -File install.ps1 [-Yes] [-NoDeps] [-NoModel] [-NoSkills] [-NoHyperframes] [-NoKeys]
+#   powershell -ExecutionPolicy Bypass -File install.ps1 [-Yes] [-NoDeps] [-NoModel] [-NoSkills] [-NoHyperframes] [-NoKeys] [-OnlyHyperframes]
 # 或直接双击 Install-Windows.cmd。可重复执行：已装的会跳过；不会动你的设置、风格、频道档案与项目。
 # 没有互动视窗可问（例如由 AI 代跑）时：需要你同意的项目一律跳过，结束时列出来给你。
 # ============================================================
-param([switch]$Yes, [switch]$NoDeps, [switch]$NoModel, [switch]$NoSkills, [switch]$NoHyperframes, [switch]$NoKeys)
+param([switch]$Yes, [switch]$NoDeps, [switch]$NoModel, [switch]$NoSkills, [switch]$NoHyperframes, [switch]$NoKeys, [switch]$OnlyHyperframes)
 $ErrorActionPreference = "Continue"
 try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $SRC = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -26,6 +26,52 @@ function Ask($q) {
   return ($r -eq "" -or $r -eq "y" -or $r -eq "Y")
 }
 function Has($cmd) { return [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
+
+# 安装记录：旧版 cmd 视窗的字体没有中文字形，中文会全变成「?」——整个过程另外记一份文字档，最后用记事本打开
+New-Item -ItemType Directory -Force -Path $HOME_DIR | Out-Null
+$LOG = Join-Path $HOME_DIR "install-log.txt"
+try { Start-Transcript -Path $LOG -Force | Out-Null } catch {}
+
+# ---------- HeyGen HyperFrames（讲解片／网站转影片／产品发布等格式；-OnlyHyperframes 只做这一步） ----------
+function Find-Claude {
+  # 刚装好的程序不在这个视窗的 PATH 上：先把 PATH 重新读进来，再找原生安装器与 npm 的常见位置
+  $env:Path = [Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [Environment]::GetEnvironmentVariable("Path", "User")
+  $c = Get-Command claude -ErrorAction SilentlyContinue
+  if ($c) { return $c.Source }
+  foreach ($p in @((Join-Path $env:USERPROFILE ".local\bin\claude.exe"), (Join-Path $env:USERPROFILE ".claude\local\claude.exe"),
+                   (Join-Path $env:APPDATA "npm\claude.cmd"))) {
+    if (Test-Path $p) { return $p }
+  }
+  return $null
+}
+function Install-HyperFrames {
+  $cl = Find-Claude
+  if (-not $cl) {
+    Warn "没找到 Claude Code 命令行（HyperFrames 装在 Claude Code 里；aaaai-editor 本身也在 Claude Code 里用）"
+    if (Ask "现在用 Anthropic 官方安装程序安装 Claude Code（irm https://claude.ai/install.ps1 | iex）？") {
+      try { Invoke-RestMethod https://claude.ai/install.ps1 | Invoke-Expression } catch { Warn "Claude Code 没装上：$_" }
+      $cl = Find-Claude
+    }
+  }
+  if (-not $cl) {
+    Todo "（选装）HyperFrames：装好 Claude Code（https://claude.ai/download）后，双击 Install-HyperFrames.cmd 就会补装"
+    return
+  }
+  Ok "Claude Code：$cl"
+  & $cl plugin marketplace add https://github.com/heygen-com/hyperframes.git *> $null
+  if ((& $cl plugin list 2>$null | Out-String) -match "core-skills") { Ok "HyperFrames 已安装"; return }
+  & $cl plugin install core-skills@hyperframes *> $null
+  if ($LASTEXITCODE -eq 0 -and ((& $cl plugin list 2>$null | Out-String) -match "core-skills")) { Ok "core-skills@hyperframes" }
+  else { Warn "HyperFrames 没装上"; Todo "HyperFrames：在 Claude Code 里执行 claude plugin install core-skills@hyperframes（或双击 Install-HyperFrames.cmd 再试）" }
+}
+if ($OnlyHyperframes) {
+  Step "补装 HeyGen HyperFrames"
+  if (-not (Has "node")) { Warn "没有 Node.js：HyperFrames 需要它——执行 winget install -e --id OpenJS.NodeJS.LTS" }
+  Install-HyperFrames
+  if ($TODO.Count -gt 0) { foreach ($t in $TODO) { Write-Host "  · $t" } }
+  try { Stop-Transcript | Out-Null } catch {}
+  exit 0
+}
 
 if ([Environment]::OSVersion.Platform -ne "Win32NT") { Write-Host "这个安装器给 Windows 用；macOS 请用 install.sh。"; exit 1 }
 if (-not [Environment]::Is64BitOperatingSystem) { Write-Host "需要 64 位 Windows。"; exit 1 }
@@ -174,14 +220,7 @@ if (-not $NoSkills) {
 
 # ---------- 6. HeyGen HyperFrames（其他格式） ----------
 Step "6. HeyGen HyperFrames（讲解片／网站转影片／产品发布／音乐影片等格式，Apache-2.0）"
-if (-not $NoHyperframes -and (Has "claude")) {
-  & claude plugin marketplace add https://github.com/heygen-com/hyperframes.git *> $null
-  if ((& claude plugin list 2>$null | Out-String) -match "core-skills") { Ok "已安装" }
-  else { & claude plugin install core-skills@hyperframes *> $null; if ($LASTEXITCODE -eq 0) { Ok "core-skills@hyperframes" } else { Warn "没装上：之后执行 claude plugin install core-skills@hyperframes" } }
-} elseif (-not $NoHyperframes) {
-  Warn "没找到 Claude Code（本套件在 Claude Code 里使用）：到 https://claude.ai/download 下载安装"
-  Todo "（选装）HyperFrames：装好 Claude Code 后执行 claude plugin marketplace add https://github.com/heygen-com/hyperframes.git ; claude plugin install core-skills@hyperframes"
-} else { Ok "跳过" }
+if (-not $NoHyperframes) { Install-HyperFrames } else { Ok "跳过（-NoHyperframes）" }
 
 # ---------- 7. API 密钥（全部可选） ----------
 Step "7. API 密钥（B-roll 用，全部可选，不绑也能剪片）"
@@ -205,9 +244,15 @@ if (-not $NoKeys -and -not $Yes -and $TTY) {
 
 # ---------- 8. 体检 ----------
 Step "8. 体检"
-& $A doctor
+& $A doctor | Out-Host          # 经过 Out-Host，安装记录里才会有体检结果
 if ($TODO.Count -gt 0) { Step "还剩这些要你自己决定／在视窗里做"; foreach ($t in $TODO) { Write-Host "  · $t" } }
 Write-Host ""
 Write-Host "完成。在 Claude Code 里说「/aaaai-editor」或丢一段视频进去就能开始。"
 Write-Host "Claude Desktop／Cursor 想用 B-roll 工具：把 MCP 服务器设为命令 $A、参数 mcp（见 docs\安装指南-Windows.md）。"
 Write-Host "社群风格 mrone（© MR ONE）、otg（© OTG 社群）可以直接使用，品牌归原权利人，请勿用来冒充。"
+Write-Host ""
+Write-Host "安装记录：$LOG"
+Write-Host "(If the Chinese text above shows as '?', your console font has no Chinese glyphs - the full log opens in Notepad.)"
+try { Stop-Transcript | Out-Null } catch {}
+# 不在 Windows Terminal 里（旧版 cmd 视窗多半显示不了中文）：用记事本打开安装记录
+if (-not $env:WT_SESSION -and $TTY) { Start-Process notepad.exe $LOG }

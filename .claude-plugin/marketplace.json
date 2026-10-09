@@ -10,7 +10,7 @@
       "name": "aaaai-editor",
       "source": "./",
       "description": "aaaai-editor 影片总监套件（macOS）：口播 AI 剪辑、品牌动画与 HyperFrames 各格式派工、统一收尾与发布打包。第一次使用会引导执行安装器。",
-      "version": "1.8.2",
+      "version": "1.8.3",
       "license": "SEE LICENSE IN LICENSE.md"
     }
   ]

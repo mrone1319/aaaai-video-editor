@@ -205,5 +205,8 @@ claude plugin update aaaai-editor@aaaai-editor
 | 找不到 ffmpeg／whisper-cli | winget 刚装完要**新开视窗**才生效；还是不行就重跑安装器 |
 | 人像穿插、卡片接管报错 | 重跑安装器装 MediaPipe，或执行 `py -3.12 -m pip install --user mediapipe numpy` |
 | 中文变成乱码 | 请用安装器建立的 `aaaai-editor` 命令启动（它会用 UTF-8）；把画面截图给 Claude |
+| 安装视窗里中文全变成「?」 | 那是旧版黑色 cmd 视窗的字体没有中文字形（文字本身没错，安装照常完成）。安装完会用**记事本**打开完整记录 `%USERPROFILE%\.aaaai-editor\install-log.txt`；装了 **Windows Terminal**（开始菜单搜「终端」，或 Microsoft Store 免费安装）时，双击安装会自动改在它里面打开，中文正常显示 |
+| HyperFrames 没装上 | 它装在 Claude Code 里，安装当下找不到 Claude Code 就会跳过（安装器会问要不要先装 Claude Code）。装好 Claude Code 后，双击安装包里的 **`Install-HyperFrames.cmd`** 补装；`aaaai-editor doctor` 会显示它装好没 |
+| 体检显示 whisper-cli 是 `C:\Windows\system32\main.CPL` | 旧版的误判（把控制面板文件当成语音识别程序），v1.8.3 已修正；重跑安装器并同意下载 whisper.cpp |
 | 出片很慢 | storyboard 写 `"output": {"encoder": "hw"}` 开显卡硬件加速（NVIDIA／Intel／AMD） |
 | 想用 mrone／otg 风格 | 直接跟 Claude 说「用 mrone 风格」即可，不需要授权；它们排在清单最后，不会被当首选推荐 |
