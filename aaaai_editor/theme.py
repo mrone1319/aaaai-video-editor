@@ -181,6 +181,23 @@ BUILTIN: Dict[str, dict] = {
         "type": {"title": {"font": "serif", "bold": 1}, "heading": {"font": "serif", "bold": 1},
                  "quote": {"font": "serif"}, "row_title": {"font": "serif", "bold": 1},
                  "kicker": {"upper": 1, "tracking": 0.20}, "number": {"font": "serif", "bold": 1}}}),
+    # —— 带画面调色的风格：选了就连画面一起调（look，见 aaaai_editor/look.py）——
+    "cozy": dict(_LIGHT_SEM, **{  # 暖调居家电影感博主风（Warm & Cozy Cinematic Vlog）
+        "desc": "居家科技博主：奶油米白卡、焦糖强调、柔和阴影；画面暖调低对比＋黑柔＋细颗粒",
+        "plate": ["#FBF4E8", "#F3E6D3"], "plate_alpha": 0.94, "radius": 28,
+        "text": "#3B2A1E", "muted": "#8A7360", "accent": "#C8773A", "on_accent": "#FFF8EE", "hl": "#FFC27A",
+        "lite_accent": "#FFC27A",   # 叠在画面上（无底板）时：焦糖色调亮后仍偏灰，小字看不清，改用琥珀色
+        "value": "#6F8F3C", "state": "#A8653A",
+        "border": {"w": 0, "color": "#E8D8C0"},
+        "shadow": {"soft": 34, "alpha": 0.22, "dy": 12, "color": "#4A2E18"},
+        "signature": {"pattern": {"kind": "dots", "color": "#B08A62", "alpha": 0.055, "size": 12}},
+        "row": "#F6EBDB", "line": "#E6D4BB",
+        "text_engine": "ass", "body_font": "PingFang SC", "mono_font": "IBM Plex Mono",
+        "captions": "cozy", "look": "cozy",
+        "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1}, "row_title": {"bold": 1},
+                 "kicker": {"bold": 1, "upper": 1, "tracking": 0.18}, "stamp": {"bold": 1},
+                 "number": {"bold": 1}, "badge": {"bold": 1},
+                 "name": {"bold": 1}, "item": {"bold": 1}, "row_tag": {"bold": 1}}}),
 }
 DEFAULT_THEME = "ink"
 

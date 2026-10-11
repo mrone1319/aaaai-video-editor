@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.8.4"
+  version: "1.9.0"
 ---
 
 # aaaai-editor 影片总监
@@ -80,6 +80,7 @@ HyperFrames 没装：`claude plugin marketplace add https://github.com/heygen-co
 | `ink` | 商业、知识，稳重 |
 | `neon` / `gold` / `trust` | Web3、加密、理财 |
 | `serif` / `paper` / `mag` | 评论、观点、编辑感 |
+| `cozy` | 居家／生活方式／科技开箱博主口播：卡片奶油焦糖色，**画面一起调成暖调电影感**（低对比、暖褐暗部、黑柔、细颗粒）；配乐首选 `bgm:warm-story` |
 | `mrone` · 社群风格 | MR ONE 口播（黑金、双语高亮字幕、编号清单）——**只有 profile＝mrone 才推荐**，其他人放最后 |
 | `otg` · 社群风格 | OTG 社群内容（OTG 红、Orbitron、毛玻璃、星空断章、激光扫光）——放最后，不推荐 |
 
@@ -117,6 +118,11 @@ P=$("$A" new <主题英文短名>)
 用 `patch` 改（铁律 5c），例：`"$A" patch "$P/storyboard.json" --set 'style="ink"' --set 'music={"file":"bgm:focus-quiet","db":-18,"duck":true}'`。
 
 - `"style": "<风格>"`（字幕样式会自动跟随）
+- **画面调色**（`cozy` 自带；其他风格可借用 `"look": "cozy"`，细节见 docs/STYLE.md「画面调色」）：
+  - 先「渲染这一段」（或 render_range）抽帧给用户看调色，再整片渲染；用户嫌太浓写 `"look": {"name": "cozy", "strength": 0.6}`，不要写 `"look": false`。
+  - 背景虚化 `"bokeh": true` **默认不开**：只在近景口播、背景太清楚／太乱时提议，先渲染一段给用户确认（头发边缘、桌上前景也会糊）；远景、人很小的片不要开。
+  - 用户选了 cozy：开工时把 docs/STYLE.md 的「cozy 拍摄指引」重点（50mm 大光圈、侧前方柔光、背景 3000K 暖灯、白平衡锁 4500–5000K）告诉他，下次拍会更好。
+  - cozy 的节奏要留呼吸：autocut 加 `--min-silence 0.8`（只剪 0.8 秒以上的停顿），不要剪成快嘴。
 - 配乐：`"music": {"file": "bgm:<曲名>", "db": -18, "duck": true}`；不要字幕：`"captions": {"enabled": false}`
 - 中英双语不用改 storyboard（第 3 步填 `en`）；品牌词全局高亮：`"captions": {"highlight": ["<品牌>"]}`
 

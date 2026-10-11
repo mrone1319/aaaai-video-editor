@@ -36,6 +36,10 @@ STYLES: Dict[str, dict] = {
     "otg": dict(size=0.030, bold=1, primary="&H00FFFFFF", outline="&H00000000", outline_w=0.0030,
                 shadow=0, margin_v=0.30, back="&H00000000", hl="#FF2A3A", en_ratio=0.74,
                 en_font="Avenir Next Bold", max_w=17, hold=0.40),
+    # 居家暖调（配合 cozy 风格）：暖白字、细的暖褐描边＋柔和投影，不用硬黑描边；关键词琥珀色
+    "cozy": dict(size=0.030, bold=1, primary="&H00E8F6FF", outline="&H60182A3B", outline_w=0.0018,
+                 shadow=2, margin_v=0.30, back="&H7A101A26", hl="#FFC27A", en_ratio=0.72,
+                 en_font="Avenir Next Bold", max_w=17, hold=0.45),
 }
 # 英文行用具体字形名：libass 给「Avenir Next」加粗时会挑中 Bold Italic，写死字形名才稳定是正体
 DEF_HL, DEF_EN_RATIO, DEF_EN_FONT = "#FFD23F", 0.62, "Avenir Next Bold"

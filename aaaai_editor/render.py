@@ -125,6 +125,80 @@ def frame_chain(w: int, h: int, framing: Optional[dict] = None, hdr: bool = Fals
     return pre, fit
 
 
+def look_of(sb: dict) -> Optional[dict]:
+    """画面调色设定：剪辑表的 "look"，没写就跟随卡片风格自带的 look（见 aaaai_editor/look.py）。"""
+    from . import look
+    th = None
+    if sb.get("look") is None:
+        try:
+            th = theme.theme(sb.get("style"), sb.get("_base"), sb.get("brand"))
+        except (RuntimeError, KeyError):
+            th = None
+    try:
+        return look.resolve(sb, th)
+    except ValueError as e:
+        raise env.ToolError(str(e))
+
+
+def _bokeh_matte(sb: dict, cuts, w: int, h: int, fps, work: str, length: float) -> Optional[str]:
+    """背景虚化用的人像遮罩（整段）。没有人像分割、或这段几乎没有人，就回传 None（不虚化）。"""
+    from . import matte
+    try:
+        f, _mw, _mh = matte.build(sb["source"], {"cuts": cuts, "framing": sb.get("framing"), "hdr": sb.get("_hdr", False)},
+                                  (0.0, length), work, w, h, fps, "balanced", 0.35, "bokeh")
+    except (env.ToolError, OSError) as e:
+        print("（背景虚化跳过：%s）" % str(e).splitlines()[0][:80])
+        return None
+    if matte.coverage(f) < 0.02:
+        print("（背景虚化跳过：这段几乎认不出人物，虚化会把整个画面糊掉）")
+        return None
+    try:
+        return _dof_matte(f, _mw, _mh)
+    except ImportError:
+        print("（背景虚化跳过：需要 numpy——重跑安装器即可）")
+        return None
+
+
+def _dof_matte(f: str, mw: int, mh: int) -> str:
+    """把人像遮罩改成「虚化遮罩」：认不出人的帧整张保持清楚（白），有人和没人之间用 0.3 秒渐变，不会忽糊忽清。
+    实测：远景、人物太小或转身时，分割会有几帧整张全黑——直接拿来用，那几帧整个画面都会被当背景糊掉。"""
+    import numpy as np
+    out = os.path.join(os.path.dirname(f), "dof_" + os.path.basename(f).split("_", 1)[1])
+    if os.path.isfile(out):
+        return out
+    fs = mw * mh
+
+    def frames():
+        p = subprocess.Popen([env.ffmpeg(), "-v", "error", "-i", f, "-f", "rawvideo", "-pix_fmt", "gray", "-"],
+                             stdout=subprocess.PIPE)
+        while True:
+            b = p.stdout.read(fs)
+            if len(b) < fs:
+                break
+            yield np.frombuffer(b, np.uint8)
+        p.stdout.close()
+        p.wait()
+
+    cov = np.array([fr.mean() / 255.0 for fr in frames()])
+    if not len(cov):
+        return f
+    wgt = np.clip((cov - 0.015) / 0.03, 0.0, 1.0)
+    k = 9   # 约 0.3 秒的移动平均
+    wgt = np.convolve(np.pad(wgt, k // 2, mode="edge"), np.ones(k) / k, mode="valid")[:len(cov)]
+    fps = subprocess.run([env.ffprobe(), "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=r_frame_rate",
+                          "-of", "csv=p=0", f], capture_output=True, text=True).stdout.strip() or "30"
+    tmp = out + ".part.mkv"
+    enc = subprocess.Popen([env.ffmpeg(), "-y", "-v", "error", "-f", "rawvideo", "-pix_fmt", "gray", "-s", "%dx%d" % (mw, mh),
+                            "-r", fps, "-i", "-", "-c:v", "ffv1", "-pix_fmt", "gray", tmp], stdin=subprocess.PIPE)
+    for i, fr in enumerate(frames()):
+        w_ = float(wgt[min(i, len(wgt) - 1)])
+        enc.stdin.write((255.0 - w_ * (255.0 - fr.astype(np.float32))).astype(np.uint8).tobytes())
+    enc.stdin.close()
+    enc.wait()
+    os.replace(tmp, out)
+    return out
+
+
 def _video_base(cuts, w, h, fps, deep: bool, nframes: Optional[int] = None,
                 framing: Optional[dict] = None, hdr: bool = False, seek_base: Optional[int] = None) -> str:
     """裁切拼接 + 统一画幅，产出 [base]。deep=True 时走 yuv444，卡片边缘不被色度下采样。
@@ -256,6 +330,24 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
         if tg:
             parts.append(tg)
             cur = "tr"
+    lk = look_of(sb)
+    extra_inputs: List[str] = []
+    if lk:   # 画面调色：在卡片与字幕之前（卡片、字幕不被调色；人像穿插抠出来的人也是调过色的）
+        from . import look
+        mlab = None
+        length = (t1 - t0) if t1 is not None else (total or 0.0)
+        if lk["bokeh"] > 0 and length > 0:
+            mf = _bokeh_matte(sb, cuts, w, h, fps, work, length)
+            if mf:
+                mi = seek_base + len(cuts)
+                extra_inputs = ["-i", os.path.relpath(mf, work)]
+                m = "[%d:v]format=gray,fps=%s,scale=%d:%d,gblur=sigma=%.1f" % (mi, fps, w, h, max(1.5, min(w, h) / 360.0))
+                if zoom_str:
+                    m += "," + zoom_str   # 遮罩跟着底片一起推近
+                parts.append(m + "[lkm]")
+                mlab = "[lkm]"
+        parts.append(look.graph(lk, "[%s]" % cur, "[lk]", w, h, matte=mlab))
+        cur = "lk"
     tail, cur = assemble(cur, ("subtitles=filename=%s" % ass_name) if ass_name else None, zoom_str)
     if tail:
         parts.append(tail)
@@ -271,6 +363,7 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
     for g in ov_inputs:
         args += g
     args += _seek_inputs(cuts, sb["source"])
+    args += extra_inputs
     if proxy:
         venc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "30"]
     elif sb["output"].get("encoder") == "hw":   # 长片赶时间：Apple 硬件编码，快数倍、文件稍大、画质略低
@@ -308,6 +401,9 @@ def _prepare(sb_path: str, proxy: bool = False) -> dict:
 
     from . import transitions as _tr
     sb["_transitions"] = _tr.resolve(sb, tl)   # 转场吸附到剪辑点（成片时间）
+    lk = look_of(sb)
+    if lk:
+        print("🎞 画面调色：%s（强度 %.0f%%%s）" % (lk["name"], lk["strength"] * 100, "，背景虚化" if lk["bokeh"] > 0 else ""))
 
     # ---- 字幕事件（按整片时间轴算一次；分段时再平移）----
     cap_events = None
@@ -540,7 +636,10 @@ def preview_subs(sb_path: str, t_from: Optional[float] = None, t_to: Optional[fl
                            anim=cap.get("anim", "soft"))
     info = env.probe(sb["source"])
     g = _video_base(cuts, w, h, fps, False, None, sb.get("framing"), bool(info.get("hdr")))
-    g += ";[base]%sformat=yuv420p[v]" % (("subtitles=filename=%s," % ass) if ass else "")
+    lk = look_of(sb)
+    from . import look as _look
+    g += ";[base]%s%sformat=yuv420p[v]" % ((_look.simple(lk) + ",") if lk else "",
+                                         ("subtitles=filename=%s," % ass) if ass else "")
     g += ";" + _voice_graph(cuts, info.get("has_audio", True), denoise_filter(sb) if info.get("has_audio", True) else "", fps) \
         + ";[voice]aformat=channel_layouts=stereo[a]"
     out = os.path.splitext(sb["output"]["path"])[0] + "_subs.mp4"

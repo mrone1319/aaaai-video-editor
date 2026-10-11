@@ -579,7 +579,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         else:      # 浅色风格：遮罩改用风格的深色（白色字幕也看得清），字换成底板的浅色
             th = dict(th, scrim_color=th["text"], text=pl_,
                       muted=(ov.get("colors") or {}).get("muted") and th["muted"] or "#E4E4E7",
-                      accent=_lighten(th["accent"]),
+                      accent=th.get("lite_accent") or _lighten(th["accent"]),   # 风格可指定叠在画面上用的强调色
                       value=_lighten(th.get("value") or th["accent"]),
                       hl=_lighten(th["accent"]) if th.get("hl") in (None, "@accent", th["accent"]) else th["hl"])
     # 字号与内距的基准：竖屏＝画面宽；横屏／方形按高度折算，卡片不会比画面还高

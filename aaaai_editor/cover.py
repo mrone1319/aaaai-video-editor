@@ -42,6 +42,13 @@ def clean_frame(sb: dict, t: float, W: int, H: int, out: str) -> str:
     tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
     st = tl.to_source(max(0.0, min(t, tl.duration - 0.05)))
     pre, fit = render.frame_chain(W, H, sb.get("framing"), _hdr(sb))
+    lk = render.look_of(sb)
+    if lk:   # 封面和成片同一套画面调色（封面不加颗粒，印出来更干净）
+        from . import look
+        g = "[0:v]%s%s[f];%s" % (pre, fit, look.graph(dict(lk, grain=0.0), "[f]", "[o]", W, H))
+        env.run([env.ffmpeg(), "-y", "-v", "error", "-ss", "%.3f" % st, "-i", sb["source"], "-frames:v", "1",
+                 "-filter_complex", g, "-map", "[o]", out])
+        return out
     env.run([env.ffmpeg(), "-y", "-v", "error", "-ss", "%.3f" % st, "-i", sb["source"], "-frames:v", "1",
              "-vf", pre + fit, out])
     return out

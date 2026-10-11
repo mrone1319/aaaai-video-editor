@@ -1187,6 +1187,9 @@ function renderSettings() {
   const bgm = [["", "不要配乐"]].concat(((OPT && OPT.bgm) || []).map(([n, d]) => ["bgm:" + n, n + (d ? "　" + d : "")]));
   const mf = getPath(S.sb, "music.file");
   if (mf && !bgm.some((x) => x[0] === mf)) bgm.push([mf, mf]);
+  const lookOpts = [["", "跟随风格"], ['"cozy"', "暖调居家（cozy）"], ['{"name":"cozy","bokeh":true}', "暖调居家＋背景虚化"], ["false", "关（原色）"]];
+  const lk = S.sb.look === undefined ? "" : JSON.stringify(S.sb.look);
+  if (lk && !lookOpts.some((x) => x[0] === lk)) lookOpts.push([lk, "自定义：" + lk]);
   el.innerHTML = '<fieldset><legend>字幕</legend>' +
     sfield("captions.enabled", "显示字幕", "jsel", [["", "显示"], ["false", "不显示"]]) +
     sfield("captions.style", "字幕样式", "select", capOpts) +
@@ -1204,6 +1207,7 @@ function renderSettings() {
     '<div class="row2"><div class="field"><label for="audMusic">试听别的配乐</label><select id="audMusic">' + bgm.filter((x) => x[0]).map((x) => '<option value="' + esc(x[0]) + '">' + esc(x[1]) + "</option>").join("") + '</select></div><div class="field"><label>&nbsp;</label><button class="btn sm" id="audMusicGo">' + ICON("play") + '试听 8 秒</button></div></div>' +
     '<div class="row2"><div class="field"><label for="audDn">试听降噪</label><select id="audDn"><option value="true">标准</option><option value="&quot;strong&quot;">加强</option><option value="false">关（原声）</option></select></div><div class="field"><label>&nbsp;</label><button class="btn sm" id="audDnGo">' + ICON("play") + '试听 8 秒</button></div></div>' +
     '<p class="hint" style="margin:-4px 0 0">从播放头开始渲染 8 秒（真正的混音与响度），不会改到剪辑表。</p></fieldset>' +
+    '<fieldset><legend>画面调色</legend>' + sfield("look", "调色", "jsel", lookOpts, "播放器显示的是原色；用「渲染这一段」看调色效果。背景虚化要做人像分割，渲染会慢一些。") + "</fieldset>" +
     '<fieldset><legend>取景（推近整支片）</legend><div class="row2">' + sfield("framing.zoom", "放大（1–1.4）", "num") + sfield("framing.cy", "垂直中心（0–1）", "num") + "</div>" +
     sfield("framing.cx", "水平中心（0–1）", "num", null, "机位太远时用，约 1.15–1.25 安全；改了会重做播放用的影片。") + "</fieldset>" +
     '<fieldset><legend>出片</legend>' + sfield("ending.fade", "结尾淡出（秒）", "num") +

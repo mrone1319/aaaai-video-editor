@@ -15,7 +15,7 @@
 | `motion-graphic-video-editor`（skill） | 品牌片与动效：拆解参考片、构思定稿、公式库、透明图层输出 |
 | `social-content-pipeline`（skill） | 发布：搜集、角度、X/IG 文案、出图、打包 |
 | HeyGen HyperFrames（安装器从官方装） | 讲解片、网站转影片、产品发布、音乐影片、幻灯片等格式 |
-| 9 套风格、41 个图标、10 条配方、7 首原创配乐 | `aaaai-editor showcase` 看风格对照表 |
+| 10 套风格（含会调画面颜色的 `cozy`）、41 个图标、10 条配方、7 首原创配乐 | `aaaai-editor showcase` 看风格对照表 |
 
 ## 安装
 

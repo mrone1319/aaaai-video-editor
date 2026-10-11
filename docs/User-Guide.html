@@ -268,7 +268,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.8.4</span><span class="chip">macOS · Windows</span><span class="chip">Runs in Claude Code</span></div>
+  <div class="tag"><span class="chip">v1.9.0</span><span class="chip">macOS · Windows</span><span class="chip">Runs in Claude Code</span></div>
   <h1>You do the talking and the deciding.<br><em>aaaai-editor does the editing</em>.</h1>
   <p class="lede">It's a complete editing workflow for talking-head videos: trimming pauses, captions, on-screen cards, music and sound effects, loudness, thumbnails, and frame-by-frame checks. No editing software to learn, no commands to memorize. Just type <code>/aaaai-editor</code> in Claude Code and tell it what you want in plain words.</p>
   <div class="prompt-box" aria-label="Example: one sentence is enough">
@@ -297,7 +297,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <article><h3>Audio, all in one go</h3><p>Noise reduction (you hear three levels first), music that ducks automatically under your voice, 7 sound effects (coin, pop, whoosh…), and final loudness locked to −14 LUFS (the standard across platforms).</p></article>
     <article><h3>Three sources for B-roll</h3><p>Your own footage is best. It can also find free stock footage (Pexels) or generate clips with AI. Before generating, it always gives you a price quote and only spends money once you agree. Default cap is $2 per project.</p></article>
     <article><h3>Image cards: turn cards into posts</h3><p>The stat, list, and quote cards from your video can be exported as still images (1080×1350 by default). Add a caption and you have a Xiaohongshu or Instagram carousel post that drives traffic to and from your video. Just say "make image cards."</p></article>
-    <article><h3>Every style has its own typography</h3><p>Each of the 9 styles has its own font personality: bold headings, wide-spaced uppercase labels, monospaced numbers. Backgrounds have a top highlight and soft shadow. Units on stat cards are a size smaller, and you can add a bar showing the amount.</p></article>
+    <article><h3>Every style has its own typography</h3><p>Each of the 10 styles has its own font personality: bold headings, wide-spaced uppercase labels, monospaced numbers. Backgrounds have a top highlight and soft shadow. Units on stat cards are a size smaller, and you can add a bar showing the amount.</p></article>
     <article><h3>It checks its own work before delivery</h3><p>It grabs frames at each card's timing to check them, runs a caption timing check, and checks that the thumbnail respects a 15% safe zone. It won't say "done" until it has looked at the actual frames.</p></article>
     <article><h3>Write the posts right after editing</h3><p>Hand it off to the Content Pipeline: it writes captions and makes images for the platforms you pick (Xiaohongshu, Douyin, X, Instagram, Bilibili…), bundles them into a ready-to-post package, and remembers each client's brand voice. You press "post" yourself.</p></article>
     <article><h3>Fast and safe</h3><p>It only decodes the parts it needs, so a 60-second video previews in about 30 seconds. Your original footage is never deleted, changed, or moved. API keys are stored in the Mac Keychain and only sent to official addresses.</p></article>
@@ -699,7 +699,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <section id="styles">
   <div class="eyebrow">08 · Styles</div>
   <h2>Styles at a glance</h2>
-  <p class="lede">A style sets the colors, fonts, and texture of your cards and captions. When you start, you'll get a side-by-side comparison image. Say a style's name to switch, and nothing else needs redoing. The first 7 are general styles, so pick by content. The last two are <b>community styles</b>. You can use them, but they carry the MR ONE and OTG brand look, so they're usually not a good main style for your own channel.</p>
+  <p class="lede">A style sets the colors, fonts, and texture of your cards and captions. When you start, you'll get a side-by-side comparison image. Say a style's name to switch, and nothing else needs redoing. The first 8 are general styles, so pick by content (<code>cozy</code> also grades the footage itself: warm, low contrast, soft glow and fine grain, made for at-home talking heads). The last two are <b>community styles</b>. You can use them, but they carry the MR ONE and OTG brand look, so they're usually not a good main style for your own channel.</p>
   <div class="styles" id="styleRoot"></div>
   <div class="note tip"><b class="k">TIP</b><span>Caption keyword colors follow the style's accent color. To pick your own, say "Use #FF5C7A for caption highlights." If you have brand colors, you can turn them into a custom style too.</span></div>
 </section>
@@ -875,7 +875,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">Community styles</b><span><code>mrone</code> and <code>otg</code> are the brand styles of two channels/communities. You can use them, but the names, colors and brand elements belong to their owners. Don't use them to pose as that brand or to make content look official. Full terms are in <code>LICENSE.md</code> in the suite.</span></div>
   <footer>
-    <span>aaaai-editor v1.8.4 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>. Detailed settings for advanced users: <code>docs/CARDS.md</code> (cards), <code>docs/RECIPES.md</code> (recipes), <code>docs/STYLE.md</code> (styles).</span>
+    <span>aaaai-editor v1.9.0 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>. Detailed settings for advanced users: <code>docs/CARDS.md</code> (cards), <code>docs/RECIPES.md</code> (recipes), <code>docs/STYLE.md</code> (styles).</span>
     <span>Links: <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a> · <a href="https://linktr.ee/mrone.eth" target="_blank" rel="noopener">MR ONE</a> · <a href="https://otg.community/" target="_blank" rel="noopener">OTG</a></span>
     <span>This guide is updated with each version. If anything is unclear, just ask Claude "how do I use this feature?"</span>
   </footer>
@@ -1008,6 +1008,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     ["paper","#EFE7D6","#C2452D","#15803D","Editorial, print feel: off-white background, dark ink text, vermilion accent."],
     ["mag","#F4F4F5","#EC4899","#15803D","Magazine, commentary: pure white cards, near-black text, magenta accent."],
     ["serif","#F3ECDD","#9A3412","#15803D","Paper serif: warm cream background, serif titles, ochre-red accent."],
+    ["cozy","#F3E6D3","#C8773A","#6F8F3C","Home tech creator: cream cards, caramel accent; the footage gets a warm cinematic grade too (low contrast, warm lifted shadows, black-mist glow, fine grain), with optional background blur."],
     ["mrone · community","#0B0B0D","#FFC933","#3DDC84","MR ONE black and gold: bold white titles, golden-yellow keywords and number squares. Community style, © MR ONE."],
     ["otg · community","#0A0A0A","#E60012","#10B981","OTG rocket style: OTG red, frosted glass, starfield chapter breaks, laser sweeps. Community style, © OTG community."]
   ];
