@@ -55,7 +55,7 @@ def _hook(r, beats):
 
 
 @recipe("stat_hit", "数据冲击：数字从起始值跳到终值，落定瞬间瞬切推近；数字用价值绿",
-        ("value",), ("label", "kicker", "prefix", "suffix", "from", "digits", "icon", "count_dur", "zoom"))
+        ("value",), ("label", "kicker", "prefix", "suffix", "from", "digits", "icon", "count_dur", "zoom", "unit", "of", "bar"))
 def _stat_hit(r, beats):
     a, b = _t(r)
     cd = float(r.get("count_dur", 1.0))
@@ -63,6 +63,9 @@ def _stat_hit(r, beats):
            "label": r.get("label"), "kicker": r.get("kicker"), "prefix": r.get("prefix", ""),
            "suffix": r.get("suffix", ""), "digits": r.get("digits", 0), "icon": r.get("icon"),
            "count_dur": cd, "anim": "pop", "colors": {"accent": "@value"}}]
+    for k in ("unit", "of", "bar"):   # 数据卡的单位与量感条（CARDS.md 的 stat 字段）照原样传下去
+        if r.get(k) is not None:
+            ov[0][k] = r[k]
     land = snap(a + 0.15 + cd, beats)
     z = _clip_zoom(land, land + 0.5, a, b)
     zooms = [dict(z, to=float(r.get("zoom", 1.10)), style="punch")] if z else []

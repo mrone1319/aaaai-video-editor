@@ -89,11 +89,14 @@ def _atempo(x: float) -> str:
 
 def _seek_inputs(cuts, source: str) -> List[str]:
     """每个剪辑段各开一次素材、从段头附近开始解码（-ss 放在 -i 前面＝精确跳转）。
-    只解码用得到的部分：素材常有一半以上被剪掉，整支解码是渲染最花时间的一步。"""
+    只解码用得到的部分：素材常有一半以上被剪掉，整支解码是渲染最花时间的一步。
+    段数多（长片＋大量变速区间）时每个输入只给 2 个解码线程：上百个 4K 解码器各开满线程会撞到
+    每进程线程上限，x264 开不起来（解码结果与线程数无关，画面逐位不变）。"""
     args: List[str] = []
+    cap = ["-threads", "2"] if len(cuts) > 40 else []
     for c in cuts:
         a, b, _x = _abx(c)
-        args += ["-ss", "%.3f" % a, "-t", "%.3f" % (b - a + 1.0), "-i", source]
+        args += cap + ["-ss", "%.3f" % a, "-t", "%.3f" % (b - a + 1.0), "-i", source]
     return args
 
 

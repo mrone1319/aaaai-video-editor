@@ -95,6 +95,16 @@ def window(sb: dict, s: float, e: float) -> dict:
                 continue
             n = dict(it)
             n["t"] = [round(max(a, s) - s, 3), round(min(b, e) - s, 3)]
+            # 卡片里其他「成片秒数」也要换成段内时间（清单每行的 at、印章／行动号召的 *_at）；
+            # 漏掉的话第二段以后的清单文字永远等不到出场时间
+            for k in ("at", "stamp_at", "question_at", "cta_at", "sfx_at"):
+                if isinstance(n.get(k), (int, float)):
+                    n[k] = round(float(n[k]) - s, 3)
+            for lk in ("items", "steps"):
+                if isinstance(n.get(lk), list):
+                    n[lk] = [dict(x, at=round(float(x["at"]) - s, 3))
+                             if isinstance(x, dict) and isinstance(x.get("at"), (int, float)) else x
+                             for x in n[lk]]
             out.append(n)
         return out
     seg = dict(sb)
