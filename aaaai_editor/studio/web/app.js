@@ -1211,6 +1211,8 @@ function renderSettings() {
     '<fieldset><legend>取景（推近整支片）</legend><div class="row2">' + sfield("framing.zoom", "放大（1–1.4）", "num") + sfield("framing.cy", "垂直中心（0–1）", "num") + "</div>" +
     sfield("framing.cx", "水平中心（0–1）", "num", null, "机位太远时用，约 1.15–1.25 安全；改了会重做播放用的影片。") + "</fieldset>" +
     '<fieldset><legend>出片</legend>' + sfield("ending.fade", "结尾淡出（秒）", "num") +
+    sfield("cover_frame", "成片版本", "select", [["off", "只出原版"], ["both", "原版＋封面帧版"]],
+      "封面帧版＝片头插 2 帧封面，发微信、朋友圈等会截第一帧当预览的地方用；能自己上传封面的平台用原版。做完封面会自动出。") +
     sfield("output.encoder", "编码", "select", [["", "软件编码（画质最好）"], ["hw", "硬件编码（快几倍、文件稍大）"]]) +
     '<p class="hint">尺寸：' + P.W + "×" + P.H + "，" + P.fps + " fps（多尺寸出片在之后的版本）。</p></fieldset>";
   if (RO) el.querySelectorAll("[data-path], button").forEach((x) => { x.disabled = true; });

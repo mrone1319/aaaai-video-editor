@@ -268,7 +268,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.9.0</span><span class="chip">macOS · Windows</span><span class="chip">Runs in Claude Code</span></div>
+  <div class="tag"><span class="chip">v1.10.0</span><span class="chip">macOS · Windows</span><span class="chip">Runs in Claude Code</span></div>
   <h1>You do the talking and the deciding.<br><em>aaaai-editor does the editing</em>.</h1>
   <p class="lede">It's a complete editing workflow for talking-head videos: trimming pauses, captions, on-screen cards, music and sound effects, loudness, thumbnails, and frame-by-frame checks. No editing software to learn, no commands to memorize. Just type <code>/aaaai-editor</code> in Claude Code and tell it what you want in plain words.</p>
   <div class="prompt-box" aria-label="Example: one sentence is enough">
@@ -426,8 +426,8 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <div class="step"><div class="dot">08</div><div class="body">
       <h3>Export the video and thumbnail<span class="time">A few min (depends on length)</span></h3>
       <div class="lanes">
-        <div class="lane"><div class="l">It does</div><ul><li>Renders the final video: loudness at −14 LUFS, true peak no higher than −1 dB.</li><li>Grabs frames from the final video to check again, and runs a caption timing check.</li><li>Gives you a sheet of thumbnail candidate frames (clean shots from the original, no captions) and recommends a few where you're looking at the camera.</li><li>Makes the thumbnail (vertical 1080×1920 and 1080×1350; horizontal videos get 1920×1080): small label, big title, third line, and your account name, with a dark shadow behind the text. It checks that text stays in the safe zone and off your face.</li><li>Copies the video and thumbnail to "Movies › aaaai-editor › 成品."</li></ul></div>
-        <div class="lane you"><div class="l">You do</div><ul><li>Pick a background frame by its number.</li><li>Give the thumbnail a short hook (a few words), or let it suggest the label, title, and third line.</li><li>Go through the checklist in Chapter 12.</li></ul></div>
+        <div class="lane"><div class="l">It does</div><ul><li>Renders the final video: loudness at −14 LUFS, true peak no higher than −1 dB.</li><li>Grabs frames from the final video to check again, and runs a caption timing check.</li><li>Gives you a sheet of thumbnail candidate frames (clean shots from the original, no captions) and recommends a few where you're looking at the camera.</li><li>Makes the thumbnail (vertical 1080×1920 and 1080×1350; horizontal videos get 1920×1080): small label, big title, third line, and your account name, with a dark shadow behind the text. It checks that text stays in the safe zone and off your face.</li><li>If you chose "original + cover-frame version," it also makes a copy with the thumbnail inserted as the first 2 frames (about 0.07 seconds, barely noticeable), for WeChat, Moments and other places that use the first frame as the preview.</li><li>Copies the video and thumbnail to "Movies › aaaai-editor › 成品."</li></ul></div>
+        <div class="lane you"><div class="l">You do</div><ul><li>Pick a background frame by its number.</li><li>Choose the output versions: original only, or original + cover-frame version (platforms where you upload your own thumbnail only need the original).</li><li>Give the thumbnail a short hook (a few words), or let it suggest the label, title, and third line.</li><li>Go through the checklist in Chapter 12.</li></ul></div>
       </div>
     </div></div>
 
@@ -875,7 +875,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">Community styles</b><span><code>mrone</code> and <code>otg</code> are the brand styles of two channels/communities. You can use them, but the names, colors and brand elements belong to their owners. Don't use them to pose as that brand or to make content look official. Full terms are in <code>LICENSE.md</code> in the suite.</span></div>
   <footer>
-    <span>aaaai-editor v1.9.0 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>. Detailed settings for advanced users: <code>docs/CARDS.md</code> (cards), <code>docs/RECIPES.md</code> (recipes), <code>docs/STYLE.md</code> (styles).</span>
+    <span>aaaai-editor v1.10.0 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>. Detailed settings for advanced users: <code>docs/CARDS.md</code> (cards), <code>docs/RECIPES.md</code> (recipes), <code>docs/STYLE.md</code> (styles).</span>
     <span>Links: <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a> · <a href="https://linktr.ee/mrone.eth" target="_blank" rel="noopener">MR ONE</a> · <a href="https://otg.community/" target="_blank" rel="noopener">OTG</a></span>
     <span>This guide is updated with each version. If anything is unclear, just ask Claude "how do I use this feature?"</span>
   </footer>

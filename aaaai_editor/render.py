@@ -110,6 +110,15 @@ def hw_encoder() -> List[str]:
     return ["-c:v", "libx264", "-preset", "medium", "-crf", "17"]
 
 
+def video_encoder(sb: dict, proxy: bool = False) -> List[str]:
+    """成片的视频编码参数。封面帧（coverframe.py）用同一组参数编码，才能无损接在片头。"""
+    if proxy:
+        return ["-c:v", "libx264", "-preset", "veryfast", "-crf", "30"]
+    if sb["output"].get("encoder") == "hw":   # 长片赶时间：Apple 硬件编码，快数倍、文件稍大、画质略低
+        return hw_encoder()
+    return ["-c:v", "libx264", "-preset", "slow", "-crf", "15"]
+
+
 def frame_chain(w: int, h: int, framing: Optional[dict] = None, hdr: bool = False):
     """原片一帧 → 成片画幅的处理（HDR 转 SDR＋缩放裁切＋全局推近）。回传 (pre, fit)，渲染与封面共用。"""
     z = float((framing or {}).get("zoom", 1.0))
@@ -364,12 +373,7 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
         args += g
     args += _seek_inputs(cuts, sb["source"])
     args += extra_inputs
-    if proxy:
-        venc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "30"]
-    elif sb["output"].get("encoder") == "hw":   # 长片赶时间：Apple 硬件编码，快数倍、文件稍大、画质略低
-        venc = hw_encoder()
-    else:
-        venc = ["-c:v", "libx264", "-preset", "slow", "-crf", "15"]
+    venc = video_encoder(sb, proxy)
     prog = []
     if os.environ.get("AAAAI_PROGRESS_DIR"):   # Studio 显示真实进度用：每段写一个进度文件（不影响输出）
         prog = ["-progress", os.path.join(os.environ["AAAAI_PROGRESS_DIR"], "p_%09d.txt" % int(round(t0 * 1000)))]
@@ -515,6 +519,8 @@ def render(sb_path: str, only: Optional[str] = None, proxy: bool = False) -> str
         dst = config.export(out["path"], sb["_base"], "" if stem == "final" else "-" + stem.replace("final_", "", 1))
         if dst:
             print("📦 成品：%s" % dst)
+        from . import coverframe
+        coverframe.after_render(sb, out["path"])
     return out["path"]
 
 

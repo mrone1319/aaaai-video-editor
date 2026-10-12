@@ -158,6 +158,14 @@ def cmd_tools(a) -> int:
         print("三支只差降噪强度（原声／标准／加强），发给用户听完再定 storyboard 的 denoise。")
     elif k == "phone":
         print("📱 %s（只供手机预览，不是交付物）" % T.phone(a.storyboard))
+    elif k == "coverframe":
+        from . import coverframe as CF, render as R
+        sb = R.load_storyboard(a.storyboard)
+        if not os.path.isfile(sb["output"]["path"]):
+            raise env.ToolError("还没有成片：先跑 aaaai-editor render")
+        CF.make(sb, sb["output"]["path"])
+        if not CF.enabled(sb):
+            print("（剪辑表没选 cover_frame=\"both\"：这次是手动做的；之后重新渲染或改封面不会自动跟着重做）")
     elif k == "framing":
         print("🖼 %s（1.00x 是原构图；选定后写进 storyboard 的 framing）"
               % T.framing_sheet(a.storyboard, a.at, [float(x) for x in a.levels.split(",")], a.cy))
@@ -696,6 +704,8 @@ def main(argv=None) -> int:
     t.add_argument("storyboard"); t.add_argument("--at", type=float, default=0.0)
     t.add_argument("--dur", type=float, default=15.0); t.add_argument("--levels", default="off,on,strong")
     t.set_defaults(fn=cmd_tools, tool="denoise-ab")
+    t = sub.add_parser("coverframe", help="封面帧版成片：片头插 2 帧封面（发微信／朋友圈等会截第一帧当预览的地方用）")
+    t.add_argument("storyboard"); t.set_defaults(fn=cmd_tools, tool="coverframe")
     t = sub.add_parser("phone", help="手机预览版（720 宽、≤30MB）")
     t.add_argument("storyboard"); t.set_defaults(fn=cmd_tools, tool="phone")
     t = sub.add_parser("framing", help="同一帧几种推近倍率的对比图")

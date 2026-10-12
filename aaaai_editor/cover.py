@@ -390,6 +390,12 @@ def make(sb_path: str, at: Optional[float] = None, pick: Optional[int] = None, t
                  "[0]scale=540:960[a];[1]scale=540:675,pad=540:960:0:142:black[b];[a][b]hstack", check])
         outs += [crop, check]
         ex = [config.export(full, sb["_base"], "-封面"), config.export(crop, sb["_base"], "-封面-4x5")]
+    from . import coverframe
+    if coverframe.enabled(sb) and os.path.isfile(sb["output"]["path"]):   # 选了出封面帧版：封面一改就跟着重做
+        try:
+            outs.append(coverframe.make(sb, sb["output"]["path"]))
+        except env.ToolError as e:
+            warns.append("封面帧版没做成：%s" % str(e).splitlines()[0])
     if not handle:
         warns.append("没有印账号名（设定里没有 handle）：要印就执行 aaaai-editor config --set handle=@你的账号")
     return outs + [e for e in ex if e], warns
