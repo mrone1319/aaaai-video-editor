@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>showreel — mode H example</title>
+<!--
+  Mode H example (creative-coding showreel, 55 s, 12 scenes) built only from the skill's kit:
+  mg-kit (motion), mg-film (master timeline), mg-gen (generative studies), mg-three (3D),
+  swiss.css (style system). Music: suite bgm "upbeat-energetic", fitted with music_grid.py;
+  every scene boundary sits on a real bar (MUSIC.bars).
+
+  dev player:  $PY ../../scripts/player.py --scene index.html --root ../.. --audio examples/showreel/score.wav
+  render:      $PY ../../scripts/render_frames.py --scene index.html --root ../.. --dur 55.008 --video out.mp4 --audio score.wav --mblur scene
+-->
+<link rel="stylesheet" href="../../assets/styles/swiss.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#0D0D0E;overflow:hidden}
+#stage{position:relative;overflow:hidden;background:var(--paper)}
+.film-layer canvas{position:absolute;left:0;top:0}
+.abs{position:absolute}
+</style>
+</head>
+<body>
+<div id="stage" class="sw-stage"></div>
+<script src="../../assets/mg-kit.js"></script>
+<script src="../../assets/mg-gen.js"></script>
+<script src="../../assets/mg-film.js"></script>
+<script src="common.js"></script>
+<script src="scenes/01-intro.js"></script>
+<script src="scenes/02-type.js"></script>
+<script src="scenes/03-code.js"></script>
+<script src="scenes/04-particles.js"></script>
+<script src="scenes/06-blue.js"></script>
+<script src="scenes/07-panels.js"></script>
+<script src="scenes/08-drawing.js"></script>
+<script src="scenes/09-chaos.js"></script>
+<script src="scenes/11-resolve.js"></script>
+<script type="module" src="scenes/sculpture.js"></script>
+<script type="module">FILM.start();</script>
+</body>
+</html>

@@ -68,6 +68,10 @@ const imp   = (t,t0,w,k=2.4) => (t<t0 || t>=t0+w) ? 0 : Math.pow(1-(t-t0)/w, k);
 - 大层辉光一律预渲染 PNG（§8 prerender），场景内只动 transform/opacity。
 - 视窗外的元素组 `display:none`，不是 opacity:0（隐形 div 也在付栅格化成本）。
 - ~1000–1500 个动画 div @1080p 双 worker ≈2.5–5fps 截帧，可接受。
+- **3D（mg-three）**：大量重复物件用 `InstancedMesh`（一次绘制），不要几千个 Mesh；每帧重建几何（`sculpture.update`）要先 `geometry.dispose()`（套件已做），不然显存一路涨；
+  一支片同时只让在播场景的 WebGL 画布 `render()`（mg-film 已按场景跳过）；透射材质（glass）每帧多一次渲染，一个画面最多一两个；阴影贴图 2048 足够，4096 只在特写才值得。
+- **粒子（mg-gen）**：7 000 点的力场模拟约 1–3 秒「暖机」（每个 worker 从 0 秒算到它负责的段落，之后有检查点缓存）；超过 2 万点改用 three.js `Points`＋着色器。
+- **DOM**：一支片的字体网格、跑字都用 Canvas（`GEN.typeGrid`），不要几百个 span；场景之间的图层由 mg-film 切成 `display:none`。
 
 ### 6.7 Alpha 图层输出（场景要配合的透明契约）
 

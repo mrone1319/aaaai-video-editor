@@ -357,6 +357,17 @@ def render(scene, w, h, out_dir=None, fps=60, dur=30.0, extra="", quality=94,
         p.join()
     srv.shutdown()
     ok = not any(p.exitcode for p in procs)
+    for i, p in enumerate(procs):
+        if p.exitcode:
+            print(f"[w{i}] worker failed (exit {p.exitcode})", file=sys.stderr, flush=True)
+    if video and ok:
+        # every slice must hold exactly its frames — an encoder that silently drops
+        # frames would otherwise produce a short film that "succeeded"
+        for i, (part, chunk) in enumerate(zip(parts, [c for c in chunks if c])):
+            n = count_frames(part) if os.path.isfile(part) else 0
+            if n != len(chunk):
+                print(f"[w{i}] slice has {n} frames, expected {len(chunk)} ({part})", file=sys.stderr, flush=True)
+                ok = False
 
     blurred, peak = 0, 0
     for st in stats:
@@ -371,18 +382,29 @@ def render(scene, w, h, out_dir=None, fps=60, dur=30.0, extra="", quality=94,
         with open(os.path.join(tmp, "list.txt"), "w") as fh:
             for p in parts:
                 fh.write("file '%s'\n" % os.path.basename(p))
-        cmd = [ffmpeg_bin(), "-y", "-v", "error", "-f", "concat", "-safe", "0",
+        cmd = [ffmpeg_bin(), "-nostdin", "-y", "-v", "error", "-f", "concat", "-safe", "0",
                "-i", os.path.join(tmp, "list.txt")]
         if audio:
-            cmd += ["-i", audio, "-map", "0:v", "-map", "1:a", "-c:v", "copy",
-                    "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-shortest"]
+            # never let the soundtrack shorten the film: pad it with silence, cut it at the picture
+            adur = subprocess.run([ffprobe_bin(), "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", audio],
+                                  capture_output=True, text=True).stdout.strip()
+            vdur = len(frames) / fps
+            if adur and float(adur) < vdur - 0.05:
+                print(f"⚠ soundtrack is {float(adur):.2f}s but the film is {vdur:.2f}s — padded with silence "
+                      f"(wrong or stale score file?)", file=sys.stderr, flush=True)
+            cmd += ["-i", audio, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-af", "apad",
+                    "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2", "-t", "%.4f" % vdur]
         else:
             cmd += ["-c", "copy"]
         subprocess.run(cmd + ["-movflags", "+faststart", video], check=True)
         done = count_frames(video)
         ok = done == len(frames)
-        shutil.rmtree(tmp, ignore_errors=True)
+        if not os.environ.get("MG_KEEP_PARTS"):
+            shutil.rmtree(tmp, ignore_errors=True)
         where = video
+    elif video:
+        print(f"render failed; slices kept for inspection in {tmp}", file=sys.stderr, flush=True)
+        done, where = 0, video
     else:
         ext = "png" if alpha else "jpg"
         done = len([x for x in os.listdir(out_dir) if x.endswith(f".{ext}")]) if out_dir else 0

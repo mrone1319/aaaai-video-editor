@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MG player</title>
+<!--
+  Development player for a deterministic scene: real-time playback, pause, scrub,
+  frame stepping, scene markers, synced soundtrack. Served by scripts/player.py:
+    player.html?scene=/path/scene.html&w=1920&h=1080&fps=60&dur=24&audio=/out/score.wav
+  Keys: space play/pause · ←/→ one frame · shift+←/→ one second · [ ] previous/next scene
+        · home start · L loop · 0–9 jump to 0–90%
+  Real-time playback drops frames on heavy scenes — that is fine for judging timing;
+  the deterministic renderer (render_frames.py) is what produces the film.
+-->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#111113;color:#ddd;font:13px/1.4 -apple-system,"PingFang SC",sans-serif;overflow:hidden}
+#wrap{position:absolute;inset:0 0 86px 0;display:flex;align-items:center;justify-content:center}
+#box{position:relative;box-shadow:0 0 0 1px #2a2a2e;background:#000}
+#box iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0}
+#bar{position:absolute;left:0;right:0;bottom:0;height:86px;padding:10px 16px;background:#18181b;border-top:1px solid #26262a}
+#track{position:relative;height:30px;cursor:pointer;background:#222226;border-radius:3px;overflow:hidden}
+#fill{position:absolute;left:0;top:0;bottom:0;background:#2b2f4a}
+#head{position:absolute;top:0;bottom:0;width:2px;background:#D4FF3A}
+.mk{position:absolute;top:0;bottom:0;border-left:1px solid #555;padding:2px 4px;font-size:11px;color:#aaa;white-space:nowrap;pointer-events:none}
+#row{display:flex;gap:14px;align-items:center;margin-top:10px}
+button{background:#26262b;color:#ddd;border:1px solid #333;border-radius:4px;padding:4px 10px;font:inherit;cursor:pointer}
+button.on{border-color:#D4FF3A;color:#D4FF3A}
+#tc{font-family:"SF Mono",Menlo,monospace;font-variant-numeric:tabular-nums;min-width:250px}
+#msg{color:#888;margin-left:auto}
+</style>
+</head>
+<body>
+<div id="wrap"><div id="box"><iframe id="f"></iframe></div></div>
+<div id="bar">
+  <div id="track"><div id="fill"></div><div id="head"></div></div>
+  <div id="row">
+    <button id="play">▶︎ 播放</button><button id="loop">循环</button>
+    <span id="tc">00:00.000 · f 0</span><span id="scn"></span><span id="msg">载入中…</span>
+  </div>
+</div>
+<audio id="aud" preload="auto"></audio>
+<script>
+const Q = new URLSearchParams(location.search);
+const W = +(Q.get('w') || 1920), H = +(Q.get('h') || 1080), FPS = +(Q.get('fps') || 60);
+let DUR = +(Q.get('dur') || 30);
+const f = document.getElementById('f'), box = document.getElementById('box'), aud = document.getElementById('aud');
+const sq = new URLSearchParams({ w: W, h: H, fps: FPS, dur: DUR, extra: '' });
+(Q.get('extra') || '').split('&').filter(Boolean).forEach(kv => { const [k, v] = kv.split('='); sq.set(k, v || ''); });
+sq.delete('extra');
+f.src = Q.get('scene') + '?' + sq.toString();
+f.width = W; f.height = H; f.style.width = W + 'px'; f.style.height = H + 'px';
+if (Q.get('audio')) aud.src = Q.get('audio');
+
+function fit() {
+  const aw = innerWidth - 32, ah = innerHeight - 86 - 32, k = Math.min(aw / W, ah / H, 1);
+  box.style.width = W * k + 'px'; box.style.height = H * k + 'px'; f.style.transform = `scale(${k})`;
+}
+addEventListener('resize', fit); fit();
+
+let t = 0, playing = false, loop = false, last = 0, scenes = [], win = null;
+const $ = id => document.getElementById(id);
+const fmt = s => { const m = Math.floor(s / 60), r = s - m * 60; return String(m).padStart(2, '0') + ':' + r.toFixed(3).padStart(6, '0'); };
+
+function draw() {
+  if (!win || !win.__render) return;
+  win.__render(Math.round(t * FPS));
+  const p = t / DUR;
+  $('fill').style.width = p * 100 + '%'; $('head').style.left = p * 100 + '%';
+  $('tc').textContent = `${fmt(t)} / ${fmt(DUR)} · f ${Math.round(t * FPS)}`;
+  const s = scenes.find(s => t >= s.start && t < s.end);
+  $('scn').textContent = s ? `场景 ${s.id}（${s.start.toFixed(2)}–${s.end.toFixed(2)}）` : '';
+}
+function seek(x) { t = Math.max(0, Math.min(DUR - 1 / FPS, x)); if (aud.src) aud.currentTime = t; draw(); }
+function setPlay(v) {
+  playing = v; $('play').textContent = v ? '❚❚ 暂停' : '▶︎ 播放'; $('play').classList.toggle('on', v);
+  last = performance.now();
+  if (aud.src) { aud.currentTime = t; v ? aud.play().catch(() => {}) : aud.pause(); }
+}
+function tick(now) {
+  if (playing) {
+    t += (now - last) / 1000; last = now;
+    if (aud.src && !aud.paused && Math.abs(aud.currentTime - t) > 0.06) t = aud.currentTime;   // audio is the clock
+    if (t >= DUR) { if (loop) seek(0); else { t = DUR - 1 / FPS; setPlay(false); } }
+    draw();
+  }
+  requestAnimationFrame(tick);
+}
+f.onload = () => {
+  win = f.contentWindow;
+  const wait = () => {
+    if (!win.__ready) return setTimeout(wait, 50);
+    scenes = win.__scenes || [];
+    if (scenes.length && !Q.get('dur')) DUR = scenes[scenes.length - 1].end;
+    const tr = $('track');
+    scenes.forEach(s => { const m = document.createElement('div'); m.className = 'mk'; m.style.left = s.start / DUR * 100 + '%'; m.textContent = s.id; tr.appendChild(m); });
+    $('msg').textContent = '空格 播放／暂停 · ←→ 一帧 · shift+←→ 一秒 · [ ] 上／下一场 · L 循环';
+    draw(); requestAnimationFrame(tick);
+  };
+  wait();
+};
+$('play').onclick = () => setPlay(!playing);
+$('loop').onclick = () => { loop = !loop; $('loop').classList.toggle('on', loop); };
+const tr = $('track');
+let drag = false;
+const pos = e => { const r = tr.getBoundingClientRect(); seek((e.clientX - r.left) / r.width * DUR); };
+tr.onmousedown = e => { drag = true; setPlay(false); pos(e); };
+addEventListener('mousemove', e => drag && pos(e));
+addEventListener('mouseup', () => drag = false);
+addEventListener('keydown', e => {
+  const k = e.key;
+  if (k === ' ') { e.preventDefault(); setPlay(!playing); }
+  else if (k === 'ArrowRight') { setPlay(false); seek(t + (e.shiftKey ? 1 : 1 / FPS)); }
+  else if (k === 'ArrowLeft') { setPlay(false); seek(t - (e.shiftKey ? 1 : 1 / FPS)); }
+  else if (k === 'Home') seek(0);
+  else if (k === 'l' || k === 'L') $('loop').click();
+  else if (k === ']') { const s = scenes.find(s => s.start > t + 1e-3); if (s) seek(s.start); }
+  else if (k === '[') { const s = scenes.filter(s => s.start < t - 0.05).pop(); seek(s ? s.start : 0); }
+  else if (/^[0-9]$/.test(k)) seek(DUR * +k / 10);
+});
+</script>
+</body>
+</html>

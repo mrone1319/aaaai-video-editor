@@ -20,7 +20,8 @@ SK=<本 SKILL.md 所在目录>/scripts     # 脚本在本 SKILL.md 同目录的 
 ```
 
 - skill 可能装在 `~/.claude/skills/<name>`、`~/.agents/skills/<name>`（Codex）或插件缓存目录——**一律按本 SKILL.md 的实际路径推出 `$SK`**，不要写死。模板在同目录 `assets/`。
-- `assets/` 里的工具件（复制进项目文件夹使用）：`mg-kit.js` 动作库、`mg-three.js` 真 3D、`vendor/three.module.min.js`、`vendor/lottie.min.js`（MIT）。`examples/mgkit-demo.html`（每个动作一次看完）与 `examples/three-demo.html`（3D Logo）可直接渲染来看效果、验证环境。
+- `assets/` 里的工具件（复制进项目文件夹使用）：`mg-kit.js` 动作库、`mg-film.js` 多场景主时间轴、`mg-gen.js` 生成式模块、`mg-three.js` 真 3D（Logo 挤出＋程序化雕塑＋材质预设）、`styles/swiss.css` 编辑风格系统、`player.html` 开发播放器、`vendor/three.module.min.js`、`vendor/lottie.min.js`（MIT）。
+- 示范（可直接渲染、也是写法范本）：`examples/mgkit-demo.html`（动作）、`examples/three-demo.html`（3D Logo）、`examples/sculpture-demo.html`（雕塑）、**`examples/showreel/`（模式 H 完整示范：55 秒 12 场，全部工具都用上）**。
 - **shell 变量不会在两次独立的命令调用之间保留**：每个命令块都要重新 `export PATH` / 设 `PY`、`SK`，或直接写绝对路径。
 - 脚本内部自行解析 ffmpeg：`$AAAAI_EDITOR_FFMPEG` → `/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg` → `/usr/local/opt/ffmpeg-full/bin/ffmpeg` → PATH 上的 `ffmpeg`（ffprobe 取同目录）。
 - 环境自检、可选增强依赖、项目目录结构：详见 `references/environment.md`（§13）。
@@ -56,10 +57,12 @@ SK=<本 SKILL.md 所在目录>/scripts     # 脚本在本 SKILL.md 同目录的 
 | **E · 数据仪表盘揭示型** | 季度报告、年度回顾、KPI 播报 | 趋势线开场 → 逐项 KPI 卡片揭示（复用 §7.2 数字类）→ 排名/对比图表 → 洞察金句 → 总结卡 | 25–35s | 数据感、专业、克制 |
 | **F · 循环片头 / Loop Intro** | 直播/活动开场循环 bumper | 无固定头尾——整段是循环单元，`t=0` 与 `t=loop_duration` 的所有缓动函数取值必须逐一相等（不是像素级，是参数值相等） | 4–8s（循环） | 氛围性、背景感、不抢眼 |
 | **G · 见证 / 案例故事型** | 客户证言、before/after | 痛点场景 → 转折 → 见证引语（逐字扫光）→ 数据佐证（§7.2/§7.6）→ 品牌收尾 | 30–45s | 真实、有温度、克制的煽情 |
+| **H · 创意编程 showreel／设计系统片** | 设计工作室作品集、科技品牌形象片、设计系统发布、「排版就是主角」的片 | 10–12 场，**快慢交替**：极简开场 → 字体实验 → 生成式研究 → 粒子 → 3D 登场（全片最慢）→ 色块重击 → 编辑面板 → 线条／动作 → 字体混乱 → 主角 3D → 收束 → 结尾字停留 | 45–70s | Swiss、精准、计算设计感 |
 | **附加模块 · 真实产品录屏** | 可挂载于 A/B/D/G 的 "proof" 段 | 设备框 + canvas 逐帧回放 + playlist 映射，文案与画面逐拍对齐 | 挂载 5–12s | 真实、可信 |
 
 - **冲击纪律**：A/C/D 允许硬冲击与 3 帧黑场硬切；**B/F 严禁任何硬切**（`select='gt(scene,0.1)'` 场景检测必须返回 0 个切点）。
 - **循环纪律**：F 严禁任何黑场硬切与不对称头尾，渲染验证时额外检查首尾帧参数值差 = 0（不是查像素，是查驱动动画的每个变量取值）。
+- **模式 H**：用 `mg-film.js` 多场景主时间轴（每场一个文件、场景边界落在 `MUSIC.bars`）＋ `references/style-swiss.md` 风格系统；示范 `examples/showreel/`。能量是**快慢交替的锯齿**：每段高能（0.2–0.4 秒的字与转场）之后接一段真正慢的（3D、粒子、网格展开 3–7 秒）。
 - **能量形状**：A/C 必须有 breakdown → drop；B 的能量是"亮度涨—平—落"的多峰呼吸；D 的最响点给数字锁定或 CTA；E 的最响点给核心 KPI 卡；G 的情绪峰值给见证引语的逐字扫光落点。
 - **静音可读性**：D（以及所有社媒 9:16 投放）必须关声音看一遍全片仍然成立；B/F 天生适合静音版。
 - 用户需求跨模式时（例如"倒计时 + 产品演示"），选一个主干模式，把另一模式的段落当模块插入，时长相应加整小节。
@@ -214,6 +217,15 @@ $PY "$SK/music_grid.py" fit song.mp3 --dur 24 --drop-at 9.5 --out out/score.wav 
 | 告诉工具你的意图 | `MG.blur(a, b)` 这段要运动模糊；`MG.hold(a, b)` 这段是有意的停留（封面帧、尾板）；`MG.cut(t)` 这里是有意的硬切 |
 | 资源载入完再开渲 | 最后调用 `MG.ready()`（等字体、图片、Lottie 都好了才设 `__ready`） |
 
+**长片（>35 秒或 >6 场）用 `mg-film.js`**：`FILM.scene({id, start, end, setup, render(lt, ctx)})` 每场一个文件，`FILM.start()` 收尾；只渲染在播的场景，场景表 `window.__scenes` 给播放器和验收工具用，硬切自动 `MG.cut`。setup 阶段图层参与排版但不可见（量得到字宽）。
+
+**生成式模块 `mg-gen.js`**（Canvas，全部可跳转、确定性）：`GEN.particles`（数千点＋旋度噪声力场＋吸引／排斥；`target`＋`form(t)` 聚成文字或形状再散开；固定步长＋检查点缓存，任意时间点都算得对）、`GEN.typeGrid`（字体网格，每格由 `MG.wave` 驱动大小／反转／字符）、`GEN.wire`（线框立方体／网格面／坐标轴／点云／作图圆，逐段画出）、`GEN.figure`（手绘线条小人，线条按 8fps「沸腾」）、`GEN.motion`（动作骨架分析：关节、骨骼、轨迹、角度读数）。
+
+**3D 雕塑 `mg-three.js`**：`sculpture()` 程序化管状雕塑（交缠的 torus-knot 样条，`update(t)` 呼吸形变）、`material('chrome'｜'pearl'｜'glass'｜'lime'｜'iridescent'｜'ceramic')`、`softShadows()`（隐形地面接柔和阴影）、`rig()`（关键帧镜头：微距 → 全景）、`orbit()`。
+白棚拍铬：`studioEnv` 要用**暗底＋亮柔光板**（`base: '#2E2E32'`），环境太亮太均匀，铬会变成灰塑料。
+
+**编辑风格（模式 H 与设计感品牌片）**：`styles/swiss.css`＋`MG.grid`（12 栏网格、非对称）、`MG.clip`（裁切擦除）、`MG.swap/invert`（黑白反转）、`MG.zoomTo`（推进穿越）、`MG.marquee`、`MG.hit`、`MG.wave`；规范与反模式见 `references/style-swiss.md`。小号技术标签加 `data-deco`、刻意出血的大字加 `data-bleed`，能量验收就不会误报。
+
 **小数帧契约**：运动模糊会在帧与帧之间取样，`__render(frame)` 的 `frame` 可能是小数——一律 `t = frame / FPS`，不要对帧号取整；只有颗粒这类「一帧之内不该动」的东西才用 `Math.floor(frame)`。
 
 核心铁律：
@@ -281,6 +293,12 @@ ffmpeg -pattern_type glob -i "tmp/check/*.jpg" -vf "scale=480:270,tile=4x2" tmp/
 **指不出来 = 构思没落地。此时要改场景结构，不是加效果**——回 §4.7 重看构思，删掉不服务于它的图层。
 
 ### 10.1b ★ 动态预览与能量验收（静帧看不出动作好不好，全量渲染前必做）
+
+**写场景时**用开发播放器实时看（播放／暂停／拖动／逐帧／按场景跳／同步配乐），比渲预览更快：
+```bash
+$PY "$SK/player.py" --scene scene.html --root . --audio out/score.wav     # 印出 localhost 网址；Claude Code 用后台执行，在 Browser pane 打开
+```
+**有参考片时**逐场对照：`$PY "$SK/compare_ref.py" ref.mp4 tmp/preview.mp4 --every 2 --map <我们÷参考的长度比>`。
 
 ```bash
 $PY "$SK/render_frames.py" --scene scene.html --dur 24 --preview --video tmp/preview.mp4 --audio out/score.wav   # 960 宽 30fps，几秒到一分钟

@@ -13,11 +13,13 @@ Reports (Chinese, for the user) and draws an energy chart:
               Intended stills (poster frame, end board) are declared in the scene
               with MG.hold(a, b) and are not flagged.
   jumps       single-frame changes far above their neighbourhood that are not a
-              declared MG.cut(t) — usually an element that pops on without easing.
+              declared MG.cut(t) (a cut covers the next 0.25 s too) — usually an
+              element that pops on without easing.
   black       frames darker than a "black" hold should be (mean luma < 4) and
               the longest black run (a held frame over silence reads as a fault).
   text        with --scene (mg-kit.js loaded): the smallest visible text as a share
-              of frame height, sampled every 0.5 s, and text outside the safe area.
+              of frame height, sampled every 0.5 s, and text outside the safe area
+              (5% of the short side on every edge; data-deco / data-bleed exempt).
 
 Exit code 0 = no problems, 1 = problems found (still prints everything).
 """
@@ -171,7 +173,9 @@ def main():
     for i, v in enumerate(sec):
         print("  %3ds %5.2f %s" % (i, v, "█" * int(round(v / top * 40))))
 
-    in_hold = lambda t0, t1: any(h0 - 0.1 <= t0 and t1 <= h1 + 0.1 for h0, h1 in holds)
+    def in_hold(t0, t1):   # a still run counts as intended when ≥ 80% of it lies inside declared holds
+        cov = sum(max(0.0, min(t1, h1) - max(t0, h0)) for h0, h1 in holds)
+        return cov >= 0.8 * (t1 - t0)
     dead = []
     for s0, s1 in runs(diff < a.still):
         t0, t1 = (s0 + 1) / fps, (s1 + 1) / fps
@@ -191,7 +195,8 @@ def main():
     for i in range(k, len(diff) - k):
         m = float(np.median(np.r_[diff[i - k:i], diff[i + 1:i + 1 + k]])) + 0.05
         t = (i + 1) / fps
-        if diff[i] > 6 * m and diff[i] > 3.0 and not any(abs(t - c) <= 1.5 / fps for c in cuts):
+        # a declared cut covers its own frame and the next 0.25 s (a slam settling after a hit cut)
+        if diff[i] > 6 * m and diff[i] > 4.0 and not any(-1.5 / fps <= t - c <= 0.25 for c in cuts):
             jumps.append((round(t, 3), round(float(diff[i]), 1)))
     print("\n== 突然跳变（不是 MG.cut 宣告的硬切：多半是元素没有缓动就跳出来）")
     for t, v in jumps:

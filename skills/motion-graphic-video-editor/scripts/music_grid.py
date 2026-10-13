@@ -47,7 +47,7 @@ FFMPEG = _ff("ffmpeg")
 
 # ================================================================ analysis
 def load_mono(path, sr=22050):
-    r = subprocess.run([FFMPEG, "-v", "error", "-i", path, "-ac", "1", "-ar", str(sr), "-f", "f32le", "-"],
+    r = subprocess.run([FFMPEG, "-nostdin", "-v", "error", "-i", path, "-ac", "1", "-ar", str(sr), "-f", "f32le", "-"],
                        capture_output=True)
     if not r.stdout:
         raise SystemExit("could not decode %s" % path)
@@ -201,7 +201,7 @@ def choose_window(a, film_len, drop_at=None, flex_bars=2):
 # ================================================================ fit
 def loudnorm(src, dst, start, length, fade_in, fade_out, target=-14.0):
     af = "afade=t=in:st=0:d=%.3f,afade=t=out:st=%.3f:d=%.3f" % (fade_in, max(0.0, length - fade_out), fade_out)
-    base = [FFMPEG, "-v", "error", "-ss", "%.4f" % start, "-t", "%.4f" % length, "-i", src]
+    base = [FFMPEG, "-nostdin", "-y", "-v", "error", "-ss", "%.4f" % start, "-t", "%.4f" % length, "-i", src]   # -nostdin: never wait on a terminal
     p = subprocess.run(base + ["-af", af + ",loudnorm=I=%g:TP=-1:LRA=11:print_format=json" % target,
                                "-f", "null", "-"], capture_output=True, text=True)
     m = p.stderr[p.stderr.rfind("{"):p.stderr.rfind("}") + 1]
@@ -210,8 +210,17 @@ def loudnorm(src, dst, start, length, fade_in, fade_out, target=-14.0):
     if st:
         ln += (":measured_I=%s:measured_TP=%s:measured_LRA=%s:measured_thresh=%s:offset=%s:linear=true"
                % (st["input_i"], st["input_tp"], st["input_lra"], st["input_thresh"], st["target_offset"]))
-    subprocess.run(base + ["-af", af + "," + ln + ",aresample=48000", "-ac", "2", "-c:a", "pcm_s16le",
-                           "-t", "%.4f" % length, dst], check=True)
+    # loudnorm swallows ~90 ms at the very end and ignores an apad placed after it, so pad in a
+    # second pass: the file must be exactly `length` long or the film gets cut to the music
+    tmp = dst + ".tmp.wav"
+    subprocess.run(base + ["-af", af + "," + ln + ",aresample=48000", "-ac", "2", "-c:a", "pcm_s16le", tmp], check=True)
+    subprocess.run([FFMPEG, "-nostdin", "-y", "-v", "error", "-i", tmp, "-af", "apad=whole_dur=%.4f" % length,
+                    "-c:a", "pcm_s16le", "-t", "%.4f" % length, dst], check=True)
+    os.remove(tmp)
+    got = float(subprocess.run([_ff("ffprobe"), "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", dst],
+                               capture_output=True, text=True).stdout.strip() or 0)
+    if abs(got - length) > 0.02:
+        raise SystemExit("music file came out %.3fs long, expected %.3fs: %s" % (got, length, dst))
 
 
 def main():

@@ -27,7 +27,11 @@
   /* ------------------------------------------------------------ basics */
   const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
   const lerp = (a, b, k) => a + (b - a) * k;
-  const prog = (t, a, b) => (b === a ? (t >= b ? 1 : 0) : clamp((t - a) / (b - a)));
+  // b < a is always a timing bug (an event scheduled past its own end): say so instead of running backwards
+  const prog = (t, a, b) => {
+    if (b < a) { if (!prog.warned) { prog.warned = 1; console.error(`MG.prog: window ends before it starts (${a.toFixed(3)} → ${b.toFixed(3)})`); } return t >= a ? 1 : 0; }
+    return b === a ? (t >= b ? 1 : 0) : clamp((t - a) / (b - a));
+  };
   MG.clamp = clamp; MG.lerp = lerp; MG.prog = prog;
   /* one-shot impulse: 0 before t0, 1 at t0, decays to 0 by t0+w. Never write flashes as 1-progress. */
   MG.imp = (t, t0, w, k = 2.4) => (t < t0 || t >= t0 + w ? 0 : Math.pow(1 - (t - t0) / w, k));
@@ -385,7 +389,9 @@
      window.__audit() → smallest visible text size as a share of frame height, and
      any visible text outside the safe area. render_frames/check_motion use it. */
   root.__audit = function (safe = 0.05) {
+    // safe margin = share of the SHORT side on every edge (the same rule MG.grid uses), minus 2px slack
     const W = innerWidth, H = innerHeight, out = { minText: null, minTextSample: '', outside: [] };
+    const m = safe * Math.min(W, H) - 2;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let n;
     while ((n = walker.nextNode())) {
@@ -393,6 +399,10 @@
       if (!txt) continue;
       const el = n.parentElement, cs = getComputedStyle(el);
       if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+      // data-deco: texture text not meant to be read (tiny technical labels, type grids);
+      // data-bleed: type that deliberately runs off the frame
+      const deco = el.closest('[data-deco]'), bleed = el.closest('[data-bleed]');
+      if (deco && bleed) continue;
       let op = 1, e = el;
       while (e && e !== document.body) { op *= +getComputedStyle(e).opacity; e = e.parentElement; }
       if (op < 0.5) continue;
@@ -401,11 +411,123 @@
       // rendered size = font size × every ancestor's scale (bounding box vs layout box)
       const px = parseFloat(cs.fontSize) * (el.offsetHeight ? r.height / el.offsetHeight : 1);
       const share = px / H;
-      if (out.minText === null || share < out.minText) { out.minText = share; out.minTextSample = txt.slice(0, 24); }
-      if (r.left < W * safe || r.right > W * (1 - safe) || r.top < H * safe || r.bottom > H * (1 - safe))
+      if (!deco && (out.minText === null || share < out.minText)) { out.minText = share; out.minTextSample = txt.slice(0, 24); }
+      if (!bleed && (r.left < m || r.right > W - m || r.top < m || r.bottom > H - m))
         out.outside.push(txt.slice(0, 24));
     }
     return out;
+  };
+
+  /* ============================================================ layout & graphic transitions
+     Editorial (Swiss) composition: a modular grid instead of "centre everything". */
+
+  /* MG.grid({cols, rows, W, H, margin, gutter}) → g
+       g.col(i, span) → {x, w}      g.row(j, span) → {y, h}
+       g.cell(i, j, cs, rs) → {x, y, w, h}  (column i, row j, spanning cs × rs)
+       g.lines() → [{x}|{y}] edges for drawing the grid itself
+     margin/gutter in px (default: margin 5% of the short side, gutter 1.6%). */
+  MG.grid = function (o = {}) {
+    const W = o.W || innerWidth, H = o.H || innerHeight, M = Math.min(W, H);
+    const cols = o.cols || 12, rows = o.rows || 8;
+    const mx = o.margin == null ? M * 0.05 : (o.margin.x == null ? o.margin : o.margin.x);
+    const my = o.margin == null ? M * 0.05 : (o.margin.y == null ? o.margin : o.margin.y);
+    const gx = o.gutter == null ? M * 0.016 : o.gutter, gy = o.gutterY == null ? gx : o.gutterY;
+    const cw = (W - 2 * mx - gx * (cols - 1)) / cols, rh = (H - 2 * my - gy * (rows - 1)) / rows;
+    const g = { W, H, cols, rows, mx, my, gx, gy, cw, rh };
+    g.col = (i, span = 1) => ({ x: mx + i * (cw + gx), w: span * cw + (span - 1) * gx });
+    g.row = (j, span = 1) => ({ y: my + j * (rh + gy), h: span * rh + (span - 1) * gy });
+    g.cell = (i, j, cs = 1, rs = 1) => Object.assign({}, g.col(i, cs), g.row(j, rs));
+    g.lines = () => {
+      const out = [];
+      for (let i = 0; i <= cols; i++) out.push({ x: i === cols ? W - mx : mx + i * (cw + gx) - (i ? gx / 2 : 0) });
+      for (let j = 0; j <= rows; j++) out.push({ y: j === rows ? H - my : my + j * (rh + gy) - (j ? gy / 2 : 0) });
+      return out;
+    };
+    return g;
+  };
+  /* absolutely position an element on a rect {x, y, w, h} (any field optional) */
+  MG.place = function (el, r) {
+    const s = el.style;
+    s.position = 'absolute';
+    if (r.x != null) s.left = r.x + 'px';
+    if (r.y != null) s.top = r.y + 'px';
+    if (r.w != null) s.width = r.w + 'px';
+    if (r.h != null) s.height = r.h + 'px';
+  };
+  /* layout morph: a panel in a grid becoming full screen (rect A → rect B) */
+  MG.rect = (a, b, p) => ({ x: lerp(a.x, b.x, p), y: lerp(a.y, b.y, p), w: lerp(a.w, b.w, p), h: lerp(a.h, b.h, p) });
+
+  /* MG.clip(el, p, style) — graphic wipe (p 0 = hidden, 1 = fully shown; 1→2 wipes it
+     off again in the same direction, so one call covers in and out).
+     style: 'left' | 'right' | 'up' | 'down' (direction of travel) | 'center' (opens from a
+     horizontal line) | 'circle' | 'diag' | 'blinds:N' (N horizontal strips) | 'cols:N'
+     (N vertical strips, staggered left→right). */
+  MG.clip = function (el, p, style = 'left') {
+    const off = p > 1, k = clamp(off ? p - 1 : p);
+    const a = (off ? k : 0) * 100, b = (off ? 1 : k) * 100;          // visible band [a, b] in %
+    const [kind, nStr] = style.split(':'), n = +nStr || 6;
+    let cp, shown = off ? 1 - k : k;
+    if (kind === 'left') cp = `inset(0 ${100 - b}% 0 ${a}%)`;
+    else if (kind === 'right') cp = `inset(0 ${a}% 0 ${100 - b}%)`;
+    else if (kind === 'up') cp = `inset(${100 - b}% 0 ${a}% 0)`;
+    else if (kind === 'down') cp = `inset(${a}% 0 ${100 - b}% 0)`;
+    else if (kind === 'center') { const h = shown * 50; cp = `inset(${50 - h}% 0 ${50 - h}% 0)`; }
+    else if (kind === 'circle') cp = `circle(${shown * 75}% at 50% 50%)`;
+    else if (kind === 'diag') { const q = shown * 200; cp = `polygon(0 0, ${q}% 0, ${q - 100}% 100%, 0 100%)`; }
+    else if (kind === 'blinds' || kind === 'cols') {
+      // one polygon tracing every strip, joined along the outer edge so no slivers leak
+      const pts = [];
+      for (let i = 0; i < n; i++) {
+        const lag = kind === 'cols' ? (i / n) * 0.5 : 0;
+        const kk = clamp((k - lag) / (kind === 'cols' ? 0.5 : 1));
+        const v = off ? 1 - kk : kk, s0 = (i / n) * 100, s1 = ((i + v) / n) * 100;
+        if (kind === 'blinds') pts.push(`0% ${s0}%`, `100% ${s0}%`, `100% ${s1}%`, `0% ${s1}%`, `0% ${s0}%`);
+        else pts.push(`${s0}% 0%`, `${s1}% 0%`, `${s1}% 100%`, `${s0}% 100%`, `${s0}% 0%`);
+      }
+      cp = `polygon(${pts.join(',')})`;
+    }
+    el.style.clipPath = cp;
+    el.style.visibility = shown <= 0.0005 ? 'hidden' : 'visible';
+  };
+
+  /* Background inversion on a rhythm: MG.invert(t, [t1, t2, ...]) → true after an odd
+     number of flips. Feed it to MG.swap so every layer trades ink and paper on the same
+     frame (a hard, graphic punctuation — never cross-fade it). */
+  MG.invert = (t, flips) => flips.reduce((n, f) => n + (t >= f ? 1 : 0), 0) % 2 === 1;
+  MG.swap = function (el, inverted, ink, paper) {
+    el.style.setProperty('--ink', inverted ? paper : ink);
+    el.style.setProperty('--paper', inverted ? ink : paper);
+  };
+
+  /* Push-through zoom: scale so the point (fx, fy) — in the element's own px — rushes
+     to fill the frame; cut to the next scene "inside" it at the end. p = eased 0→1. */
+  MG.zoomTo = function (p, fx, fy, W, H, maxScale = 40) {
+    const s = Math.exp(Math.log(maxScale) * p);             // exponential = constant perceived speed
+    const tx = (W / 2 - fx) * clamp(p * 1.4), ty = (H / 2 - fy) * clamp(p * 1.4);
+    return `translate(${tx}px,${ty}px) translate(${fx}px,${fy}px) scale(${s}) translate(${-fx}px,${-fy}px)`;
+  };
+
+  /* Marquee offset (px) for a strip of width w at speed px/s, wrapping seamlessly —
+     put the text in the strip twice. dir -1 = leftward. */
+  MG.marquee = (t, speed, w, dir = -1) => {
+    const x = ((t * speed) % w + w) % w;
+    return dir < 0 ? -x : x - w;
+  };
+
+  /* Scale hit: a word slams in oversized and locks (rapid text scaling). Scale for t. */
+  MG.hit = (t, t0, from = 2.4, opt = { stiffness: 520, damping: 30 }) =>
+    t < t0 ? 0 : lerp(from, 1, MG.spring(t - t0, opt));
+
+  /* Deterministic per-cell field for type grids / rhythmic repetition → 0..1
+     kind: 'diag' | 'rows' | 'cols' | 'radial' (cx, cy) | 'noise' | 'random' (seeded flicker at `rate` Hz) */
+  MG.wave = function (i, j, t, o = {}) {
+    const f = o.freq || 0.35, sp = o.speed || 1.2, kind = o.kind || 'diag';
+    if (kind === 'diag') return 0.5 + 0.5 * Math.sin((i + j) * f - t * sp * Math.PI);
+    if (kind === 'rows') return 0.5 + 0.5 * Math.sin(j * f - t * sp * Math.PI);
+    if (kind === 'cols') return 0.5 + 0.5 * Math.sin(i * f - t * sp * Math.PI);
+    if (kind === 'radial') return 0.5 + 0.5 * Math.sin(Math.hypot(i - (o.cx || 0), j - (o.cy || 0)) * f - t * sp * Math.PI);
+    if (kind === 'noise') return 0.5 + 0.5 * MG.noise(t * sp + i * 3.1 + j * 7.7, o.seed || 1);
+    return hash(i * 131 + j * 977 + Math.floor(t * (o.rate || 8)) * 7919, o.seed || 1);
   };
 
   root.MG = MG;
