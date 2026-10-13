@@ -14,3 +14,7 @@ docs/PLAN.md
 *.pem
 *.key
 secrets*
+
+# motion-graphic-video-editor 示范片：配乐与成片随时可重新生成，不入库
+skills/motion-graphic-video-editor/examples/showreel/score.wav
+skills/motion-graphic-video-editor/examples/showreel/out.mp4

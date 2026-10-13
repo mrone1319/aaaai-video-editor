@@ -1,17 +1,27 @@
 #!/usr/bin/env python3
 """Deconstruct a reference video into its editing structure.
 
-Produces four things:
+Produces five things:
   meta.txt        resolution, fps, duration, codecs
   sheet.jpg       contact sheet of the whole film — read this first
   frames/*.jpg    high-res stills at even intervals for close reading
   loudness.txt    per-interval RMS in dB, plus detected transients
+  cuts.txt        every frame's scene score + mean luma, and the classified cuts:
+                  HARD CUT  = big scene change AND a luma jump (a real edit)
+                  CONTENT   = big scene change, luma steady (decode/scramble, a
+                              fast animation — not an edit decision)
 
-The loudness table is the fastest way to find the edit points: in short-form
-brand films, visual transitions sit on audio transients almost without
-exception. A film with exactly one big transient has exactly one hard cut, and
-everything else is easing — copying more cuts than the reference has is the most
-common way a homage ends up feeling busy.
+Two lessons this script encodes (each cost a wrong conclusion once):
+  1. A detector that returns 0 must prove it read data. ffmpeg's metadata=print
+     with -v error silently prints nothing; "no cuts" was really "no data". The
+     script checks that it received a score for ~every frame and stops if not.
+  2. Only hard cuts are editing decisions. Peaks of the frame-difference curve
+     are by-products of animation; do beat-alignment statistics on hard cuts only,
+     with a tolerance far below half the grid spacing (±0.03 s), and compare
+     against the random expectation before believing a "match".
+
+Copying more hard cuts than the reference has is the most common way a homage
+ends up feeling busy.
 
 Usage:
     ~/.aaaai-editor/bin/aaaai-editor-python analyze_reference.py ref.mp4 --out /tmp/ref
@@ -135,6 +145,47 @@ def loudness(video, out, step):
     print(f"full table: {os.path.join(out, 'loudness.txt')}")
 
 
+def cuts(video, out, fps):
+    """Per-frame scene score (validated) + luma; classify hard cuts vs content changes."""
+    import re
+    import numpy as np
+    p = subprocess.run([FFMPEG, "-nostdin", "-v", "error", "-i", video, "-filter_complex",
+                        "select='gte(scene,0)',metadata=print:file=-", "-an", "-f", "null", "-"],
+                       capture_output=True, text=True)
+    scores, t = [], None
+    for line in p.stdout.splitlines():
+        m = re.search(r"pts_time:([\d.]+)", line)
+        if m:
+            t = float(m.group(1))
+        m = re.search(r"scene_score=([\d.]+)", line)
+        if m and t is not None:
+            scores.append((t, float(m.group(1))))
+    raw = subprocess.run([FFMPEG, "-nostdin", "-v", "error", "-i", video, "-vf", "scale=64:36:flags=area",
+                          "-f", "rawvideo", "-pix_fmt", "gray", "-"], capture_output=True).stdout
+    luma = np.frombuffer(raw, np.uint8).reshape(-1, 36 * 64).mean(1) if raw else np.zeros(0)
+    n = len(luma)
+    print(f"[check] {len(scores)} scene scores received for {n} frames")
+    if not scores or (n and len(scores) < 0.9 * n):
+        print("[!] the scene-score pipe returned too little data — this is a silent failure, not 'no cuts'")
+        return
+    rows, hard, content = [], [], []
+    for i, (tt, sc) in enumerate(scores):
+        dl = abs(float(luma[i]) - float(luma[i - 1])) if 0 < i < n else 0.0
+        kind = ""
+        if sc >= 0.1:
+            kind = "HARD CUT" if dl > 12 or sc > 0.5 else "CONTENT"
+            (hard if kind == "HARD CUT" else content).append(tt)
+        rows.append(f"{tt:8.3f}  score {sc:.4f}  luma {float(luma[i]) if i < n else 0:6.1f}  dL {dl:6.1f}  {kind}")
+    with open(os.path.join(out, "cuts.txt"), "w") as f:
+        f.write("\n".join(rows) + "\n")
+    if n:
+        print(f"mean luma {luma.mean():.1f}/255, range {luma.min():.1f}–{luma.max():.1f}")
+    print(f"hard cuts: {len(hard)}  " + " ".join(f"{x:.3f}" for x in hard[:40]))
+    if content:
+        print(f"content changes (not edits): {len(content)}  " + " ".join(f"{x:.3f}" for x in content[:20]))
+    print(f"full table: {os.path.join(out, 'cuts.txt')}")
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("video")
@@ -153,6 +204,8 @@ if __name__ == "__main__":
     if dur:
         stills(a.video, a.out, dur, a.stills)
     loudness(a.video, a.out, a.step)
+    cuts(a.video, a.out, a.fps)
 
     print("\nNext: open sheet.jpg, write the segment boundaries in seconds, and")
-    print("name each segment. Then check the transients — visual cuts sit on them.")
+    print("name each segment. Compare the hard cuts with the transients: whether a film")
+    print("locks its cuts to the beat is a per-film choice — measure it, don't assume it.")

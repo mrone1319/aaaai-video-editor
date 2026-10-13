@@ -9,8 +9,10 @@
   swiss.css (style system). Music: suite bgm "upbeat-energetic", fitted with music_grid.py;
   every scene boundary sits on a real bar (MUSIC.bars).
 
-  dev player:  $PY ../../scripts/player.py --scene index.html --root ../.. --audio examples/showreel/score.wav
-  render:      $PY ../../scripts/render_frames.py --scene index.html --root ../.. --dur 55.008 --video out.mp4 --audio score.wav --mblur scene
+  1. score (not shipped — 10 MB; regenerated in ~7 s from the suite's own track; grid.json is the result):
+     $PY ../../scripts/music_grid.py fit ~/.aaaai-editor/app/assets/bgm/upbeat-energetic.m4a --dur 56 --out score.wav --grid grid.json
+  2. dev player:  $PY ../../scripts/player.py --scene index.html --root ../.. --audio examples/showreel/score.wav
+  3. render:      $PY ../../scripts/render_frames.py --scene index.html --root ../.. --dur 55.008 --video out.mp4 --audio score.wav --mblur scene
 -->
 <link rel="stylesheet" href="../../assets/styles/swiss.css">
 <style>

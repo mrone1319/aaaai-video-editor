@@ -1,8 +1,6 @@
-# Score and sound design
+# 原创配乐合成（§9，备案）
 
-## 中文摘要（原 SKILL.md §9 全文）
-
-## 9. Score — 原创配乐合成（numpy/scipy，零素材零版权）
+> **交付版优先用真实音乐**（`music_grid.py fit`，`timing.md`）——合成的音色单薄，是质感的天花板。合成适合：临时配乐、用户明确要零版权原创、或要和画面逐个 hit 精确对位的极短 sting。没有现成脚本：照下面的积木写一个 `score.py`，顶部逐字复制场景的 `T`。
 
 **原则：编曲从视觉时间轴出发**——场景 `T` 常量原样复制进配乐脚本；每个视觉事件一个 hit，同步是查表。
 
@@ -20,7 +18,7 @@ kick（音高下扫正弦 128→45Hz + 咔哒头）/ sub bass（八分根音低�
 - **计数器 tick 密度由与画面完全相同的缓动曲线驱动**——听到的减速就是看到的减速；每位落位一记轻响，末位完整锁定音+impact。
 - 视觉事件重复 N 次（波/脉冲/列表项）就 N 声，音高或亮度**沿组递升**。
 - 逐字动画：每字一 tick，音高沿渐变爬升。
-- 黑场呼吸处音频同步挖静（dip 到 5%）。
+- 黑场有两种，音频处理相反：**呼吸**（画面静、音乐照推，例 Gacha）与**断章**（音画同时挖空到 ~5%，要观众重新聚焦，例 Showcase）。按这一段的用途选，不要一律挖空。
 - **侧链**：每个 kick 附近 pad/bass 压到 ~0.62 再恢复，否则低频糊。
 - 混响 = 指数衰减噪声卷积（~2s，LP 7k / HP 150）；湿声 ~9ms Haas 延迟做宽度，**干声保持单声道**（低频才稳）；tanh 软限幅；归一 0.95；结尾 fade 与画面淡黑同步。
 
@@ -42,10 +40,10 @@ Not sound effects sprinkled over a bed — a real arrangement with a progression
 a groove, a breakdown and a drop, where the drop is the frame you want people to
 remember.
 
-Two reasons to write it from code rather than licensing a track. It can be
-*composed to the cut* — the groove thins exactly where the picture goes quiet and
-hits hardest where the picture does, which no library track will do. And when the
-duration changes (it will), regenerating takes seconds.
+What code can do that a library track cannot: be *composed to the cut* — the groove
+thins exactly where the picture goes quiet and hits hardest where it does — and be
+regenerated in seconds when the duration changes. What it cannot do is sound as
+rich as a produced track, which is why real music comes first.
 
 ## The grid is the whole trick
 
@@ -254,3 +252,12 @@ the hold, leaving a long decaying chord underneath. A held frame over silence
 reads as a mistake; over a decaying chord it reads as an ending. Cut kick, clap,
 hats and arpeggio at the start of the hold, start a 3–4 second chord there, and
 add one soft sub swell as the logo appears.
+
+## 混音教训：「刺耳／有噪音」（COLONY 片第一版被客户指出）
+
+真因不是某个频段尖——实测 2–5kHz 只占 2.4%。三个真因：
+1. **方波 pad**：`np.sign(sin())` × 3 失谐 × 3 和弦音 = 18 个粗糙振荡器互相拍频，低通挡不住方波谐波 → 读作噪音。**改纯正弦堆叠**。
+2. **音区太低**：和弦全在 164–294Hz、琶音顶到 590Hz，挤在最浑的低中频。**整体升一个八度**（低频占比 58% → 28.5%），sub bass 单独守低音。
+3. **压太满**：tanh 硬推＋峰值归一到 0.95 → RMS 约 −7dBFS。**改按目标 RMS（0.135）归一、只对峰值软限**。
+
+通则：听感「刺耳／噪」先量频谱再动手——这次量完是**闷＋挤**不是**尖**，凭感觉去砍高频只会更闷（当时就这么错过一轮）。编排写成每小节一张显式表（`ARR`），因为每小节 RMS 的形状本身就是交付物：breakdown 小节必须全曲最低、drop 小节必须最高。

@@ -14,9 +14,8 @@ split   Cut the image into left/right parts at a column, each kept on the
 letters Crop individual letterforms. Animating the brand's own glyphs instead
         of substituting a typeface is the single cheapest way to make a section
         look unmistakably on-brand.
-slabs   Build the brightness ramp used for 3D extrusion.
-strip   Zero the alpha below/above a row — used to drop hairline text out of an
-        extrusion source (thin strokes comb between slabs).
+strip   Zero the alpha below/above a row — drop hairline text (a strapline) out of
+        a logo before `outline`, so the extrusion keeps only the solid mark.
 outline Trace the logo's alpha into vector outlines (outer contours + holes) as
         JSON, for a real 3D extrusion in three.js (assets/mg-three.js). The
         front face is then textured with the original PNG, so gradients and
@@ -34,7 +33,7 @@ import json
 import os
 
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
 
 
 # ---------------------------------------------------------------- helpers
@@ -164,47 +163,6 @@ def cmd_letters(args):
           "the real proportions and a common baseline.")
 
 
-def cmd_slabs(args):
-    """Brightness ramp for stacked-plane 3D extrusion.
-
-    Side walls must stay clearly visible: too dark and the extrusion vanishes
-    against a black background even though the geometry is correct. The default
-    floor of 0.18 and near value of 0.58 read as a shaded solid without
-    competing with the front face.
-    """
-    src = load(args.src)
-    w = args.width
-    im = src.resize((w, round(w * src.height / src.width)), Image.LANCZOS)
-    a = np.asarray(im).astype(np.float32)
-    tint = np.array([float(v) for v in args.tint.split(",")], np.float32)
-    os.makedirs(args.out, exist_ok=True)
-    for i in range(args.levels):
-        k = i / (args.levels - 1)                 # 0 = nearest behind the face
-        bright = args.floor + args.near * (1 - k) ** 1.05
-        o = a.copy()
-        o[..., :3] = np.clip(o[..., :3] * bright * tint, 0, 255)
-        p = os.path.join(args.out, f"{args.prefix}_{i}.png")
-        Image.fromarray(o.astype(np.uint8), "RGBA").save(p)
-    print(f"wrote {args.levels} slab levels to {args.out}/{args.prefix}_*.png")
-    print("In the scene, place ~40 copies at translateZ(-i * step) with")
-    print("step ~= 0.003 * displayWidth, choosing the level by i/(N-1).")
-    print("Paint order: deepest first, front face last.")
-
-
-def cmd_reflect(args):
-    """Faded, flipped copy for a floor reflection."""
-    src = load(args.src)
-    w = args.width
-    im = src.resize((w, round(w * src.height / src.width)), Image.LANCZOS)
-    im = im.transpose(Image.FLIP_TOP_BOTTOM)
-    a = np.asarray(im).astype(np.float32)
-    h = a.shape[0]
-    fade = np.clip(1.0 - np.arange(h) / (h * 0.85), 0, 1)[:, None] ** 1.6
-    a[..., 3] *= fade * args.strength
-    out = Image.fromarray(a.astype(np.uint8), "RGBA").filter(
-        ImageFilter.GaussianBlur(args.blur))
-    out.save(args.out)
-    print(f"wrote {args.out}")
 
 
 def cmd_outline(args):
@@ -287,22 +245,7 @@ def main():
     p.add_argument("--max-x", type=int, default=0)
     p.set_defaults(f=cmd_letters)
 
-    p = sub.add_parser("slabs", help="brightness ramp for 3D extrusion")
-    p.add_argument("src"); p.add_argument("--out", default="assets")
-    p.add_argument("--prefix", default="slab")
-    p.add_argument("--levels", type=int, default=9)
-    p.add_argument("--width", type=int, default=1120)
-    p.add_argument("--floor", type=float, default=0.18)
-    p.add_argument("--near", type=float, default=0.40)
-    p.add_argument("--tint", default="0.74,0.82,1.04")
-    p.set_defaults(f=cmd_slabs)
 
-    p = sub.add_parser("reflect", help="faded flipped copy for a floor reflection")
-    p.add_argument("src"); p.add_argument("out")
-    p.add_argument("--width", type=int, default=1120)
-    p.add_argument("--strength", type=float, default=0.40)
-    p.add_argument("--blur", type=float, default=3.0)
-    p.set_defaults(f=cmd_reflect)
 
     p = sub.add_parser("outline", help="vector outlines (JSON) for a real 3D extrusion")
     p.add_argument("src"); p.add_argument("out")

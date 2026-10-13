@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# encode.sh <frames_dir> <out.mp4|out.mov> [--audio score.wav] [--fps 60] [--tmix N] [--alpha]
-# (--alpha expects a PNG frame dir and a .mov output path — see below)
+# encode.sh <frames_dir> <out.mp4|out.mov> [--audio score.wav] [--fps 60] [--crf 17] [--alpha]
+#
+# For frame FOLDERS only (render_frames.py --out, e.g. after a partial --at re-render,
+# or an --alpha PNG sequence). A normal film renders straight to MP4 with
+# render_frames.py --video, which also does motion blur (--mblur) properly.
 #
 # Encodes a JPEG frame sequence to H.264 with sensible settings for social
-# platforms (high profile, faststart, closed GOP every 2s).
-#
-# --tmix N averages N consecutive input frames and decimates to --fps, giving
-# true 360-degree-shutter motion blur. Render at N x the target fps to use it:
-#   render at 120fps  ->  encode.sh dir out.mp4 --fps 60 --tmix 2
-# Without --tmix the frame rate is taken as-is.
+# platforms (high profile, faststart, closed GOP every 2s). The soundtrack is
+# padded with silence and cut at the picture, so a short score never shortens the film.
 #
 # --alpha packs a transparent PNG sequence (render_frames.py --alpha output)
 # into ProRes 4444 with a real alpha channel (yuva444p10le). Output should
@@ -43,31 +42,24 @@ FFPROBE="$(dirname "$FFMPEG")/ffprobe"
 [[ -x "$FFPROBE" ]] || FFPROBE="$(command -v ffprobe || echo ffprobe)"
 
 DIR="${1:?frames dir}"; OUT="${2:?output mp4}"; shift 2
-AUD=""; FPS=60; TMIX=1; CRF=17; ALPHA=0
+AUD=""; FPS=60; CRF=17; ALPHA=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --audio) AUD="$2"; shift 2 ;;
     --fps)   FPS="$2"; shift 2 ;;
-    --tmix)  TMIX="$2"; shift 2 ;;
     --crf)   CRF="$2"; shift 2 ;;
     --alpha) ALPHA=1; shift 1 ;;
     *) echo "unknown arg: $1" >&2; exit 1 ;;
   esac
 done
 
-IN_FPS=$(( FPS * TMIX ))
 KEYINT=$(( FPS * 2 ))
 
 if [[ "$ALPHA" -eq 1 ]]; then
-  if [[ "$TMIX" -gt 1 ]]; then
-    W=$(printf '1 %.0s' $(seq 1 "$TMIX")); W="${W% }"
-    VF="[0:v]tmix=frames=${TMIX}:weights='${W}',fps=${FPS},format=yuva444p10le[v]"
-  else
-    VF="[0:v]format=yuva444p10le[v]"
-  fi
-  "$FFMPEG" -y -loglevel error -stats \
-    -framerate "$IN_FPS" -start_number 0 -i "$DIR/f%05d.png" \
+  VF="[0:v]format=yuva444p10le[v]"
+  "$FFMPEG" -nostdin -y -loglevel error -stats \
+    -framerate "$FPS" -start_number 0 -i "$DIR/f%05d.png" \
     -filter_complex "$VF" -map "[v]" \
     -c:v prores_ks -profile:v 4 -pix_fmt yuva444p10le \
     "$OUT"
@@ -78,26 +70,23 @@ if [[ "$ALPHA" -eq 1 ]]; then
   exit 0
 fi
 
-if [[ "$TMIX" -gt 1 ]]; then
-  W=$(printf '1 %.0s' $(seq 1 "$TMIX")); W="${W% }"
-  VF="[0:v]tmix=frames=${TMIX}:weights='${W}',fps=${FPS},format=yuv420p[v]"
-else
-  VF="[0:v]format=yuv420p[v]"
-fi
+VF="[0:v]format=yuv420p[v]"
+NF=$(ls "$DIR"/f*.jpg 2>/dev/null | wc -l | tr -d ' ')
 
 X264="keyint=${KEYINT}:min-keyint=$(( KEYINT / 4 )):scenecut=0:ref=4:bframes=3"
 
 if [[ -n "$AUD" ]]; then
-  "$FFMPEG" -y -loglevel error -stats \
-    -framerate "$IN_FPS" -start_number 0 -i "$DIR/f%05d.jpg" -i "$AUD" \
-    -filter_complex "$VF" -map "[v]" -map 1:a \
+  VDUR=$(awk "BEGIN{printf \"%.4f\", $NF/$FPS}")
+  "$FFMPEG" -nostdin -y -loglevel error -stats \
+    -framerate "$FPS" -start_number 0 -i "$DIR/f%05d.jpg" -i "$AUD" \
+    -filter_complex "$VF;[1:a]apad[a]" -map "[v]" -map "[a]" \
     -c:v libx264 -profile:v high -level 4.2 -preset slow -crf "$CRF" \
     -x264-params "$X264" \
     -c:a aac -b:a 192k -ar 48000 -ac 2 \
-    -movflags +faststart -shortest "$OUT"
+    -movflags +faststart -t "$VDUR" "$OUT"
 else
-  "$FFMPEG" -y -loglevel error -stats \
-    -framerate "$IN_FPS" -start_number 0 -i "$DIR/f%05d.jpg" \
+  "$FFMPEG" -nostdin -y -loglevel error -stats \
+    -framerate "$FPS" -start_number 0 -i "$DIR/f%05d.jpg" \
     -filter_complex "$VF" -map "[v]" \
     -c:v libx264 -profile:v high -level 4.2 -preset slow -crf "$CRF" \
     -x264-params "$X264" -movflags +faststart "$OUT"

@@ -262,11 +262,29 @@
 
   /* style: 'mask' (slide up from behind the mask edge) | 'rise' (fade + lift) |
      'blur' (focus pull in) | 'scale' (grow from small) | 'pop' (spring scale) |
-     'type' (typewriter, no motion). out: optional exit time, same style reversed. */
+     'type' (typewriter, no motion) | 'sweep' (see below). out: optional exit time.
+
+     'sweep' — the gradient sweep that reads as "high production value": a soft edge
+     scans the line and every part moves on four channels at once — opacity, colour
+     (opt.tint → opt.color), 0.4em rise and blur. Opacity alone looks cheap; the
+     four-channel version costs the same. opt.edge (0.30 = a third of the line is
+     mid-transition; tighter reads as a wipe, looser as a plain fade). */
   MG.reveal = function (parts, t, t0, opt = {}) {
     const style = opt.style || 'mask', dur = opt.dur || 0.7, n = parts.length;
     const ease = opt.ease || (style === 'mask' ? E.out : E.smooth);
     const each = opt.each == null ? (style === 'type' ? 0.045 : 0.06) : opt.each;
+    if (style === 'sweep') {
+      const EDGE = opt.edge || 0.30, sw = ease(prog(t, t0, t0 + dur)) * (1 + EDGE);
+      const outK = opt.out != null ? E.in(prog(t, opt.out, opt.out + dur * 0.5)) : 0;
+      parts.forEach((p, i) => {
+        const q = clamp((sw - (n > 1 ? i / (n - 1) : 0)) / EDGE), s = p.el.style;
+        s.opacity = (q <= 0 ? 0 : MG.ease.smooth(clamp(q / 0.55))) * (1 - outK);
+        if (opt.tint) s.color = MG.mix(opt.tint, opt.color || '#ffffff', MG.ease.smooth(clamp((q - 0.22) / 0.78)));
+        s.transform = `translateY(${(1 - q) * 0.4 - outK * 0.3}em)`;
+        s.filter = q < 0.98 ? `blur(${(1 - q) * 0.12}em)` : 'none';
+      });
+      return;
+    }
     parts.forEach((p, i) => {
       const d = t0 + MG.stagger(i, n, { each, from: opt.from || 'start', seed: opt.seed });
       let k = style === 'pop' ? MG.spring(t - d, opt.spring || { stiffness: 300, damping: 18 }) : ease(prog(t, d, d + dur));
@@ -292,6 +310,114 @@
         s.opacity = t >= d ? 1 : 0;
       }
     });
+  };
+
+  /* ------------------------------------------------------------ counter (slot machine / odometer)
+     ctl = MG.counter(el, '20,000,000', opt); ctl.at(t) every frame.
+     Digits become vertical reels; separators (, . $ % +) stay static. Each place spins a
+     different number of whole turns (low places spin most) and locks at its own time
+     (high places first, `stagger` apart) — that is what reads as a mechanism rather than
+     a cross-fade. Cells are taller than the window so neighbours never show at rest; the mask
+     feather and the motion blur both follow the reel's *speed*, so the locked digit is
+     crisp and full-brightness. opt: {t0, t1 (last lock), turns (base turns, 3), stagger
+     (s between places, 0.12), bounce (settle overshoot, 0.16), blur (px at full speed)} */
+  MG.counter = function (el, value, opt = {}) {
+    const txt = String(value);
+    el.textContent = '';
+    el.style.display = 'inline-flex';
+    el.style.alignItems = 'center';
+    el.style.lineHeight = '1';
+    el.style.fontVariantNumeric = 'tabular-nums';
+    const probe = document.createElement('span');
+    probe.textContent = '0'; probe.style.visibility = 'hidden'; el.appendChild(probe);
+    const fs = parseFloat(getComputedStyle(el).fontSize), cellW = probe.getBoundingClientRect().width;
+    el.removeChild(probe);
+    // a glyph is ~0.72em tall: cells of 1.25em leave a gap a 1.15em window never reaches,
+    // so a neighbour can never show at rest (a window as tall as the cell does show them)
+    const cellH = fs * 1.25, winH = fs * 1.15, reels = [];
+    const digits = [...txt].filter(c => /\d/.test(c)).length;
+    let place = digits;
+    for (const ch of txt) {
+      if (!/\d/.test(ch)) { const s = document.createElement('span'); s.textContent = ch; el.appendChild(s); continue; }
+      place--;
+      const win = document.createElement('span');
+      win.style.cssText = `display:inline-block;position:relative;overflow:hidden;width:${cellW}px;height:${winH}px`;
+      const col = document.createElement('span');
+      col.style.cssText = 'position:absolute;left:0;top:0;display:flex;flex-direction:column;will-change:transform,filter';
+      const turns = (opt.turns || 3) + (digits - 1 - place);        // the ones place spins the most
+      for (let k = 0; k <= turns * 10 + 9; k++) {
+        const c = document.createElement('span');
+        c.textContent = String(k % 10);
+        c.style.cssText = `display:block;height:${cellH}px;line-height:${cellH}px;text-align:center`;
+        col.appendChild(c);
+      }
+      win.appendChild(col); el.appendChild(win);
+      reels.push({ win, col, target: turns * 10 + (+ch), place });
+    }
+    const t0 = opt.t0 || 0, t1 = opt.t1 || t0 + 1.5, st = opt.stagger == null ? 0.12 : opt.stagger;
+    const bounce = opt.bounce == null ? 0.16 : opt.bounce, maxBlur = opt.blur == null ? cellH * 0.12 : opt.blur;
+    const off = (winH - cellH) / 2;
+    return {
+      reels,
+      at(t) {
+        reels.forEach((r, i) => {
+          const myLock = t1 - (reels.length - 1 - i) * st;             // high places lock first, ones last at t1
+          const p = prog(t, t0, myLock), spin = E.expo(p);
+          let v = r.target * spin;
+          const sb = prog(t, myLock, myLock + 0.34);
+          if (sb > 0 && sb < 1) v -= Math.sin(sb * Math.PI) * (1 - sb) * bounce * (1 + 0.5 * r.place / Math.max(1, digits));
+          r.col.style.transform = `translateY(${off - v * cellH}px)`;
+          const speed = p >= 1 ? 0 : 1 - spin;                        // reel speed ~ remaining travel
+          r.col.style.filter = speed > 0.01 ? `blur(${speed * speed * maxBlur}px)` : 'none';
+          const fw = speed * 19;                                      // feather % follows speed, 0 when locked
+          r.win.style.webkitMaskImage = r.win.style.maskImage = fw > 0.2
+            ? `linear-gradient(to bottom, transparent 0%, #000 ${fw}%, #000 ${100 - fw}%, transparent 100%)` : 'none';
+        });
+      }
+    };
+  };
+
+  /* ------------------------------------------------------------ decode / scramble text
+     ctl = MG.decode(el, 'REASON 7', opt); ctl.at(t) every frame.
+     Characters cycle through a pool, then lock left to right — a hook that makes people
+     read the opening line. Use the brand's own glyphs as the pool when you can (pool:
+     a string of characters). Every slot is fixed to its final glyph's width, so changing
+     glyphs never jitter the line. Randomness is a hash of (tick, slot): deterministic.
+     opt: {t0, each (s per char, 0.115), rate (glyph changes/s, 30), pool, flash (colour)} */
+  MG.decode = function (el, text, opt = {}) {
+    el.textContent = '';
+    el.style.whiteSpace = 'pre';
+    const slots = [...text].map(ch => {
+      const s = document.createElement('span');
+      s.textContent = ch; s.style.display = 'inline-block'; s.style.textAlign = 'center';
+      el.appendChild(s);
+      return { el: s, ch };
+    });
+    slots.forEach(s => { s.el.style.width = s.el.getBoundingClientRect().width + 'px'; });
+    const pool = opt.pool || 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&*+=/<>';
+    const t0 = opt.t0 || 0, each = opt.each || 0.115, rate = opt.rate || 30;
+    return {
+      at(t) {
+        slots.forEach((s, i) => {
+          const lockT = t0 + i * each, st = s.el.style;
+          if (s.ch === ' ') { s.el.textContent = ' '; return; }
+          if (t < t0) { st.opacity = 0; return; }
+          if (t >= lockT) {
+            s.el.textContent = s.ch;
+            const fl = MG.imp(t, lockT, 0.2, 2);
+            st.opacity = 1;
+            st.filter = fl > 0.01 ? `brightness(${1 + 1.5 * fl})${opt.flash ? ` drop-shadow(0 0 ${0.3 * fl}em ${opt.flash})` : ''}` : 'none';
+            st.transform = 'none';
+          } else {
+            const h = (Math.floor(t * rate) * 2654435761 + i * 40503) >>> 0;
+            s.el.textContent = pool[h % pool.length];
+            st.opacity = 0.3 + 0.55 * (((h >>> 13) % 100) / 100);
+            st.transform = `translateY(${((((h >>> 7) % 100) / 100) - 0.5) * 0.06}em)`;
+            st.filter = 'none';
+          }
+        });
+      }
+    };
   };
 
   /* ------------------------------------------------------------ SVG draw + morph */
@@ -406,10 +532,18 @@
       let op = 1, e = el;
       while (e && e !== document.body) { op *= +getComputedStyle(e).opacity; e = e.parentElement; }
       if (op < 0.5) continue;
-      const r = el.getBoundingClientRect();
-      if (r.width < 1 || r.right < 0 || r.left > W || r.bottom < 0 || r.top > H) continue;
+      // what is actually visible: the box clipped by every overflow-hidden ancestor
+      // (counter reels, split-text masks) — clipped-away text is not on screen
+      const b0 = el.getBoundingClientRect();
+      let r = { left: b0.left, top: b0.top, right: b0.right, bottom: b0.bottom };
+      for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+        if (getComputedStyle(a).overflow === 'visible') continue;
+        const c = a.getBoundingClientRect();
+        r = { left: Math.max(r.left, c.left), top: Math.max(r.top, c.top), right: Math.min(r.right, c.right), bottom: Math.min(r.bottom, c.bottom) };
+      }
+      if (r.right - r.left < 1 || r.bottom - r.top < 1 || r.right < 0 || r.left > W || r.bottom < 0 || r.top > H) continue;
       // rendered size = font size × every ancestor's scale (bounding box vs layout box)
-      const px = parseFloat(cs.fontSize) * (el.offsetHeight ? r.height / el.offsetHeight : 1);
+      const px = parseFloat(cs.fontSize) * (el.offsetHeight ? (b0.bottom - b0.top) / el.offsetHeight : 1);
       const share = px / H;
       if (!deco && (out.minText === null || share < out.minText)) { out.minText = share; out.minTextSample = txt.slice(0, 24); }
       if (!bleed && (r.left < m || r.right > W - m || r.top < m || r.bottom > H - m))
