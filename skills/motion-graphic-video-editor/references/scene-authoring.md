@@ -17,7 +17,9 @@ window.__ready  = true;   // 仅在字体与全部图片 decode 完成后置 tru
 - 资源门控：`Promise.all([document.fonts.ready, ...imgs.map(i=>i.decode())])` 之后才 `__ready=true`；渲染器必须挂 `pageerror` 钩子——静默 JS 异常（最常见：const 声明前引用）= 2000 张一模一样的帧。
 - 几何经 query string 传入：`scene.html?w=1920&h=1080&fps=60`，一份工程服务所有画幅。
 
-### 6.2 缓动与脉冲词汇表（照抄使用）
+### 6.2 缓动与脉冲词汇表
+
+> **新场景一律用 `assets/mg-kit.js`**（`MG.ease.*`、`MG.spring`、`MG.tween`、`MG.reveal`…，见 SKILL.md §6 的速查表）。下面这组手写函数是旧场景的写法，`imp()` 的原理仍然适用（`MG.imp` 就是它）。
 
 ```js
 const cl    = v => Math.max(0, Math.min(1, v));
@@ -62,7 +64,7 @@ const imp   = (t,t0,w,k=2.4) => (t<t0 || t>=t0+w) ? 0 : Math.pow(1-(t-t0)/w, k);
 
 ### 6.6 性能铁律
 
-- 成本全在栅格化不在 JS（样式更新 ~350fps，截帧 0.8–2.5fps/worker）。渲染慢时：**先杀 blur 层，再减绘制面积，永远不用优化 JS**。
+- 成本全在栅格化不在 JS。渲染器默认走 GPU（Metal），CSS blur 不再是灾难，但全屏多层 blur 仍是最贵的东西。渲染慢时：**先杀 blur 层，再减绘制面积，永远不用优化 JS**。
 - 大层辉光一律预渲染 PNG（§8 prerender），场景内只动 transform/opacity。
 - 视窗外的元素组 `display:none`，不是 opacity:0（隐形 div 也在付栅格化成本）。
 - ~1000–1500 个动画 div @1080p 双 worker ≈2.5–5fps 截帧，可接受。

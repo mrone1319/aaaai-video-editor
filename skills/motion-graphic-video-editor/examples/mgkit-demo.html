@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>mg-kit demo</title>
+<!--
+  Every mg-kit move in one 8-second scene — render it to see the vocabulary and
+  to check the toolchain. Palette and copy are neutral placeholders.
+
+  render (serve the skill folder so ../assets resolves):
+    $PY scripts/render_frames.py --scene examples/mgkit-demo.html --root . \
+        --dur 8 --preview --video /tmp/mgkit_preview.mp4
+-->
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#0B0B0F;overflow:hidden}
+#stage{position:relative;overflow:hidden;background:radial-gradient(ellipse at 50% 40%,#1B1B24 0%,#0B0B0F 70%)}
+.layer{position:absolute;inset:0;transform-origin:50% 50%;will-change:transform}
+.panel{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.h1{font-family:-apple-system,"PingFang SC","Helvetica Neue",sans-serif;font-weight:800;letter-spacing:-.03em;color:#F4F2EC}
+.sub{font-family:-apple-system,"PingFang SC",sans-serif;font-weight:500;color:#9A98A6}
+.mono{font-family:"SF Mono",Menlo,monospace;font-weight:700;color:#F4F2EC;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;border-radius:999px;background:#F5B83D;color:#14120E;font-family:-apple-system,sans-serif;font-weight:800}
+#grid{position:absolute;inset:-20%;background-image:linear-gradient(#ffffff0d 1px,transparent 1px),linear-gradient(90deg,#ffffff0d 1px,transparent 1px)}
+#dots i{position:absolute;border-radius:50%;background:#F5B83D}
+#lot{position:absolute}
+#grain{position:absolute;inset:0;mix-blend-mode:overlay;opacity:.10}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="layer" id="Lfar"><div id="grid"></div></div>
+  <div class="layer" id="Lmid"><div id="dots"></div></div>
+  <div class="layer" id="Lfront">
+    <div class="panel" id="P1">
+      <div class="h1" id="head">Motion, designed.</div>
+      <svg id="ul" style="overflow:visible"><path id="ulp" fill="none" stroke="#F5B83D" stroke-linecap="round"/></svg>
+      <div class="sub" id="sub">Springs, masks, parallax, motion blur</div>
+      <div style="display:flex;align-items:center;gap:.6em" id="row">
+        <span class="badge" id="badge">NEW</span><span class="mono" id="count">0</span>
+      </div>
+    </div>
+    <div class="panel" id="P2">
+      <svg id="shape" viewBox="-60 -60 120 120"><path id="sp" fill="#F5B83D"/></svg>
+      <div id="lot"></div>
+      <div class="h1" id="line2" style="text-align:center">Ideas land better when the motion has weight.</div>
+    </div>
+  </div>
+  <canvas id="grain"></canvas>
+</div>
+<script src="../assets/vendor/lottie.min.js"></script>
+<script src="../assets/mg-kit.js"></script>
+<script>
+const P = new URLSearchParams(location.search);
+const W = +(P.get('w') || 1920), H = +(P.get('h') || 1080), FPS = +(P.get('fps') || 60);
+const S = Math.sqrt(W * H / (1920 * 1080));
+const $ = id => document.getElementById(id);
+$('stage').style.width = W + 'px'; $('stage').style.height = H + 'px';
+const E = MG.ease;
+
+/* ---- timeline (seconds) ---- */
+const T = { head: 0.25, sub: 0.95, line: 1.35, badge: 1.75, count: 2.1, whip: 4.0, morph: 4.55, lottie: 4.7, line2: 5.6, out: 7.3 };
+MG.blur(T.whip - 0.05, T.whip + 0.55);     // the only fast move: ask the renderer for motion blur here
+
+/* ---- layout ---- */
+$('head').style.fontSize = 132 * S + 'px';
+$('sub').style.fontSize = 38 * S + 'px'; $('sub').style.marginTop = 26 * S + 'px';
+$('row').style.marginTop = 46 * S + 'px';
+$('badge').style.cssText += `;font-size:${30 * S}px;padding:${8 * S}px ${22 * S}px`;
+$('count').style.fontSize = 64 * S + 'px';
+$('grid').style.backgroundSize = `${80 * S}px ${80 * S}px`;
+$('shape').style.width = $('shape').style.height = 220 * S + 'px';
+$('lot').style.cssText += `;width:${200 * S}px;height:${200 * S}px;right:${W * 0.16}px;top:${H * 0.24}px`;
+$('line2').style.fontSize = 76 * S + 'px'; $('line2').style.maxWidth = W * 0.62 + 'px'; $('line2').style.marginTop = 40 * S + 'px';
+
+/* underline path (drawn on) */
+const ulw = 520 * S;
+$('ul').setAttribute('width', ulw); $('ul').setAttribute('height', 24 * S);
+$('ulp').setAttribute('d', `M ${6 * S} ${14 * S} C ${ulw * 0.3} ${4 * S}, ${ulw * 0.7} ${22 * S}, ${ulw - 6 * S} ${10 * S}`);
+$('ulp').setAttribute('stroke-width', 8 * S);
+
+/* square → circle: same command layout (4 cubic segments), so it morphs cleanly */
+const SQ = 'M -50 -50 C -16 -50 16 -50 50 -50 C 50 -16 50 16 50 50 C 16 50 -16 50 -50 50 C -50 16 -50 -16 -50 -50 Z';
+const K = 0.5523 * 50;
+const CI = `M 0 -50 C ${K} -50 50 ${-K} 50 0 C 50 ${K} ${K} 50 0 50 C ${-K} 50 -50 ${K} -50 0 C -50 ${-K} ${-K} -50 0 -50 Z`;
+
+/* floating dots on the mid layer (seeded, built once) */
+const R = MG.rand(7), dots = [];
+for (let i = 0; i < 26; i++) {
+  const d = document.createElement('i'), s = (4 + R() * 10) * S;
+  d.style.width = d.style.height = s + 'px';
+  dots.push({ el: d, x: R() * W, y: R() * H, ph: R() * 10, a: 0.15 + R() * 0.5 });
+  $('dots').appendChild(d);
+}
+
+/* grain: one static noise tile, shifted per WHOLE frame (Math.floor) so motion-blur sub-samples agree */
+const g = $('grain'); g.width = 256; g.height = 256;
+{ const c = g.getContext('2d'), im = c.createImageData(256, 256), r = MG.rand(3);
+  for (let i = 0; i < im.data.length; i += 4) { const v = r() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+  c.putImageData(im, 0, 0); }
+g.style.width = W + 'px'; g.style.height = H + 'px'; g.style.imageRendering = 'pixelated';
+
+let head, sub, line2, lot;
+const layers = [{ el: $('Lfar'), z: 2.5 }, { el: $('Lmid'), z: 0.8 }, { el: $('Lfront'), z: 0 }];
+
+window.__render = function (frame) {
+  const t = frame / FPS;
+
+  /* camera: slow push + organic breathing (noise is continuous → sub-frames agree) */
+  MG.camera(layers, {
+    zoom: 1 + 0.06 * MG.at(t, 0, 8, E.inOut),
+    x: MG.noise(t * 0.35, 1) * 14 * S, y: MG.noise(t * 0.3, 2) * 9 * S, rot: MG.noise(t * 0.2, 3) * 0.35
+  });
+
+  /* panel 1 */
+  MG.reveal(head, t, T.head, { style: 'mask', each: 0.032, dur: 0.75 });
+  MG.reveal(sub, t, T.sub, { style: 'rise', each: 0.07, dur: 0.6 });
+  MG.draw($('ulp'), MG.at(t, T.line, T.line + 0.7, E.snap));
+  const b = MG.spring(t - T.badge, { stiffness: 320, damping: 16 });
+  $('badge').style.transform = `scale(${Math.max(0, b)}) rotate(${(1 - Math.min(1, b)) * -12}deg)`;
+  $('count').textContent = Math.round(MG.tween(t, [[T.count, 0], [T.count + 1.4, 2026, E.out]])).toString();
+  $('count').style.opacity = MG.at(t, T.count - 0.1, T.count + 0.2);
+
+  /* whip pan: panel 1 leaves left, panel 2 arrives from the right (one move, E.whip) */
+  const wp = MG.at(t, T.whip, T.whip + 0.5, E.whip);
+  $('P1').style.transform = `translateX(${-wp * W * 1.1}px)`;
+  $('P2').style.transform = `translateX(${(1 - wp) * W * 1.1}px)`;
+
+  /* panel 2 */
+  const mp = MG.at(t, T.morph, T.morph + 0.9, E.anticipateOvershoot);
+  $('sp').setAttribute('d', MG.morph(SQ, CI, MG.clamp(mp, 0, 1)));
+  $('shape').style.transform = `rotate(${mp * 90}deg) scale(${0.8 + 0.2 * MG.spring(t - T.morph, { stiffness: 220, damping: 14 })})`;
+  lot.at(t);
+  MG.reveal(line2, t, T.line2, { style: 'mask', each: 0.11, dur: 0.8, out: T.out });
+
+  /* mid layer drift */
+  dots.forEach(d => {
+    d.el.style.transform = `translate(${d.x + MG.noise(t * 0.3 + d.ph, 11) * 30 * S}px,${d.y + MG.noise(t * 0.25 + d.ph, 12) * 24 * S}px)`;
+    d.el.style.opacity = d.a * MG.at(t, 0, 1.2);
+  });
+
+  const fr = Math.floor(frame);
+  g.style.transform = `translate(${(fr * 37) % 97 - 48}px,${(fr * 53) % 89 - 44}px) scale(1.2)`;
+};
+
+document.fonts.ready.then(() => {
+  head = MG.split($('head'), 'chars');
+  sub = MG.split($('sub'), 'words');
+  line2 = MG.split($('line2'), 'lines');
+  lot = MG.lottie($('lot'), { path: 'lottie-test.json', start: T.lottie });
+  MG.ready();
+});
+</script>
+</body>
+</html>

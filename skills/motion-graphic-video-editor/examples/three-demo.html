@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>mg-three demo</title>
+<!--
+  Real 3D logo: traced outline → extruded solid, front face textured with the
+  original PNG, studio rim lights, camera move, particle depth, title over it.
+  Needs logo.png + logo_outline.json next to this file
+  (logo_tools.py outline logo.png logo_outline.json).
+
+    $PY scripts/render_frames.py --scene examples/three-demo.html --root . --dur 6 --preview --video /tmp/3d.mp4
+-->
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#0B0B0F;overflow:hidden}
+#stage{position:relative;overflow:hidden}
+#gl{position:absolute;left:0;top:0}
+#cap{position:absolute;left:0;right:0;text-align:center;font-family:-apple-system,"PingFang SC",sans-serif;
+     font-weight:700;color:#EDEBE5;letter-spacing:.32em;text-indent:.32em}
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="gl"></canvas><div id="cap">REAL 3D · DETERMINISTIC</div></div>
+<script src="../assets/mg-kit.js"></script>
+<script type="module">
+import { stage3d, extrudeLogo, studioLights, studioEnv, particles, loadTexture, THREE } from '../assets/mg-three.js';
+const P = new URLSearchParams(location.search);
+const W = +(P.get('w') || 1920), H = +(P.get('h') || 1080), FPS = +(P.get('fps') || 60);
+const S = Math.sqrt(W * H / (1920 * 1080)), E = MG.ease;
+document.getElementById('stage').style.cssText = `width:${W}px;height:${H}px`;
+const cap = document.getElementById('cap');
+cap.style.fontSize = 26 * S + 'px'; cap.style.top = H * 0.78 + 'px';
+const capParts = MG.split(cap, 'chars');
+
+const st = stage3d(document.getElementById('gl'), W, H, { background: '#0B0B0F', fog: { near: 12, far: 40 }, distance: 12 });
+studioLights(st.scene, { rimA: '#FF5F3C', rimB: '#5A78FF', key: 1.4 });
+studioEnv(st, { rimA: '#FF5F3C', rimB: '#5A78FF' });
+const dust = particles(st.scene, { count: 700, seed: 4, color: '#C9C4B8', size: 0.05 });
+
+const [outline, tex] = await Promise.all([fetch('logo_outline.json').then(r => r.json()), loadTexture('logo.png')]);
+const logo = extrudeLogo(outline, { texture: tex, width: 6.2, depth: 0.9, sideColor: '#8A8A96', sideMetal: 1.0, sideRoughness: 0.22 });
+st.scene.add(logo);
+MG.blur(0, 1.1);   // the fast fly-in is the only blurred section
+
+window.__render = function (frame) {
+  const t = frame / FPS;
+  // fly-in: from deep and turned, settle with a spring; then a slow orbit that never fully stops
+  const k = MG.spring(t - 0.15, { stiffness: 90, damping: 15 });
+  logo.position.z = MG.lerp(-14, 0, k);
+  logo.rotation.y = MG.lerp(-1.25, 0, k) + 0.22 * Math.sin(t * 0.55) * MG.at(t, 1.2, 3);
+  logo.rotation.x = MG.lerp(0.35, 0, k) + 0.05 * MG.noise(t * 0.4, 5);
+  // camera: gentle dolly + drift
+  st.camera.position.set(MG.noise(t * 0.25, 1) * 0.6, 0.3 + MG.noise(t * 0.2, 2) * 0.3, MG.lerp(12, 10.6, MG.at(t, 0, 6, E.inOut)));
+  st.camera.lookAt(0, 0, 0);
+  dust.rotation.y = t * 0.03;
+  // rim lights breathe so the bevel catches moving highlights
+  st.render();
+  MG.reveal(capParts, t, 2.2, { style: 'rise', each: 0.03, dur: 0.6 });
+};
+MG.ready();
+</script>
+</body>
+</html>

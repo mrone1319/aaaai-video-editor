@@ -19,12 +19,14 @@ npm i @fontsource/<family>        # 字体一律走 npm（woff2 → 本地 @font
 任何一项失败：先跑一次 aaaai-editor 套件的安装器修复环境，不要自行改系统 Python。
 
 常备字体五件套：几何 Display(600) / Body(500) / Mono(400 全大写 metadata 用) / 科技数字体（如 Orbitron 600，滚轮专用）/ 按品牌书补装。
-性能预算：截帧 ~1s/帧/worker（2 核机）；35s×60fps 双 worker ≈17 分钟；改动攒一轮再渲。
+性能预算（2026-10 实测，M2 8 核）：渲染器默认用 GPU（ANGLE/Metal）＋自动 4 个 worker，简单场景 1080p60 约 20–40 帧/秒，35s×60fps 约 1–2 分钟；`--preview`（960 宽、30fps）8 秒片约 5 秒。`--cpu` 退回软件光栅（约慢 5 倍）。改动仍然攒一轮再全量渲。
 
 ### 13.1 增强依赖（可选，默认未安装；需要时再装，装进套件自带的解释器）
 
 ```bash
-# 渲染性能：Playwright 启动加 --use-gl=angle --use-angle=metal（macOS，命中 §6.6 的 blur 头号瓶颈）
+# 渲染性能：GPU（ANGLE/Metal）已是 render_frames.py 默认，不用再手动加参数
+# 3D Logo 描轮廓（logo_tools.py outline）需要 OpenCV：
+~/.aaaai-editor/bin/aaaai-editor-python -m pip install --user --break-system-packages opencv-python-headless
 brew install vips && ~/.aaaai-editor/bin/aaaai-editor-python -m pip install --user --break-system-packages pyvips   # 辉光/挤出层大图预渲染，比 Pillow 快一个数量级
 
 # 品牌资产自动化（§4.2/§4.3 现在靠人眼读 PDF/手动采样，这两个库可半自动化）
@@ -38,12 +40,14 @@ brew install vips && ~/.aaaai-editor/bin/aaaai-editor-python -m pip install --us
 # pedalboard：专业级 reverb/EQ/压缩，替代手写指数衰减噪声卷积混响
 ```
 
-Playwright 加速启动示例：`sync_playwright().chromium.launch(args=["--use-gl=angle", "--use-angle=metal"])`（仅 macOS；其他平台不加）。
+GPU 渲染由 render_frames.py 自动处理（macOS：Metal；Windows：D3D11；其他平台用软件光栅）。同一支片从头到尾用同一种（GPU 与 CPU 的抗锯齿差不到 1 像素，但混用会让局部补渲的帧对不上）。
 
 ```
 project/
 ├── scene.html          # 单文件场景（常量区 → 时间轴 T → 构建 → 渲染函数）
-├── score.py            # 配乐（顶部 T 与场景逐字同步）
+├── mg-kit.js           # 从 assets/ 复制：动作库（缓动、弹簧、遮罩文字、描线、变形、视差镜头、Lottie）
+├── mg-three.js、vendor/ # 需要真 3D／Lottie 时从 assets/ 复制
+├── score.wav、grid.json # 真实配乐（music_grid.py fit）或 score.py 合成的临时配乐
 ├── fonts/              # display/body/mono/digit .woff2 (+ttf)
 ├── assets/             # logo 原图/切件/字形/挤出 slabs/辉光 PNG/录屏帧序列/cells.json
 ├── frames/L | frames/P # 渲染帧（横/竖）

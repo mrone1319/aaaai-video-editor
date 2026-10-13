@@ -1,5 +1,7 @@
 # 效果配方库（§7 全文）
 
+> 配方里的动作（缓动、错峰、遮罩文字、描线、变形、视差镜头、弹簧）现在都有 `assets/mg-kit.js` 的现成实现；3D 挤出 Logo 有 `assets/mg-three.js` 的真 3D 版本（`examples/three-demo.html`），比 §7.3 的 CSS slabs 立体感强得多。
+
 > 本文件内容从 SKILL.md 移出（渐进式披露），节号沿用 SKILL.md 原编号，方便交叉引用。
 > `$SK` = 本 skill 的 `scripts/` 目录；`$PY` = `~/.aaaai-editor/bin/aaaai-editor-python`（见 SKILL.md 开头的环境设置）。
 

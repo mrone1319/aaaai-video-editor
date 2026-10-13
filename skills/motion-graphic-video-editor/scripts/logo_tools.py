@@ -17,6 +17,11 @@ letters Crop individual letterforms. Animating the brand's own glyphs instead
 slabs   Build the brightness ramp used for 3D extrusion.
 strip   Zero the alpha below/above a row — used to drop hairline text out of an
         extrusion source (thin strokes comb between slabs).
+outline Trace the logo's alpha into vector outlines (outer contours + holes) as
+        JSON, for a real 3D extrusion in three.js (assets/mg-three.js). The
+        front face is then textured with the original PNG, so gradients and
+        colours stay exact. Needs OpenCV (optional): $PY -m pip install --user
+        opencv-python-headless
 
 Note on `letters`: crops share one vertical band (the mark's own cap and base
 lines) rather than each letter's own bounding box. That keeps true relative
@@ -202,6 +207,50 @@ def cmd_reflect(args):
     print(f"wrote {args.out}")
 
 
+def cmd_outline(args):
+    try:
+        import cv2
+    except ImportError:
+        raise SystemExit("outline needs OpenCV: ~/.aaaai-editor/bin/aaaai-editor-python -m pip install --user "
+                         "opencv-python-headless")
+    img = load(args.src)
+    a = np.asarray(img)[..., 3]
+    if args.scale != 1.0:   # trace at a higher resolution for smoother curves on small logos
+        a = cv2.resize(a, None, fx=args.scale, fy=args.scale, interpolation=cv2.INTER_CUBIC)
+    m = (a > args.thresh).astype(np.uint8) * 255
+    m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))   # drop single-pixel specks
+    cs, hier = cv2.findContours(m, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+    if hier is None:
+        raise SystemExit("no opaque pixels found (is the logo keyed? try `key` first)")
+    hier = hier[0]
+    k = 1.0 / args.scale
+    shapes, dropped = [], 0
+    min_area = args.min_area * args.scale * args.scale
+
+    def poly(c):
+        c = cv2.approxPolyDP(c, args.eps * args.scale, True)[:, 0, :].astype(float) * k
+        return [[round(x, 2), round(y, 2)] for x, y in c]
+
+    for i, c in enumerate(cs):
+        if hier[i][3] != -1:            # holes are collected under their parent
+            continue
+        if cv2.contourArea(c) < min_area:
+            dropped += 1
+            continue
+        holes, j = [], hier[i][2]
+        while j != -1:
+            if cv2.contourArea(cs[j]) >= min_area * 0.25:
+                holes.append(poly(cs[j]))
+            j = hier[j][0]
+        shapes.append({"outer": poly(c), "holes": holes})
+    out = {"w": img.width, "h": img.height, "shapes": shapes}
+    with open(args.out, "w") as fh:
+        json.dump(out, fh)
+    pts = sum(len(s_["outer"]) + sum(len(h) for h in s_["holes"]) for s_ in shapes)
+    print(f"wrote {args.out}: {len(shapes)} shapes, {sum(len(s_['holes']) for s_ in shapes)} holes, "
+          f"{pts} points" + (f" ({dropped} specks dropped)" if dropped else ""))
+
+
 # ---------------------------------------------------------------- cli
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
@@ -254,6 +303,14 @@ def main():
     p.add_argument("--strength", type=float, default=0.40)
     p.add_argument("--blur", type=float, default=3.0)
     p.set_defaults(f=cmd_reflect)
+
+    p = sub.add_parser("outline", help="vector outlines (JSON) for a real 3D extrusion")
+    p.add_argument("src"); p.add_argument("out")
+    p.add_argument("--thresh", type=int, default=128, help="alpha cut-off")
+    p.add_argument("--eps", type=float, default=0.6, help="simplification tolerance in px")
+    p.add_argument("--scale", type=float, default=2.0, help="trace at this upscale for smoother curves")
+    p.add_argument("--min-area", type=float, default=40.0, help="ignore blobs smaller than this (px²)")
+    p.set_defaults(f=cmd_outline)
 
     a = ap.parse_args()
     a.f(a)

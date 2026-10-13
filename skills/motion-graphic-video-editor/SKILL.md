@@ -1,6 +1,6 @@
 ---
 name: motion-graphic-video-editor
-description: "代码化动效品牌片制作——用无头 Chromium（Playwright）+ Python（numpy/scipy/Pillow）+ ffmpeg 产出广播级 MP4（60fps、原创合成配乐、多画幅），不用 AE、不用模板、不用版权音乐。适用：宣传片、预告片、片头、倒计时、发布片、Logo 动画／Logo sting、品牌焕新、品牌片、动效、文字动画、数据动画／数字揭示、活动公告；用户丢来参考片要求仿其剪辑风格；品牌书 PDF 或 Logo 连同动画需求一起到达时。边界：讲解片／网站转影片／幻灯片／产品发布讲解 → HyperFrames；真人口播剪辑 → aaaai-editor。动手前必须先走 Intake（问需求、收素材、定方向）。Code-based motion graphics video editor: promo, teaser, countdown, launch film, logo sting, rebrand reveal, stat/data reveal, event announcement, title sequence, kinetic typography or animated logo delivered as a real video file; also when a reference clip is handed over to copy its editing style, or a brand book / logo arrives with an animation request. Explainers, website-to-video, slides and product-launch walkthroughs go to HyperFrames; talking-head footage edits go to aaaai-editor. ALWAYS run Intake before building."
+description: "代码化动效品牌片制作——用无头 Chromium（Playwright）+ Python（numpy/scipy/Pillow）+ ffmpeg 产出广播级 MP4（60fps、多画幅；动作库＋真 3D＋运动模糊；配乐优先用授权真实音乐并自动对拍，或原创合成），不用 AE、不用模板。适用：宣传片、预告片、片头、倒计时、发布片、Logo 动画／Logo sting、品牌焕新、品牌片、动效、文字动画、数据动画／数字揭示、活动公告；用户丢来参考片要求仿其剪辑风格；品牌书 PDF 或 Logo 连同动画需求一起到达时。边界：讲解片／网站转影片／幻灯片／产品发布讲解 → HyperFrames；真人口播剪辑 → aaaai-editor。动手前必须先走 Intake（问需求、收素材、定方向）。Code-based motion graphics video editor: promo, teaser, countdown, launch film, logo sting, rebrand reveal, stat/data reveal, event announcement, title sequence, kinetic typography or animated logo delivered as a real video file; also when a reference clip is handed over to copy its editing style, or a brand book / logo arrives with an animation request. Explainers, website-to-video, slides and product-launch walkthroughs go to HyperFrames; talking-head footage edits go to aaaai-editor. ALWAYS run Intake before building."
 ---
 
 # 通用型 Motion Graphic Video Editor — 整合技能手册
@@ -20,13 +20,14 @@ SK=<本 SKILL.md 所在目录>/scripts     # 脚本在本 SKILL.md 同目录的 
 ```
 
 - skill 可能装在 `~/.claude/skills/<name>`、`~/.agents/skills/<name>`（Codex）或插件缓存目录——**一律按本 SKILL.md 的实际路径推出 `$SK`**，不要写死。模板在同目录 `assets/`。
+- `assets/` 里的工具件（复制进项目文件夹使用）：`mg-kit.js` 动作库、`mg-three.js` 真 3D、`vendor/three.module.min.js`、`vendor/lottie.min.js`（MIT）。`examples/mgkit-demo.html`（每个动作一次看完）与 `examples/three-demo.html`（3D Logo）可直接渲染来看效果、验证环境。
 - **shell 变量不会在两次独立的命令调用之间保留**：每个命令块都要重新 `export PATH` / 设 `PY`、`SK`，或直接写绝对路径。
 - 脚本内部自行解析 ffmpeg：`$AAAAI_EDITOR_FFMPEG` → `/opt/homebrew/opt/ffmpeg-full/bin/ffmpeg` → `/usr/local/opt/ffmpeg-full/bin/ffmpeg` → PATH 上的 `ffmpeg`（ffprobe 取同目录）。
 - 环境自检、可选增强依赖、项目目录结构：详见 `references/environment.md`（§13）。
 
 核心管线（Verify 刻意放在昂贵的全量渲染**之前**）：
 
-**intake → deconstruct → harvest → direction → ★concept → grid → author → prerender → verify → render → score → encode → deliver → iterate**
+**intake → deconstruct → harvest → direction → ★concept → music → grid → author → prerender → verify（静帧＋★动态预览＋能量验收）→ render → encode → deliver → iterate**
 
 > `concept`（§4.7 构思定稿）是**不可跳过**的一步：先用一句话锁定"这支片是什么"，再去 §7 配方库取材。
 > 跳过它 = 从效果目录里挑零件拼装 = 成片有"零件感"。
@@ -154,6 +155,22 @@ SK=<本 SKILL.md 所在目录>/scripts     # 脚本在本 SKILL.md 同目录的 
 
 ## 5. Grid — 音乐网格时间轴（全流程最高杠杆的两分钟）
 
+### 5.0 先定音乐（真实配乐优先，合成只当临时配乐）
+
+配乐是整支片质感的天花板：程序合成的配乐音色单薄，**交付版一律优先用真实音乐**。来源（Intake 时让用户选）：
+1. 用户自己的授权音乐文件；
+2. **HeyGen 音乐库**（一万首以上）：调用 skill `hyperframes:media-use` 的 `resolve bgm`，按情绪／BPM 找，先给 2–3 首试听；第一次要用户本人在终端 `heygen auth login --oauth` 登录（你不能替他登录）；提醒商用前在 HeyGen 确认授权；
+3. 套件常备配乐库（原创、零版权）：`~/.aaaai-editor/app/assets/bgm/*.m4a`（`aaaai-editor bgm` 看清单）；
+4. 以上都不行才用 §9 合成。
+
+定了曲子就跑：
+```bash
+$PY "$SK/music_grid.py" fit song.mp3 --dur 24 --drop-at 9.5 --out out/score.wav --grid out/grid.json
+```
+它会挑歌里最合适的一段（从小节头开始；片尾落在**歌的自然结尾**或乐段交界，不靠淡出；`--drop-at` 的高潮对上真实 drop），
+剪好并统一到 -14 LUFS，印出 `const MUSIC = {...}`——**贴进场景顶部，锚点直接用 `MUSIC.bars[i]`／`MUSIC.drops[0]`**。
+片长可能为了跟歌一起结束伸缩 1–2 小节，它会印出新的 `DUR`，场景与渲染都改用它。实测：一首 144 BPM 的歌，24 秒片自动伸成 24.81 秒、正好收在歌的结尾，高潮离 drop 0.07 秒。
+
 ### 5.1 信息密度校验（定 BPM 前先算）
 
 **"太赶太挤"是 §11 里付过学费最多的一条反馈——用公式在动手前拦住。**
@@ -167,7 +184,7 @@ SK=<本 SKILL.md 所在目录>/scripts     # 脚本在本 SKILL.md 同目录的 
 
 ### 5.2 定 BPM 与时间轴
 
-- 定 BPM。**120 BPM（beat=0.5s，bar=2.0s）是 promo 通用默认**；紧张倒计时 ≈128+，抒情 ≈90。片长凑整小节数（16/18/21/24s…）。
+- 用真实配乐时 BPM、小节线都来自 `MUSIC`（§5.0），不要自己假设。合成配乐才自己定 BPM：**120 BPM（beat=0.5s，bar=2.0s）是 promo 通用默认**；紧张倒计时 ≈128+，抒情 ≈90。片长凑整小节数（16/18/21/24s…）。
 - **锚点**（全片就那 3–5 个：唯一的硬冲击、数字锁定、drop、尾板进入、Logo 落定）**必须精确卡在 beat/bar 线上**（帧级精度）。
 - **其余所有事件的时间点，由内容本身决定**（句子讲完、数字滚停、读完最后一个字、物体落定），**不要四舍五入到网格上**。
 - ⚠️ **不要用随机抖动伪造"人味"**——随机 jitter 读起来是邋遢。网格是**参照物，不是磁铁**。
@@ -179,7 +196,27 @@ SK=<本 SKILL.md 所在目录>/scripts     # 脚本在本 SKILL.md 同目录的 
 
 ## 6. Author — 场景编写铁律（单一自包含 HTML）
 
-起步模板：`assets/scene_template.html`（占位文案与灰白双色板，**必须按用户品牌替换**）。核心铁律：
+起步模板：`assets/scene_template.html`（占位文案与灰白双色板，**必须按用户品牌替换**）。
+
+**★ 动作一律用 `mg-kit.js`，不要再手写缓动**（把 `assets/mg-kit.js` 复制进项目，`<script src="mg-kit.js">`）。手写的 cubic/expo 只会「滑进来、停住」，这是旧片动作发平的主因。常用：
+
+| 要做的事 | 用法 |
+|---|---|
+| 按角色选缓动 | `MG.at(t, a, b, MG.ease.out)`；`smooth`（AE Easy Ease，移动到位）`out`（进场落定）`in`（离场）`snap`（果断到位）`read`（要读的慢揭示）`whip`（甩镜）`anticipate`／`overshoot`／`anticipateOvershoot` |
+| 有重量的弹出、落定 | `MG.spring(t - t0, {stiffness: 300, damping: 18})`（有过冲回弹；`170/26` 是柔和落定） |
+| 关键帧 | `MG.tween(t, [[t0, v0], [t1, v1, MG.ease.out], ...])`（数字／数组／颜色） |
+| 文字出场 | `parts = MG.split(el, 'chars'｜'words'｜'lines')`（字体载入后）→ `MG.reveal(parts, t, t0, {style: 'mask'｜'rise'｜'blur'｜'pop'｜'type', each, out})`；**mask（从遮罩边缘滑出）是最「设计感」的文字动作**，中文按字切 |
+| 错峰 | `MG.stagger(i, n, {each, from: 'center'｜'edges'｜'random'})` |
+| 线条描绘、形状变形 | `MG.draw(pathEl, p)`；`MG.morph(pathA, pathB, p)`（两个路径要同样的指令结构） |
+| 视差镜头、呼吸感 | `MG.camera([{el, z}], {x, y, zoom, rot})`；`MG.noise(t*0.3, seed)` 做缓慢有机的漂移（不要用随机抖动） |
+| Lottie 动画 | `MG.lottie(el, {path, start})` → 每帧 `ctl.at(t)`（需 `vendor/lottie.min.js`；只用有授权的 Lottie） |
+| 真 3D | `mg-three.js`：`stage3d`＋`studioEnv`（金属必须有环境反射，否则侧面全黑）＋`studioLights`＋`extrudeLogo`（Logo 先跑 `logo_tools.py outline` 描轮廓，正面贴原 PNG，渐变色完全保留）＋`particles` |
+| 告诉工具你的意图 | `MG.blur(a, b)` 这段要运动模糊；`MG.hold(a, b)` 这段是有意的停留（封面帧、尾板）；`MG.cut(t)` 这里是有意的硬切 |
+| 资源载入完再开渲 | 最后调用 `MG.ready()`（等字体、图片、Lottie 都好了才设 `__ready`） |
+
+**小数帧契约**：运动模糊会在帧与帧之间取样，`__render(frame)` 的 `frame` 可能是小数——一律 `t = frame / FPS`，不要对帧号取整；只有颗粒这类「一帧之内不该动」的东西才用 `Math.floor(frame)`。
+
+核心铁律：
 
 - **确定性契约**：`window.__render(frame)` 纯函数 + 资源全部 decode 后才 `window.__ready=true`；禁 `Date.now()`、渲染期 `Math.random()`、CSS animation/transition；随机用构建期 seeded PRNG；渲染器挂 `pageerror`。
 - **脉冲只用窗口式 `imp()`**，绝不写 `1 - progress` 型闪光（整片洗灰）。按角色选缓动：`eExpo` 给"到位"，要*读*的揭示用 ~2s 慢 cubic。
@@ -209,6 +246,8 @@ SK=<本 SKILL.md 所在目录>/scripts     # 脚本在本 SKILL.md 同目录的 
 2. **挤出 slabs**（`logo_tools.py slabs`）：亮度斜坡 0.58→0.18 + 冷色调离线生成；lockup 有独立动画的词就先切再各生成一套；生成前 strip 掉发丝线行。
 
 ## 9. Score — 原创配乐合成（numpy/scipy，零素材零版权）
+
+> 现在是**备案**：交付版优先用真实音乐（§5.0）。合成适合：临时配乐、用户明确要零版权原创、或要和画面逐个 hit 精确对位的极短 sting。
 
 **原则：编曲从视觉时间轴出发**——场景 `T` 常量原样复制进配乐脚本；每个视觉事件一个 hit，同步是查表。
 关键：**没有 breakdown，drop 落不下来**；尾板前 groove 清空，留衰减主和弦托住 logo（held frame over silence 读作事故）；计数器 tick 密度与画面同一条缓动；验证每小节 RMS 形状与影片一致；**改片长 = 场景 + 配乐两个文件同改**；静音版必须关声音看一遍仍成立。
@@ -241,17 +280,30 @@ ffmpeg -pattern_type glob -i "tmp/check/*.jpg" -vf "scale=480:270,tile=4x2" tmp/
 
 **指不出来 = 构思没落地。此时要改场景结构，不是加效果**——回 §4.7 重看构思，删掉不服务于它的图层。
 
+### 10.1b ★ 动态预览与能量验收（静帧看不出动作好不好，全量渲染前必做）
+
+```bash
+$PY "$SK/render_frames.py" --scene scene.html --dur 24 --preview --video tmp/preview.mp4 --audio out/score.wav   # 960 宽 30fps，几秒到一分钟
+$PY "$SK/check_motion.py" tmp/preview.mp4 --scene scene.html                                                   # 能量曲线＋死时间＋突然跳变＋黑场＋字号
+```
+- 把 `preview.mp4` 和能量图 `tmp/preview_motion.png` 发给用户看动作与节奏，**确认后才全量渲染**。
+- `check_motion` 报的问题都要处理或说明：**死时间**（>2 秒几乎不动、又不是 `MG.hold` 宣告的停留）→ 加镜头呼吸、视差、错峰，或缩短；
+  **突然跳变**（不是 `MG.cut`）→ 元素没缓动就跳出来；**字太小**（< 画面高 2.2%）或**超出安全区** → 改版面。
+- 实测：旧的 abcd_colony 35 秒片有 52% 的帧几乎不动、第 16–31 秒有三段死时间——这正是「后半段没力」的原因，现在动手前就会被拦下。
+
 ### 10.2 渲染与编码
 
 ```bash
 export PATH="/opt/homebrew/opt/ffmpeg-full/bin:/usr/local/opt/ffmpeg-full/bin:$PATH"
 PY=~/.aaaai-editor/bin/aaaai-editor-python; SK=<本 SKILL.md 所在目录>/scripts
-# 全量渲染：后台运行 + 轮询（工具超时不能杀进程；预算 ~1s/帧/worker）
-nohup "$PY" "$SK/render_frames.py" --scene scene.html --w 1920 --h 1080 \
-        --fps 60 --dur 24 --out frames/L --workers 2 > render.log 2>&1 &
-# 轮询：tail -n 3 render.log ; ls frames/L | wc -l   （Claude Code 也可用 Bash 工具的后台模式跑同一命令）
-bash "$SK/encode.sh" frames/L out/film_16x9.mp4 --audio out/score.wav --fps 60   # H.264 high/CRF17/+faststart
+# 全量渲染：GPU（Metal）＋自动 worker，直接出 MP4（不落 JPG）；后台跑，轮询 render.log
+nohup "$PY" "$SK/render_frames.py" --scene scene.html --w 1920 --h 1080 --fps 60 --dur 24 \
+        --video out/film_16x9.mp4 --audio out/score.wav --mblur scene > render.log 2>&1 &
+# 需要逐帧文件（局部补渲、alpha）时改用 --out frames/L，再 encode.sh：
+#   bash "$SK/encode.sh" frames/L out/film_16x9.mp4 --audio out/score.wav --fps 60
 ```
+
+速度（M2 实测）：8 秒 1080p60 的示范片 22 秒渲完；加运动模糊（只在甩镜段）48 秒；6 秒真 3D Logo 含模糊 32 秒。旧做法（CPU、2 worker）约慢 2–5 倍。
 
 **编码后必验**：`nb_frames == dur×fps`、音视频时长逐位相等（被超时杀掉的 ffmpeg 会留下"能播放的截断文件"）、`ffmpeg -v error -i out.mp4 -f null -` 完整解码。多 worker、局部补渲（`--at`）、多画幅重导、运动模糊、兼容降级版，详见 `references/delivery.md` §10.2。
 
@@ -292,12 +344,13 @@ bash "$SK/encode.sh" frames/L out/film_16x9.mp4 --audio out/score.wav --fps 60  
 4. 收割品牌资产（§4）：实测取色、切 lockup、共用垂直带切字形、读 misuse 规则。
 5. **方向定稿（§4.6）**：出 2–3 版关键帧静态对比，用户选定方向后再往下走。
 6. **★构思定稿（§4.7）**：一句话锁定"这支片是什么"＋贯穿性载体＋明确排除的效果类别，用户确认后才进 §7 取材。**跳过这步 = 成片有零件感。**
-7. 信息密度校验（§5.1）→ 定 BPM 写 `T` 对象（§5.2）。
-8. 编写场景（§6）：确定性契约、seeded PRNG、居中 flex、S 缩放、常量提升、imp() 脉冲。**取 §7 配方前先过构思闸门**。
+7. **定音乐（§5.0）** → 信息密度校验（§5.1）→ 写 `T` 对象（锚点落在 `MUSIC.bars`／`drops`，§5.2）。
+8. 编写场景（§6）：**动作用 mg-kit.js**、小数帧契约、确定性契约、seeded PRNG、居中 flex、S 缩放、常量提升；用 `MG.blur／hold／cut` 宣告意图。**取 §7 配方前先过构思闸门**。
 9. 预渲染辉光（验证零边界）与挤出 slabs（§8）。
-10. 从视觉时间轴写配乐（§9）：同一 T、breakdown 在 drop 前、尾板前 groove 清空、验证每小节 RMS 形状。
+10. 配乐：**优先真实音乐**（§5.0 `music_grid.py fit`，锚点用 `MUSIC`）；没有才从视觉时间轴合成（§9：同一 T、breakdown 在 drop 前、尾板前 groove 清空、验证每小节 RMS 形状）。
 11. 关键帧抽查 + contact sheet + 数值哨兵 + 设计自检 + **构思落地验收**（§10.1）。
-12. 后台全量渲染 → 编码 → 验证 nb_frames（§10.2）。
+11b. **动态预览＋`check_motion` 能量验收（§10.1b）**，用户看过动作再往下。
+12. 后台全量渲染（GPU、`--video`、需要时 `--mblur scene`）→ 验证 nb_frames（§10.2）。
 13. 交片六查（§10.3）→ 交付 MP4 + 海报帧 + 一行改参数清单（§10.5）。
 14. 攒批注按 §11 路由，重复 11–13。
 

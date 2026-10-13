@@ -19,7 +19,7 @@ bash "$SK/encode.sh" frames/L out/film_16x9.mp4 --audio out/score.wav --fps 60
 - 多 worker 各领**连续不相交帧段**；CDP `Page.captureScreenshot {optimizeForSpeed:true}` 截帧（远快于高层 API）；Chromium 加 `--force-color-profile=srgb --disable-lcd-text --font-render-hinting=none`。
 - **局部补渲**：只改了某段就 `--at` 传该区间逐帧时间，覆盖同名帧文件重编码——改 3 秒段 ≈1 分钟，不重渲全片。
 - 多画幅：同一场景换 `--w/--h`，`LAY` 分支自动成立；改过共享代码后**所有画幅全部重导**，不留旧代码渲的版本。
-- 可选运动模糊：2× fps 渲染 + `tmix=2` 编码。
+- 运动模糊：`render_frames.py --mblur scene`（只在场景用 `MG.blur(a,b)` 宣告的区间）或 `--mblur auto`（自动找快速移动的帧）。做法是在快门时间内渲多个子帧再平均，采样数自适应（慢的 8、快速甩镜加密到 32–64），硬切不会被糊。比旧的「2× fps＋tmix=2」真实得多；旧做法只剩兼容用途。
 - **编码后必验**：`nb_frames == dur×fps`、音视频时长逐位相等（被超时杀掉的 ffmpeg 留下"能播放的截断文件"）、`ffmpeg -v error -i out.mp4 -f null -` 完整解码、moov 在文件头。兼容降级版备用：`-profile:v baseline -level 3.1 -vf "scale=720:1280,fps=30"`。
 
 ### 10.3 交片前六查（缺一不发）

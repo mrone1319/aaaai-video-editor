@@ -22,6 +22,11 @@
               --at 1.6,2.4,4.2,6.5,9.0,11.0
 
   Then replace the CONTENT and TIMELINE blocks with your own.
+
+  New scenes: load mg-kit.js (copy it from assets/) and use MG.ease / MG.spring /
+  MG.reveal / MG.camera instead of the hand-written helpers below — see
+  examples/mgkit-demo.html. Keep `t = frame / FPS` (frames can be fractional
+  for motion blur).
 -->
 <style>
 /* ---- fonts: copy woff2 files from npm @fontsource/* into ./fonts ---------- */
