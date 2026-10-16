@@ -366,10 +366,29 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
         idx += 1
         return i, mw, mh
 
+    from . import sticker, transitions as _trn
+    ovs += _trn.band_overlays(sb.get("_transitions") or [], float(sb.get("_faces_off", 0.0)))   # 斜色带转场
+    n_stk = 0
     for ov in ovs:
         typ = ov.get("type")
         t0, t1 = float(ov["t"][0]), float(ov["t"][1])
         dur = max(0.1, t1 - t0)
+        if typ == "sticker":   # 贴纸：矢量部分写进富文本 ASS；图片贴纸是会转动／翻面的图层
+            th = theme.theme(ov.get("style") or sb.get("style"), sb.get("_base"), sb.get("brand"))
+            rec = {"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions")), "behind": False,
+                   "layers": [], "items": [], "cutout": None, "th": th, "engine": "ass",
+                   "ass": sticker.build(ov, th, W, H, fps, n_stk)}
+            n_stk += 1
+            if ov.get("kind") in sticker.IMAGE_KINDS:
+                for ly in sticker.image_layers(ov, th, W, H, fps, sb.get("_base", ""), work):
+                    inputs.append(["-loop", "1", "-t", "%.3f" % max(0.1, ly["t1"] - ly["t0"]), "-i",
+                                   os.path.relpath(ly["png"], work)])
+                    rec["layers"].append({"idx": idx, "x": ly["x"], "y": ly["y"], "t0": ly["t0"], "t1": ly["t1"],
+                                          "scale": None, "di": ly["di"], "do": ly["do"],
+                                          "fade": ly["di"] > 0 or ly["do"] > 0, "pre": ly["pre"]})
+                    idx += 1
+            prepared.append(rec)
+            continue
         if typ == "broll":
             # B-roll：满版盖住口播画面（口播声音照常），卡片与字幕仍在它上面
             f = os.path.normpath(os.path.join(sb.get("_base", ""), ov["file"]))
@@ -966,6 +985,7 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                     rich.extend(_rich(it, rec["th"], fps))   # 富文本：整组合成一个 ASS，最后一次烧上
                 else:
                     txt += _drawtext(it, work, fps)
+            rich.extend(rec.get("ass") or [])   # 贴纸的矢量图形与文字
             if txt:
                 n[0] += 1
                 out = "c%d" % n[0]

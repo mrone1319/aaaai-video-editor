@@ -1458,7 +1458,7 @@ $("pane-chk").addEventListener("click", (e) => { const x = e.target.closest(".is
 function buildMenus() {
   if (!SCHEMA) return;
   $("cardMenu").innerHTML = SCHEMA.new.map(([g, items]) => '<div class="grp">' + esc(g) + "</div>" + items.map(([t, _d, hint], k) =>
-    '<button data-t="' + esc(t) + '">' + esc((SCHEMA.cards[t] || {}).name || t) + "<small>" + esc(hint) + "</small></button>").join("")).join("");
+    '<button data-t="' + esc(t) + '">' + esc((SCHEMA.cards[t] || {}).name || (t.includes(":") ? hint : t)) + "<small>" + esc(t.includes(":") ? "贴纸" : hint) + "</small></button>").join("")).join("");
   $("cardMenu").innerHTML += '<div class="grp">配方（一组卡＋推近；真样子要渲染）</div>' + (SCHEMA.new_recipes || []).map(([n, _d, hint]) =>
     '<button data-r="' + esc(n) + '">' + esc(n) + "<small>" + esc(hint) + "</small></button>").join("");
   const snd = OPT ? OPT.sounds : ["pop", "ding", "whoosh", "coin"];
@@ -1483,9 +1483,9 @@ $("cardMenu").addEventListener("click", (e) => {
     return;
   }
   const b = e.target.closest("button[data-t]"); if (!b) return;
-  const type = b.dataset.t, data = SCHEMA.new.flatMap((g) => g[1]).find((x) => x[0] === type)[1];
+  const key = b.dataset.t, type = key.split(":")[0], data = SCHEMA.new.flatMap((g) => g[1]).find((x) => x[0] === key)[1];   // 「sticker:box」＝贴纸的一种
   const before = snap();
-  const o = Object.assign({ type, t: startAt((SCHEMA.new_len || {})[type] || 4) }, clone(data));
+  const o = Object.assign({ type, t: startAt((SCHEMA.new_len || {})[key] || 4) }, clone(data));
   (S.sb.overlays = S.sb.overlays || []).push(o);
   sel = { k: "ov", i: S.sb.overlays.length - 1 };
   commit(before); showPane("insp");

@@ -268,7 +268,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.13.1</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.14.0</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
@@ -699,7 +699,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <section id="styles">
   <div class="eyebrow">08 · 风格</div>
   <h2>风格一览</h2>
-  <p class="lede">风格决定卡片和字幕的配色、字体与质感。开工时它会发一张对照图给你看，说风格名就能换，换风格不用重做别的步骤。前 8 套是通用风格，按内容挑（<code>cozy</code> 连画面一起调色：暖调、低对比、柔光、细颗粒，适合居家口播）；最后两套是<b>社群风格</b>——可以用，但它们带着 MR ONE、OTG 的品牌印记，一般不建议当你自己频道的主风格。</p>
+  <p class="lede">风格决定卡片和字幕的配色、字体与质感。开工时它会发一张对照图给你看，说风格名就能换，换风格不用重做别的步骤。前 9 套是通用风格，按内容挑（<code>cozy</code> 连画面一起调色：暖调、低对比、柔光、细颗粒，适合居家口播；<code>sticker</code> 是贴纸弹跳：黑粗描边的彩色贴纸、逐字打出的字幕框、彩纸小爆发，适合快节奏街头／种草口播）；最后两套是<b>社群风格</b>——可以用，但它们带着 MR ONE、OTG 的品牌印记，一般不建议当你自己频道的主风格。</p>
   <div class="styles" id="styleRoot"></div>
   <div class="note tip"><b class="k">TIP</b><span>字幕的关键词颜色会跟着风格的强调色走；想自己指定颜色，说「字幕高亮用 #FF5C7A」。有自己的品牌色也可以做成自定义风格。</span></div>
 </section>
@@ -875,7 +875,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">社群风格</b><span><code>mrone</code> 与 <code>otg</code> 是两个频道／社群的品牌风格：你可以用，但名称、配色和品牌元素归原权利人，不要用它们做冒充该品牌、或让人误以为是官方的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.13.1 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）。</span>
+    <span>aaaai-editor v1.14.0 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）、<code>docs/STICKER.md</code>（贴纸）。</span>
     <span>相关网站：<a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a> · <a href="https://linktr.ee/mrone.eth" target="_blank" rel="noopener">MR ONE</a> · <a href="https://otg.community/" target="_blank" rel="noopener">OTG</a></span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
@@ -1009,6 +1009,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     ["mag","#F4F4F5","#EC4899","#15803D","杂志、评论：纯白卡、近黑字、品红强调。"],
     ["serif","#F3ECDD","#9A3412","#15803D","纸感衬线：暖米底、宋体标题、赭红强调。"],
     ["cozy","#F3E6D3","#C8773A","#6F8F3C","居家科技博主：奶油米白卡、焦糖强调；画面一起调成暖调电影感（低对比、暗部暖褐、黑柔、细颗粒），可选背景虚化。"],
+    ["sticker","#FFFCF5","#FF4F9A","#FEDA62","贴纸弹跳：奶油白卡、黑粗描边＋硬投影、粉黄撞色；字幕逐字打进白框，配套斜标签、重砸大字、卡通图标、斜色带转场。"],
     ["mrone · 社群","#0B0B0D","#FFC933","#3DDC84","MR ONE 黑金：白色粗标题、金黄关键词与编号方块。社群风格，© MR ONE。"],
     ["otg · 社群","#0A0A0A","#E60012","#10B981","OTG 火箭风：OTG 红、毛玻璃、星空断章、激光扫光。社群风格，© OTG 社群。"]
   ];

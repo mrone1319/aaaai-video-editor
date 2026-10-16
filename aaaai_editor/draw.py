@@ -223,7 +223,8 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
     path = os.path.join(cache_dir, "plate_%s.png" % key)
     sh = spec.get("shadow") or {}
     # 环境光影比主投影铺得更开（soft×1.7）：边距要留够，否则投影会被画布切掉、出现一条硬边
-    margin = int(math.ceil(sh.get("soft", 0) * 1.9 + abs(sh.get("dy", 0)) + float(sh.get("spread", 0)) + 2)) \
+    margin = int(math.ceil(sh.get("soft", 0) * 1.9 + max(abs(sh.get("dy", 0)), abs(sh.get("dx", 0)))
+                           + float(sh.get("spread", 0)) + 2)) \
         if sh and sh.get("alpha", 0) > 0 else 2
     if os.path.isfile(path):
         return path, margin
@@ -235,7 +236,12 @@ def make_plate(spec: dict, cache_dir: str) -> Tuple[str, int]:
     hw, hh = w / 2.0, h / 2.0
     r = float(spec.get("radius", 0))
 
-    if sh and sh.get("alpha", 0) > 0:
+    if sh and sh.get("alpha", 0) > 0 and float(sh.get("soft", 18)) <= 0:
+        # 硬投影（贴纸风）：同一个形状往右下平移、不糊，边缘照常抗锯齿
+        hc = hex_rgb(sh.get("color", "#000000"))
+        paint(buf, W, H, cx + float(sh.get("dx", 0)), cy + float(sh.get("dy", 0)), hw, hh, r,
+              lambda _y, _c=hc: _c, float(sh["alpha"]))
+    elif sh and sh.get("alpha", 0) > 0:
         sc = hex_rgb(sh.get("color", "#000000"))
         opaque = bool(spec.get("fill")) and float(spec.get("alpha", 1.0)) >= 0.9 and not spec.get("scrim")
         # 只跳过「一定被底板盖住」的中间那块：四角是圆的，跳过整个外框会让角上少一块投影

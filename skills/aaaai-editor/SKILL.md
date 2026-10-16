@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.13.1"
+  version: "1.14.0"
 ---
 
 # aaaai-editor 影片总监
@@ -81,6 +81,7 @@ HyperFrames 没装：`claude plugin marketplace add https://github.com/heygen-co
 | `neon` / `gold` / `trust` | Web3、加密、理财 |
 | `serif` / `paper` / `mag` | 评论、观点、编辑感 |
 | `cozy` | 居家／生活方式／科技开箱博主口播：卡片奶油焦糖色，**画面一起调成暖调电影感**（低对比、暖褐暗部、黑柔、细颗粒）；配乐首选 `bgm:warm-story` |
+| `sticker` | 街头／带货／种草快节奏口播：贴纸弹跳（黑粗描边＋硬投影、粉黄撞色、斜标签、打字框字幕、彩纸小爆发）；配乐首选 `bgm:upbeat-energetic` |
 | `mrone` · 社群风格 | MR ONE 口播（黑金、双语高亮字幕、编号清单）——**只有 profile＝mrone 才推荐**，其他人放最后 |
 | `otg` · 社群风格 | OTG 社群内容（OTG 红、Orbitron、毛玻璃、星空断章、激光扫光）——放最后，不推荐 |
 
@@ -123,6 +124,12 @@ P=$("$A" new <主题英文短名>)
   - 背景虚化 `"bokeh": true` **默认不开**：只在近景口播、背景太清楚／太乱时提议，先渲染一段给用户确认（头发边缘、桌上前景也会糊）；远景、人很小的片不要开。
   - 用户选了 cozy：开工时把 docs/STYLE.md 的「cozy 拍摄指引」重点（50mm 大光圈、侧前方柔光、背景 3000K 暖灯、白平衡锁 4500–5000K）告诉他，下次拍会更好。
   - cozy 的节奏要留呼吸：autocut 加 `--min-silence 0.8`（只剪 0.8 秒以上的停顿），不要剪成快嘴。
+- **贴纸弹跳**（`sticker` 风格；贴纸卡片 `"type": "sticker"` 在任何风格都能用，细节见 docs/STICKER.md）：
+  - 字幕自动变打字框（白色贴纸框、逐字打出、关键词粉字）；贴纸放胸口偏上 `xy` y≈0.30–0.45，**不挡脸、不压字幕框**。
+  - 节奏：几乎每句一个贴纸、一张 1–1.5 秒，同屏最多两三样；重点句 `slam` 或 `[[实底块]]`，一般句 `box`（`tag` 斜标签），
+    情绪词配 `icon`（camera_off／moon／bolt／megaphone…），数字用 `badge`，步骤用 `checklist`，截图用 `polaroid`／`fan`／`flip`，
+    结尾 `cta`（按钮＋手形光标）停 2–3 秒；段落之间 `"transitions": [{"t": 秒, "type": "band"}]` 斜色带转场。
+  - 贴纸自带音效（啵、喀、滴答），不要再另外加同一时间的 sfx；节奏快：autocut 用默认停顿门槛即可。
 - 配乐：`"music": {"file": "bgm:<曲名>", "db": -18, "duck": true}`；不要字幕：`"captions": {"enabled": false}`
 - 中英双语不用改 storyboard（第 3 步填 `en`）；品牌词全局高亮：`"captions": {"highlight": ["<品牌>"]}`
 
@@ -207,7 +214,7 @@ P=$("$A" new <主题英文短名>)
   放在他指定的位置；不要放在文字穿插（`behind_subject`）的时段里。
 - 卡片默认会**轻轻上下浮动（呼吸感）**，标题、数据、金句、片尾还会有一两下**闪光**；不要就在该卡片或 storyboard 顶层写
   `"float": false`／`"sparkle": false`。
-- 全部参数：`$APP/docs/CARDS.md`、`$APP/docs/STYLE.md`；微调用 `"$A" expand` 看展开结果。
+- 全部参数：`$APP/docs/CARDS.md`、`$APP/docs/STYLE.md`、`$APP/docs/STICKER.md`（贴纸）；微调用 `"$A" expand` 看展开结果。
 
 ### 5. 预览并看画面
 
@@ -390,5 +397,5 @@ Windows 版用 `install.ps1`（双击 `Install-Windows.cmd`）安装；命令、
 Studio 开着时也可以点首页或「⋯」里的「使用指南」（走 Studio 网址，目录跳转、深浅色、中英切换都能用）；**别把指南当本机文件塞进 Claude 的浏览器面板**——那里只显示静态快照，按钮和目录都不会动。
 用户照指南里「提示词格式范本」填来的需求，逐行照做，没写的行用开工三问补齐。
 
-`$APP/docs/安装指南-Mac.md`／`$APP/docs/安装指南-Windows.md`（安装须知、密钥、MCP；`00-快速安装.md` 是选择页）· `$APP/README.md`（命令总览）· `$APP/docs/CARDS.md` · `$APP/docs/STYLE.md` · `$APP/docs/RECIPES.md` ·
+`$APP/docs/安装指南-Mac.md`／`$APP/docs/安装指南-Windows.md`（安装须知、密钥、MCP；`00-快速安装.md` 是选择页）· `$APP/README.md`（命令总览）· `$APP/docs/CARDS.md` · `$APP/docs/STYLE.md` · `$APP/docs/STICKER.md` · `$APP/docs/RECIPES.md` ·
 `$APP/docs/LONG.md` · `$APP/profiles/TEMPLATE/`（建自己的频道档案）· `$APP/LICENSE.md`

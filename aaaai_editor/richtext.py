@@ -56,6 +56,64 @@ def metrics_file(path: str, index: int = 0) -> Tuple[float, float, float]:
     return (wa + wd) / upem, wa / upem, cap
 
 
+@lru_cache(maxsize=16)
+def advance_table(path: str, index: int = 0) -> Tuple[int, Tuple[int, ...], Dict[int, int]]:
+    """(unitsPerEm, 每个字形的步进宽, 字码→字形)：贴纸框要贴着字的真实宽度画，估算不够准。"""
+    with open(path, "rb") as f:
+        head = f.read(12)
+        base = 0
+        if head[:4] == b"ttcf":
+            f.seek(12 + 4 * index)
+            base = struct.unpack(">I", f.read(4))[0]
+        t = _tables(f, base)
+        f.seek(t[b"head"][0] + 18)
+        upem = struct.unpack(">H", f.read(2))[0]
+        f.seek(t[b"hhea"][0] + 34)
+        nh = struct.unpack(">H", f.read(2))[0]
+        f.seek(t[b"hmtx"][0])
+        adv = struct.unpack(">%dH" % (nh * 2), f.read(nh * 4))[0::2]
+        co = t[b"cmap"][0]
+        f.seek(co)
+        _v, n = struct.unpack(">HH", f.read(4))
+        recs = [struct.unpack(">HHI", f.read(8)) for _ in range(n)]
+        rank = {(3, 10): 0, (0, 4): 1, (0, 6): 1, (3, 1): 2, (0, 3): 3}
+        recs = sorted((r for r in recs if (r[0], r[1]) in rank), key=lambda r: rank[(r[0], r[1])])
+        cmap: Dict[int, int] = {}
+        for _p, _e, off in recs:
+            f.seek(co + off)
+            fmt = struct.unpack(">H", f.read(2))[0]
+            if fmt == 12:
+                f.read(10)
+                ng = struct.unpack(">I", f.read(4))[0]
+                for _ in range(ng):
+                    a, b, g = struct.unpack(">III", f.read(12))
+                    for c in range(a, b + 1):
+                        cmap[c] = g + c - a
+                break
+            if fmt == 4:
+                f.read(4)
+                seg = struct.unpack(">H", f.read(2))[0] // 2
+                f.read(6)
+                ends = struct.unpack(">%dH" % seg, f.read(2 * seg))
+                f.read(2)
+                starts = struct.unpack(">%dH" % seg, f.read(2 * seg))
+                deltas = struct.unpack(">%dh" % seg, f.read(2 * seg))
+                ro_pos = f.tell()
+                ros = struct.unpack(">%dH" % seg, f.read(2 * seg))
+                for i in range(seg):
+                    for c in range(starts[i], min(ends[i], 0xFFFE) + 1):
+                        if ros[i] == 0:
+                            g = (c + deltas[i]) & 0xFFFF
+                        else:
+                            f.seek(ro_pos + 2 * i + ros[i] + 2 * (c - starts[i]))
+                            g = struct.unpack(">H", f.read(2))[0]
+                            g = (g + deltas[i]) & 0xFFFF if g else 0
+                        if g:
+                            cmap[c] = g
+                break
+    return upem, tuple(adv), cmap
+
+
 @lru_cache(maxsize=64)
 def locate(family: str) -> Tuple[str, int]:
     fd = fonts.FONT_DIR

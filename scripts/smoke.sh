@@ -99,6 +99,29 @@ json.dump(s, open(S + "/c/storyboard.json", "w"), ensure_ascii=False)
 PYX
 cp "$R/work/transcript.json" "$S/c/work/"
 t card-mode   "$A" preview "$S/c/storyboard.json"
+# 贴纸弹跳风格：每种贴纸（含图片贴纸）＋斜色带转场＋打字框字幕
+python3 - "$R" "$S" <<'PYK'
+import json, os, shutil, sys
+R, S = sys.argv[1:]
+os.makedirs(S + "/k/work", exist_ok=True); os.makedirs(S + "/k/assets", exist_ok=True)
+shutil.copy(S + "/c/assets/shot.png", S + "/k/assets/shot.png")
+s = json.load(open(R + "/storyboard.json")); s["source"] = R + "/source.mp4"; s.pop("music", None); s.pop("recipes", None)
+s["style"] = "sticker"; s["transitions"] = [{"t": 6.0, "type": "band"}]
+s["overlays"] = [{"type": "sticker", "kind": "box", "t": [0.3, 1.8], "text": "我**不想**拍==短视频==[[AI]]", "tag": "只需", "icon": "phone_play"},
+                 {"type": "sticker", "kind": "tag", "t": [0.5, 1.8], "text": "最快", "fill": "yellow", "xy": [0.3, 0.6]},
+                 {"type": "sticker", "kind": "slam", "t": [2.0, 3.2], "text": "赶快"},
+                 {"type": "sticker", "kind": "icon", "t": [2.0, 3.2], "name": "camera_off", "xy": [0.75, 0.3]},
+                 {"type": "sticker", "kind": "badge", "t": [3.4, 5.4], "values": [8, 22, 24], "unit": "小时", "label": "最快"},
+                 {"type": "sticker", "kind": "checklist", "t": [6.4, 8.4], "items": ["选**模板**", "上传", "生成"]},
+                 {"type": "sticker", "kind": "cta", "t": [8.6, 10.6], "text": "点击链接"},
+                 {"type": "sticker", "kind": "polaroid", "t": [10.8, 12.2], "file": "assets/shot.png"},
+                 {"type": "sticker", "kind": "fan", "t": [12.4, 13.8], "files": ["assets/shot.png"] * 3},
+                 {"type": "sticker", "kind": "flip", "t": [14.0, 15.6], "files": ["assets/shot.png", "assets/shot.png"]},
+                 {"type": "title", "t": [16.0, 18.0], "text": "普通卡片也是**贴纸**"}]
+json.dump(s, open(S + "/k/storyboard.json", "w"), ensure_ascii=False)
+PYK
+cp "$R/work/transcript.json" "$S/k/work/"
+t sticker     "$A" preview "$S/k/storyboard.json"
 echo "== Studio 地基"
 t store-tests python3 "$ROOT/scripts/test_store.py"
 t patch-show  "$A" patch "$SB"

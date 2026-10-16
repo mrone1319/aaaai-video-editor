@@ -1,8 +1,10 @@
-"""转场：甩镜（whip）。只动剪辑点前后那 0.3 秒左右的帧，片长不变、其他帧原样通过。
+"""转场：甩镜（whip）、斜色带（band）。只动剪辑点前后那 0.3 秒左右的帧，片长不变、其他帧原样通过。
 
 storyboard：
   "transitions": [{"t": 12.3, "type": "whip"}]      // t 写成片秒数，会吸附到最近的剪辑点（±0.6 秒内）
-  可选：dur（秒，默认 0.32）、dir（"left"／"right"，画面往哪边甩出去）、sfx（默认 "whoosh"，写 "" 关掉）
+  可选：dur（秒，默认 0.32；band 默认 0.40）、dir（"left"／"right"，画面往哪边甩出去）、sfx（默认 "whoosh"，写 "" 关掉）
+  band：画面本身是硬切，一大片黄色斜带（贴纸风）横扫过去、正中间整片盖住剪辑点，扫走后淡淡白闪；
+        斜带画在卡片层（sticker.py 的 wipe），fill 可换颜色
 
 做法：按帧号把时间轴切成「前／转场／后」三段再接回去（接缝逐帧对齐）；转场那段里，
 画面先放大、往一边加速甩出去，过了剪辑点再从另一边减速甩回来，同时加方向性动态模糊。
@@ -25,7 +27,7 @@ def resolve(sb: dict, tl) -> List[dict]:
             near = min(bounds, key=lambda b: abs(b - t))
             if abs(near - t) <= 0.6:
                 t = near
-        d = max(0.12, min(0.8, float(tr.get("dur", DEF_DUR))))
+        d = max(0.12, min(0.8, float(tr.get("dur", 0.40 if tr.get("type") == "band" else DEF_DUR))))
         out.append(dict(tr, t=round(t, 4), dur=d, type=tr.get("type", "whip")))
     return sorted(out, key=lambda x: x["t"])
 
@@ -56,6 +58,8 @@ def graph(src: str, dst: str, trs: List[dict], W: int, H: int, fps: float, t_off
     f = float(fps)
     wins = []
     for tr in trs:
+        if tr.get("type") == "band":   # 斜色带：画面不动（硬切），色带由卡片层画
+            continue
         a, b = tr["t"] - tr["dur"] / 2.0 - t_off, tr["t"] + tr["dur"] / 2.0 - t_off
         if b <= 0 or (seg_len is not None and a >= seg_len):
             continue
@@ -84,3 +88,9 @@ def graph(src: str, dst: str, trs: List[dict], W: int, H: int, fps: float, t_off
         parts.append("[tw%d]%s[to%d]" % (i, ch, i))
     parts.append("%sconcat=n=%d:v=1:a=0%s" % ("".join("[to%d]" % i for i in range(n)), n, dst))
     return ";".join(parts)
+
+
+def band_overlays(trs: List[dict], t_off: float = 0.0) -> List[dict]:
+    """斜色带转场 → 贴纸层的 wipe（段内时间）。"""
+    return [{"type": "sticker", "kind": "wipe", "t": [tr["t"] - tr["dur"] / 2.0 - t_off, tr["t"] + tr["dur"] / 2.0 - t_off],
+             "fill": tr.get("fill")} for tr in trs if tr.get("type") == "band"]

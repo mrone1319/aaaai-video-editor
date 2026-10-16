@@ -9,7 +9,9 @@ Studio 的属性面板按这里自动生成表单——引擎加一种字卡，�
 from __future__ import annotations
 
 ANIMS = [["", "默认"], ["rise", "上浮（带超调）"], ["pop", "弹出"], ["fade", "淡入"], ["left", "左滑入"],
-         ["right", "右滑入"], ["fall", "下落"]]
+         ["right", "右滑入"], ["fall", "下落"],
+         ["slam", "重砸（贴纸）"], ["ghost", "描边→填满（贴纸）"], ["drop", "掉下来（贴纸）"],
+         ["slide", "侧滑带转（贴纸）"], ["none", "不动（贴纸）"]]
 SFX = [["", "无"], ["pop", "啵"], ["ding", "叮"], ["whoosh", "咻"], ["coin", "金币"], ["click", "喀"],
        ["tick", "滴答"], ["confetti", "拉炮"]]
 OUTS = [["", "淡出（默认）"], ["fall", "下落淡出"], ["rise", "上浮淡出"], ["left", "左滑出"], ["right", "右滑出"],
@@ -58,6 +60,21 @@ CARDS = {
     "broll": ("B-roll", [("file", "文件（assets/…）", "text"), ("from", "从素材第几秒开始", "num"),
                          ("mode", "方式", "select", [["", "满版"], ["letterbox", "上下黑边"], ["blur", "模糊垫底"]])]),
     "cutout": ("去背人像", [("width", "宽度（0–1）", "num"), ("pos", "位置", "text")]),
+    "sticker": ("贴纸", [("kind", "种类", "select", [["box", "台词框"], ["tag", "斜标签"], ["slam", "重砸大字"],
+                                                    ["icon", "卡通图标"], ["badge", "圆环计数"], ["checklist", "打勾清单"],
+                                                    ["cta", "点击按钮"], ["polaroid", "拍立得"], ["fan", "扇形卡片"],
+                                                    ["flip", "翻面卡片"]]),
+                         ("text", "文字（**粉字**　==黄底条==　[[粉色实底]]）", "textarea"),
+                         ("tag", "框角斜标签", "text"),
+                         ("fill", "底色", "select", [["", "默认"], ["cream", "奶油白"], ["pink", "粉"], ["yellow", "黄"],
+                                                    ["navy", "海军蓝"], ["white", "白"]]),
+                         ("name", "图标（phone_play、camera_off、moon、megaphone、bolt、link、cursor、pencil、"
+                                  "scissors、checkbox、star、heart、sparkle、fire）", "text"),
+                         ("icon", "框角图标", "text"), ("values", "计数的数字（一行一个）", "lines"), ("unit", "单位", "text"),
+                         ("label", "徽章斜标签", "text"), ("items", "清单（一行一条）", "lines"),
+                         ("file", "图片（assets/…）", "text"), ("files", "多张图片（扇形／翻面）", "lines"),
+                         ("xy", "位置 [中心 x, 中心 y]（0–1）", "json"), ("rot", "倾斜（度）", "num"),
+                         ("burst", "彩纸小爆发", "bool"), ("typing", "逐字打出", "bool")]),
     "blur": ("打码", [("mode", "方式", "select", [["", "模糊"], ["mosaic", "马赛克"]]), ("strength", "强度（1＝标准，越大越糊）", "num"),
                       ("box", "范围 [x, y, 宽, 高]（0–1；画面上拖框更方便）", "json")]),
 }
@@ -68,7 +85,7 @@ COMMON = [("anim", "入场动画", "select", ANIMS), ("out", "出场动画", "se
 
 # 能直接出「真样子」PNG 的基本字卡（组合卡、配方要渲染一段才看得到）
 TRUE_LOOK = ("title", "stat", "bullets", "quote", "lower_third", "stamp", "callout", "text", "rows", "icons",
-             "compare", "gauge", "rank", "timeline", "rating")
+             "compare", "gauge", "rank", "timeline", "rating", "sticker")
 
 
 # Studio「＋ 字卡」新增时的起始内容（之后在属性面板改）；顺序＝选单顺序
@@ -93,6 +110,17 @@ NEW = [
               ("text", {"text": "一行字"}, "纯文字"),
               ("stamp", {"text": "重点"}, "印章"),
               ("callout", {"text": "看这里"}, "标注")]),
+    ("贴纸（Sticker Pop）", [
+        ("sticker:box", {"kind": "box", "text": "我**不想**拍==短视频==", "tag": "只需", "xy": [0.5, 0.42]}, "台词框＋斜标签"),
+        ("sticker:slam", {"kind": "slam", "text": "赶快", "xy": [0.5, 0.40]}, "重砸大字"),
+        ("sticker:tag", {"kind": "tag", "text": "最快", "fill": "yellow", "xy": [0.3, 0.40]}, "斜标签"),
+        ("sticker:icon", {"kind": "icon", "name": "phone_play", "xy": [0.75, 0.38]}, "卡通贴纸图标"),
+        ("sticker:badge", {"kind": "badge", "values": [8, 22, 24], "unit": "小时", "label": "最快", "xy": [0.5, 0.42]},
+         "圆环计数"),
+        ("sticker:checklist", {"kind": "checklist", "items": ["第一步", "第二步", "第三步"], "xy": [0.5, 0.42]},
+         "打勾清单"),
+        ("sticker:cta", {"kind": "cta", "text": "点击链接", "xy": [0.5, 0.45]}, "按钮＋手形光标"),
+        ("sticker:polaroid", {"kind": "polaroid", "file": "assets/photo.png", "xy": [0.6, 0.38]}, "拍立得（换图片）")]),
     ("互动", [("cta", {"question": "你最想学**哪一个**？", "keyword": "工具", "badge": "留言领取"}, "评论框打字"),
               ("countdown", {"from": 3}, "3、2、1")]),
 ]
@@ -110,7 +138,9 @@ NEW_RECIPES = [
     ("brand_close", {"text": "品牌名"}, "品牌片尾"),
 ]
 NEW_LEN = {"takeover": 6.0, "outro": 3.0, "brand_open": 2.6, "brand_close": 3.0, "chapter": 2.0, "hook": 3.0,
-           "cta": 6.0, "countdown": 3.0, "stamp": 2.0, "callout": 2.0, "lower_third": 3.0}
+           "cta": 6.0, "countdown": 3.0, "stamp": 2.0, "callout": 2.0, "lower_third": 3.0,
+           "sticker:box": 1.6, "sticker:slam": 1.3, "sticker:tag": 1.4, "sticker:icon": 1.4, "sticker:badge": 2.2,
+           "sticker:checklist": 2.4, "sticker:cta": 3.0, "sticker:polaroid": 2.2}
 
 
 def as_dict() -> dict:

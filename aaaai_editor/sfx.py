@@ -63,6 +63,11 @@ def collect(sb: dict) -> List[Tuple[float, str, float]]:
             out.append((max(0.0, float(tr.get("t", 0)) - float(tr.get("dur", 0.32)) / 2.0 - 0.05), path(s),
                         float(tr.get("sfx_db", 0.0))))
     for ov in sb.get("overlays") or []:
+        if ov.get("type") == "sticker":   # 贴纸：弹出「啵」、打勾「喀」、计数「滴答」……时间相对卡片开始
+            from . import sticker
+            for dt, name, db in sticker.sfx_events(ov):
+                out.append((float(ov["t"][0]) + dt, path(name), db))
+            continue
         s = ov.get("sfx")
         if not s:
             continue

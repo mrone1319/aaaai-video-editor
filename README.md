@@ -15,7 +15,7 @@
 | `motion-graphic-video-editor`（skill） | 品牌片与动效：拆解参考片、构思定稿、公式库、透明图层输出 |
 | `social-content-pipeline`（skill） | 发布：搜集、角度、X/IG 文案、出图、打包 |
 | HeyGen HyperFrames（安装器从官方装） | 讲解片、网站转影片、产品发布、音乐影片、幻灯片等格式 |
-| 10 套风格（含会调画面颜色的 `cozy`）、41 个图标、10 条配方、7 首原创配乐 | `aaaai-editor showcase` 看风格对照表 |
+| 11 套风格（含会调画面颜色的 `cozy`、贴纸弹跳 `sticker`）、41 个图标＋14 个贴纸图标、10 条配方、7 首原创配乐 | `aaaai-editor showcase` 看风格对照表 |
 
 ## 安装
 
@@ -137,7 +137,7 @@ aaaai-editor mcp                                     # 以 MCP 服务器运行
 3. 封装：视频/音频 stream copy。
 
 卡片、推近与人像去背见 `docs/CARDS.md`，长片分段与对时体检见 `docs/LONG.md`，
-风格／图标／卡片新选项见 `docs/STYLE.md`，配方见 `docs/RECIPES.md`。
+风格／图标／卡片新选项见 `docs/STYLE.md`，贴纸弹跳见 `docs/STICKER.md`，配方见 `docs/RECIPES.md`。
 
 ## 开发与测试
 

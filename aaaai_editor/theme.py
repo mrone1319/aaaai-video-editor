@@ -198,6 +198,23 @@ BUILTIN: Dict[str, dict] = {
                  "kicker": {"bold": 1, "upper": 1, "tracking": 0.18}, "stamp": {"bold": 1},
                  "number": {"bold": 1}, "badge": {"bold": 1},
                  "name": {"bold": 1}, "item": {"bold": 1}, "row_tag": {"bold": 1}}}),
+    # —— 贴纸弹跳（Sticker Pop）：贴纸卡片见 aaaai_editor/sticker.py；一般卡片在这个风格下也是贴纸外观 ——
+    "sticker": dict(_LIGHT_SEM, **{
+        "desc": "贴纸弹跳 Sticker Pop：奶油白卡、黑粗描边＋右下硬投影、粉／黄撞色、斜标签、打字框字幕",
+        "plate": ["#FFFCF5", "#FFFCF5"], "plate_alpha": 1.0, "radius": 30,
+        "text": "#0A0A0B", "muted": "#5A5560", "accent": "#FF4F9A", "on_accent": "#FFFFFF", "hl": "#FF4F9A",
+        "accent2": "#FEDA62", "navy": "#1D1B49", "ink": "#0A0A0B", "paper": "#FFFCF5",
+        "value": "#FF4F9A", "state": "#1D1B49",
+        "lite": 0,   # 不用渐变遮罩：每张卡都是一张贴纸
+        "border": {"w": 5, "color": "#0A0A0B"},
+        "shadow": {"soft": 0, "alpha": 1.0, "dx": 10, "dy": 10, "color": "#0A0A0B", "ambient": False},
+        "row": "#FFF3C4", "line": "#0A0A0B",
+        "text_engine": "ass", "body_font": "Yuanti SC", "mono_font": "Arial Rounded MT Bold",
+        "sticker_palette": True, "sticker_burst": True, "captions": "sticker",
+        "type": {"title": {"bold": 1}, "heading": {"bold": 1}, "quote": {"bold": 1}, "row_title": {"bold": 1},
+                 "kicker": {"bold": 1, "tracking": 0.06}, "stamp": {"bold": 1},
+                 "number": {"bold": 1}, "badge": {"bold": 1},
+                 "name": {"bold": 1}, "item": {"bold": 1}, "row_tag": {"bold": 1}, "text": {"bold": 1}}}),
 }
 DEFAULT_THEME = "ink"
 

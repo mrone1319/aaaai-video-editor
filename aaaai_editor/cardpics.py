@@ -67,6 +67,21 @@ def one(sb: dict, ov: dict, W: int, H: int, work: str, bg_mode: str, out_path: s
     """排一张图卡：底板＋文字＋图标，落定状态（不带动画），直接出 PNG。"""
     th = theme.theme(ov.get("style") or sb.get("style"), sb.get("_base"), sb.get("brand"))
     fps = float(sb["output"]["fps"])
+    if ov.get("type") == "sticker":   # 贴纸：落定的样子（不打字、不爆彩纸，计数停在最后一个数）
+        from . import sticker
+        if ov.get("kind") in sticker.IMAGE_KINDS:
+            raise env.ToolError("图片贴纸（%s）没有静态预览，渲染预览片看" % ov.get("kind"))
+        st = dict(ov, t=[0.0, 9.0], anim="none", typing=False, burst=False, gap=0.0)
+        if st.get("values"):
+            st["values"] = [st["values"][-1]]
+        bg = _bg(sb, ov, W, H, work, bg_mode, th)
+        richtext.write(os.path.join(work, "cardpic.ass"), W, H, sticker.build(st, th, W, H, fps))
+        from .overlays import q
+        env.run([env.ffmpeg(), "-v", "error", "-y", "-loop", "1", "-t", "1", "-framerate", "10", "-i",
+                 os.path.relpath(bg, work), "-vf", "scale=%d:%d,subtitles=filename=cardpic.ass:fontsdir=%s,"
+                 "select='gte(t\\,0.5)',format=rgb24" % (W, H, q(fonts.FONT_DIR)),
+                 "-frames:v", "1", "-update", "1", out_path], cwd=work)
+        return out_path
     still = dict(ov, anim="fade", t=[0.0, 9.0], sparkle=False, float=False)
     L = cards.layout(still, th, W, H, fps)
     bg = _bg(sb, ov, W, H, work, bg_mode, th)

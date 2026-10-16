@@ -40,6 +40,12 @@ STYLES: Dict[str, dict] = {
     "cozy": dict(size=0.030, bold=1, primary="&H00E8F6FF", outline="&H60182A3B", outline_w=0.0018,
                  shadow=2, margin_v=0.30, back="&H7A101A26", hl="#FFC27A", en_ratio=0.72,
                  en_font="Avenir Next Bold", max_w=17, hold=0.45),
+    # 贴纸打字框（配合 sticker 风格）：每句放进白色贴纸框（黑粗描边＋硬投影），框弹出、字逐个打进去；
+    # 关键词粉字，字幕轨里写 ==词== 是黄色荧光笔底条。框放在胸口（画面约 60% 处），不压脸
+    "sticker": dict(size=0.035, bold=1, primary="&H000A0A0B", outline="&H00000000", outline_w=0.0,
+                    shadow=0, margin_v=0.33, back="&H00000000", hl="#FF4F9A", en_ratio=0.62,
+                    en_font="Avenir Next Bold", max_w=12, hold=0.40, sticker=True, box="#FFFFFF",
+                    font="Yuanti SC"),
 }
 # 英文行用具体字形名：libass 给「Avenir Next」加粗时会挑中 Bold Italic，写死字形名才稳定是正体
 DEF_HL, DEF_EN_RATIO, DEF_EN_FONT = "#FFD23F", 0.62, "Avenir Next Bold"
@@ -309,7 +315,7 @@ def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean"
               highlight: Sequence[str] = (), margin_v: Optional[float] = None,
               size_scale: Optional[float] = None, hl_color: Optional[str] = None,
               faces: Optional[list] = None, t_off: float = 0.0, onlight: Optional[list] = None,
-              anim: str = "soft") -> None:
+              anim: str = "soft", fps: float = 30.0) -> None:
     """margin_v：字幕底边离画面底部的比例（storyboard 的 captions.margin_v 可覆盖；0.30≈画面 70% 处）；
     size_scale：字号倍率（captions.size_scale）。"""
     st = dict(STYLES[style])
@@ -336,6 +342,10 @@ def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean"
         mvs = faces_mod.margins([(e[0] + t_off, e[1] + t_off, e[2], e[3] if len(e) > 3 else None) for e in events],
                                 faces, h, st, st["margin_v"])
     lines = []
+    if st.get("sticker"):   # 贴纸打字框：矢量框＋逐字打出，整句画在 sticker.py
+        from . import sticker
+        lines = sticker.caption_lines(events, st, w, h, highlight, mvs, fps)
+        events = []
     cap_h = h * st["size"] * 1.35
     for e, mv in zip(events, mvs):
         txt = _line(e[2], e[3] if len(e) > 3 else None, st, h, highlight, w)
