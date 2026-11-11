@@ -6,7 +6,7 @@ storyboard：
   "toc": {"title": "18 种特效", "items": [{"t": 3.2, "text": "掉落字"}, {"t": 6.0, "text": "巨大字幕"}],
           "footer": "收藏起来慢慢学", "side": "right", "end": 60}
   t 是成片秒数（该段开始）；关键词触发写 "toc": "名称" 会自动加进来。end 不写＝最后一项之后一直到片尾。
-  可选：panel（底色，默认黑）、panel_alpha（不透明度，默认 0.55）、hl（亮起那一行的底色，默认米白）、scale（大小）。
+  可选：panel（底色，默认黑）、panel_alpha（不透明度，默认 0.55）、hl（亮起那一行的底色，默认风格的强调色）、scale（大小）。
 """
 from __future__ import annotations
 
@@ -19,8 +19,12 @@ def lines(sb: dict, W: int, H: int, fps: float, t_off: float = 0.0) -> List[str]
     toc = sb.get("toc")
     if not isinstance(toc, dict) or not toc.get("items"):
         return []
-    from . import richtext, sticker
+    from . import richtext, sticker, theme as _theme
     from .timeline import Timeline
+    try:
+        th = _theme.theme(sb.get("style"), sb.get("_base"), sb.get("brand"))
+    except RuntimeError:
+        th = {}
     items = sorted(toc["items"], key=lambda x: float(x["t"]))
     total = None
     try:
@@ -68,7 +72,8 @@ def lines(sb: dict, W: int, H: int, fps: float, t_off: float = 0.0) -> List[str]
 
     # 亮起的那一行：0.12 秒滑过去（逐帧），其余时间静止
     hp, *_ = sticker.shape_of(sticker.rrect(0, 0, pw - U * 0.012, rh - U * 0.006, U * 0.006))
-    hl = sticker._ac(toc.get("hl") or CREAM)
+    hl_hex = toc.get("hl") or (sticker.color("pink", th) if th.get("accent") else CREAM)   # 亮起那一行＝风格的强调色
+    hl = sticker._ac(hl_hex)
     for i in range(n):
         a = starts[i]
         b = starts[i + 1] if i + 1 < n else t_end
@@ -91,7 +96,7 @@ def lines(sb: dict, W: int, H: int, fps: float, t_off: float = 0.0) -> List[str]
             a = starts[i]
             b = starts[i + 1] if i + 1 < n else t_end
             act = i == k
-            col = "&H0B0A0A&" if act else sticker._ac("#E2E4D6")
+            col = sticker._ac(sticker.on(hl_hex, th)) if act else sticker._ac("#E2E4D6")
             ncol = sticker._ac("#78746A") if act else sticker._ac("#788270")
             ev(a, b, 903, "\\an4\\pos(%.1f,%.1f)\\fn%s\\fs%.1f\\b1\\bord0\\shad0\\c%s" % (
                 px + U * 0.017, y, mono, U * 0.015, ncol), "%02d" % (k + 1))

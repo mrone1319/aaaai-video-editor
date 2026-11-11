@@ -46,7 +46,65 @@ def color(c: Optional[str], th: dict, default: str = "cream") -> str:
                  "cream": th.get("paper"), "ink": th.get("ink")}
         if named.get(c):
             return named[c]
+    elif th.get("accent"):   # 其他风格：贴纸跟着风格走——粉＝强调色、黄＝高亮色、奶油＝卡片底、深色块＝风格的深色
+        named = {"pink": th["accent"], "yellow": _hl(th), "cream": _plate0(th), "navy": _deep(th)}
+        if named.get(c):
+            return named[c]
     return PALETTE.get(c) or PALETTE["cream"]
+
+
+def _plate0(th: dict) -> str:
+    pl = th.get("plate")
+    return (pl[0] if isinstance(pl, (list, tuple)) else pl) or PALETTE["cream"]
+
+
+def _mix(a: str, b: str, k: float) -> str:
+    x, y = a.lstrip("#"), b.lstrip("#")
+    return "#%02X%02X%02X" % tuple(int(int(x[i:i + 2], 16) * (1 - k) + int(y[i:i + 2], 16) * k) for i in (0, 2, 4))
+
+
+def _hl(th: dict) -> str:
+    """「黄」：风格的高亮色；高亮色就是强调色时，用第二强调色，再没有就把强调色调亮。"""
+    hl = th.get("hl") if str(th.get("hl", "")).startswith("#") else None
+    if hl and hl.upper() != str(th["accent"]).upper():
+        return hl
+    return th.get("accent2") or _mix(th["accent"], "#FFFFFF", 0.45)
+
+
+def _deep(th: dict) -> str:
+    """深色块（「今晚」那种）：深底风格用卡片的深色，浅底风格用正文的深色。"""
+    pl = th.get("plate")
+    last = pl[-1] if isinstance(pl, (list, tuple)) else pl
+    return last if last and _dark(last) else (th.get("text") or PALETTE["navy"])
+
+
+# 外观「皮」：贴纸系风格是粗黑描边＋硬投影；其他风格改用那个风格自己的描边与柔和阴影（同一支片包装一致）
+_SKIN: Optional[dict] = None
+
+
+def skin_of(th: Optional[dict]) -> Optional[dict]:
+    if not th or th.get("sticker_palette"):
+        return None
+    sh, bd = th.get("shadow") or {}, th.get("border") or {}
+    return {"bord": float(bd.get("w", 0) or 0), "bc": bd.get("color") or "#000000",
+            "soft": max(6.0, float(sh.get("soft", 24) or 0)), "dy": float(sh.get("dy", 8) or 0),
+            "alpha": float(sh.get("alpha", 0.4) or 0), "shc": sh.get("color") or "#000000"}
+
+
+class use_skin:
+    """with use_skin(th): 这段时间画出来的贴纸都用这个风格的外观。"""
+
+    def __init__(self, th: Optional[dict]):
+        self.sk = skin_of(th)
+
+    def __enter__(self):
+        global _SKIN
+        self.prev, _SKIN = _SKIN, self.sk
+        return self.sk
+
+    def __exit__(self, *a):
+        global _SKIN
+        _SKIN = self.prev
 
 
 def _dark(c: str) -> bool:
@@ -567,8 +625,9 @@ def _state_tags(g: Group, el: El, anim: str, t: float, ts: float, W: int, H: int
         tags.append("\\org(%.1f,%.1f)\\frz%.2f" % (px, py, -ang))
     if abs(sc - 1.0) > 0.001:
         tags.append("\\fscx%.1f\\fscy%.1f" % (sc * 100, sc * 100))
-    if e["blur"] > 0.05:
-        tags.append("\\blur%.1f" % e["blur"])
+    sk = _SKIN
+    k1080 = min(W, H) / 1080.0
+    blur = e["blur"]
     tr = 1.0 - a
     if el.kind == "shape":
         ghost = e["ghost"] if p.get("ghostable", True) else 1.0
@@ -576,22 +635,46 @@ def _state_tags(g: Group, el: El, anim: str, t: float, ts: float, W: int, H: int
         bc = p.get("bc", INK) if ghost > 0.5 or not p.get("ghost_bc") else p["ghost_bc"]
         bw = float(p.get("bord", 0.0)) * sc
         sh = float(p.get("shad", 0.0)) * sc * (ghost if p.get("ghostable", True) else 1.0)
+        soft = None
+        if sk and (bw > 0 or sh > 0) and not p.get("keep_ink"):
+            # 风格外观：描边用风格的描边（多半没有），硬投影换成向下的柔和阴影
+            if ghost > 0.5:
+                bw, bc = (sk["bord"] * k1080 * sc, sk["bc"]) if (sk["bord"] > 0 and bw > 0) else (0.0, bc)
+            if sh > 0 and sk["alpha"] > 0:
+                soft = (sk["dy"] * k1080 * sc * ghost, sk["alpha"], sk["shc"])
+                blur = max(blur, sk["soft"] * k1080 * 0.45)
+                if bw <= 0:   # \\blur 只糊描边和阴影：给一圈同底色的细边，底板本身才保持清楚
+                    bw, bc = 0.8, p["fill"]
+            sh = 0.0
+        if blur > 0.05:
+            tags.append("\\blur%.1f" % blur)
         tags.append("\\bord%.2f\\3c%s\\3a%s" % (bw, _ac(bc), _aa(1 - (1 - tr) * (1 - p.get("ba", 0.0)))))
-        if sh > 0.2:
+        if soft:
+            tags.append("\\xshad0\\yshad%.2f\\4c%s\\4a%s" % (soft[0], _ac(soft[2]), _aa(1 - (1 - tr) * soft[1])))
+        elif sh > 0.2:
             tags.append("\\xshad%.2f\\yshad%.2f\\4c%s\\4a%s" % (sh, sh, _ac(p.get("shc", INK)), _aa(tr)))
         else:
             tags.append("\\shad0")
         tags.append("\\1c%s\\1a%s\\p1}%s" % (_ac(p["fill"]), _aa(1 - (1 - tr) * (1 - fa)), p["path"]))
         return "{" + "".join(tags)
     # 文字
+    if blur > 0.05:
+        tags.append("\\blur%.1f" % blur)
+    tbw = float(p.get("bord", 0.0)) * sc
+    if sk and tbw > 0:   # 直接压在画面上的字（掉落字）：风格外观下描边细一点、半透明
+        tbw *= 0.45
     tags.append("\\fn%s\\fs%.1f\\b%d\\bord%.2f\\shad0\\c%s\\alpha%s"
                 % (p["fam"], fs_tag(p["em"], p["fam"], p.get("bold", True)), 1 if p.get("bold", True) else 0,
-                   float(p.get("bord", 0.0)) * sc, _ac(p["color"]), _aa(tr)))
+                   tbw, _ac(p["color"]), _aa(tr)))
     if p.get("bord"):
-        tags.append("\\3c%s" % _ac(p.get("bc", INK)))
-    if p.get("tshad"):   # 字的硬投影（掉落字这种直接压在画面上的大字）
+        tags.append("\\3c%s\\3a%s" % (_ac(sk["shc"] if sk else p.get("bc", INK)), _aa(1 - (1 - tr) * (0.6 if sk else 1.0))))
+    if p.get("tshad"):   # 字的投影：贴纸风是硬投影，其他风格是向下的柔和阴影
         sh = float(p["tshad"]) * sc
-        tags.append("\\xshad%.2f\\yshad%.2f\\4c%s\\4a%s" % (sh, sh, _ac(INK), _aa(tr)))
+        if sk:
+            tags.append("\\xshad0\\yshad%.2f\\4c%s\\4a%s" % (sk["dy"] * k1080 * sc, _ac(sk["shc"]),
+                                                             _aa(1 - (1 - tr) * sk["alpha"])))
+        else:
+            tags.append("\\xshad%.2f\\yshad%.2f\\4c%s\\4a%s" % (sh, sh, _ac(INK), _aa(tr)))
     if p.get("italic"):
         tags.append("\\i1")
     if p.get("fsp"):
@@ -761,7 +844,12 @@ def _pill(g: Group, text: str, em: float, fam: str, fill: str, th: dict, ox: flo
 
 
 def build(ov: dict, th: dict, W: int, H: int, fps: float, order: int = 0) -> List[str]:
-    """一个 sticker overlay → ASS 行（图片类回传空，交给 overlays 的图层）。"""
+    """一个 sticker overlay → ASS 行（图片类回传空，交给 overlays 的图层）。外观跟着风格走（见 use_skin）。"""
+    with use_skin(th):
+        return _build(ov, th, W, H, fps, order)
+
+
+def _build(ov: dict, th: dict, W: int, H: int, fps: float, order: int = 0) -> List[str]:
     kind = ov.get("kind", "box")
     if kind == "grid":   # 影片网格：画面是图层，外框与进度条是矢量
         return _grid_decor(ov, th, W, H, fps, order)
@@ -1189,23 +1277,30 @@ def sfx_events(ov: dict) -> List[Tuple[float, str, float]]:
 
 # ---------------------------------------------------------------- 图片贴纸（拍立得／扇形／翻面）：ffmpeg 图层
 def _photo_card(src: str, pw: int, ph: int, side: int, bottom: int, radius: int, photo_r: int, U: float,
-                fill: str, tape: Optional[str], work: str) -> Tuple[str, int, int]:
+                fill: str, tape: Optional[str], work: str, th: Optional[dict] = None) -> Tuple[str, int, int]:
     """奶油白框（黑描边＋硬投影）里嵌一张照片，可加一条胶带。回传 (png, 宽, 高)，按内容缓存。"""
     import hashlib
     import os
     from . import draw
     st = os.stat(src)
     bw, sd = _lines(U)
+    sk = skin_of(th)
+    k = U / 1080.0
+    if sk:   # 其他风格：框用风格的描边与柔和阴影
+        border = {"w": round(sk["bord"] * k, 1), "color": sk["bc"]}
+        shadow = {"soft": round(sk["soft"] * k), "alpha": sk["alpha"], "dy": round(sk["dy"] * k), "color": sk["shc"]}
+    else:
+        border = {"w": round(bw, 1), "color": INK}
+        shadow = {"soft": 0, "alpha": 1.0, "dx": round(sd), "dy": round(sd), "color": INK}
     key = hashlib.sha1(repr((os.path.abspath(src), st.st_size, st.st_mtime_ns, pw, ph, side, bottom, radius,
-                             photo_r, fill, tape, round(bw, 2), round(sd, 2), 2)).encode()).hexdigest()[:16]
+                             photo_r, fill, tape, round(bw, 2), round(sd, 2), sorted(border.items()),
+                             sorted(shadow.items()), 2)).encode()).hexdigest()[:16]
     pdir = os.path.join(work, "plates")
     os.makedirs(pdir, exist_ok=True)
     out = os.path.join(pdir, "stkphoto_%s.png" % key)
     cw, ch = pw + 2 * side, ph + side + bottom
     plate, m = draw.make_plate({"w": cw, "h": ch, "radius": radius, "fill": fill, "alpha": 1.0,
-                                "border": {"w": round(bw, 1), "color": INK},
-                                "shadow": {"soft": 0, "alpha": 1.0, "dx": round(sd), "dy": round(sd), "color": INK}},
-                               pdir)
+                                "border": border, "shadow": shadow}, pdir)
     te = int(round(pw * 0.06)) if tape else 0
     W_, H_ = cw + 2 * m, ch + 2 * m + te
     if os.path.isfile(out):
@@ -1270,7 +1365,7 @@ def image_layers(ov: dict, th: dict, W: int, H: int, fps: float, base: str, work
         pw = int(U * 0.46 * sc) & ~1
         ph = int(pw * float(ov.get("aspect", 1.0))) & ~1
         png, cw, ch = _photo_card(files[0], pw, ph, int(pw * 0.06), int(pw * 0.22), int(pw * 0.03), 0, U, cream,
-                                  color(ov.get("tape") or "yellow", th), work)
+                                  color(ov.get("tape") or "yellow", th), work, th)
         R = int(math.ceil(math.hypot(cw, ch))) | 1
         R += 1
         rot = float(ov.get("rot", 6.0))
@@ -1292,7 +1387,7 @@ def image_layers(ov: dict, th: dict, W: int, H: int, fps: float, base: str, work
         px, py = cx, cy + L
         for i, f in enumerate(files):
             png, cw, ch = _photo_card(f, pw, ph, int(pw * 0.045), int(pw * 0.045), int(pw * 0.10), int(pw * 0.06),
-                                      U, cream, None, work)
+                                      U, cream, None, work, th)
             R = (int(math.ceil(math.hypot(cw, ch))) + 1) & ~1
             ai = (-spread / 2 + spread * i / max(1, n - 1)) if n > 1 else 0.0
             st = 0.06 * i
@@ -1313,7 +1408,7 @@ def image_layers(ov: dict, th: dict, W: int, H: int, fps: float, base: str, work
         rot = float(ov.get("rot", 0.0))
         for side_i, f in enumerate(files[:2]):
             png, cw, ch = _photo_card(f, pw, ph, int(pw * 0.045), int(pw * 0.045), int(pw * 0.10), int(pw * 0.06),
-                                      U, cream, None, work)
+                                      U, cream, None, work, th)
             cw2 = cw + 2   # 缩成细条时留一点宽度，避免 0 宽
             if side_i == 0:
                 a, b = t0, t0 + fa + d / 2
@@ -1407,15 +1502,15 @@ def _comment(ov, th, W, H, U, fam, cx, cy, layer, sc) -> Group:
         pwid = text_w(str(post), em, fam)
         px = w / 2 - h * 0.35 - pwid / 2
         g.add(El("text", px, 0, layer=2, body=richtext._esc(str(post)), em=em, fam=fam, color="#9AA0A6", until=pa))
-        g.add(El("text", px, 0, layer=3, body=richtext._esc(str(post)), em=em, fam=fam, color="#0095F6", delay=pa,
+        g.add(El("text", px, 0, layer=3, body=richtext._esc(str(post)), em=em, fam=fam, color=color("pink", th), delay=pa,
                  anim="pop"))
     else:
         pwid = h * 0.50
         px = w / 2 - h * 0.30 - pwid / 2
         k = pwid / 100.0
         # 纸飞机：上翼（亮）＋下翼（暗）沿折线拼起来，一眼看得出是折纸
-        wings = ((poly([(0, 44), (100, 0), (40, 62)]), "#9AA0A6", "#0095F6"),
-                 (poly([(40, 62), (100, 0), (56, 100)]), "#767C83", "#0068B8"))
+        wings = ((poly([(0, 44), (100, 0), (40, 62)]), "#9AA0A6", color("pink", th)),
+                 (poly([(40, 62), (100, 0), (56, 100)]), "#767C83", _mix(color("pink", th), "#000000", 0.25)))
         for wi, (cm, grey, blue) in enumerate(wings):
             pp_, ppw, pph, pcx, pcy = shape_of(cm, k)
             ox, oy = px + (pcx - 50) * k, (pcy - 50) * k
@@ -1522,7 +1617,7 @@ def _grid_layers(ov: dict, W: int, H: int, base: str) -> List[dict]:
         else:
             inp = ["-loop", "1", "-t", "%.3f" % d, "-i", fp]
         ct, cb = float(spec.get("crop_top", 0.0)), float(spec.get("crop_bottom", 0.0))
-        pw_, ph_ = int(cw * 1.14) & ~1, int(ch * 1.14) & ~1
+        pw_, ph_ = int(cw * 1.24) & ~1, int(ch * 1.24) & ~1   # 弹出曲线最高冲到约 1.14 倍：画布要留够
         s = "(0.30+0.70*%s)" % _bo_expr(_clip_p("t", 0.0, 0.32), 2.6)
         pre = ("setpts=PTS-STARTPTS,crop=iw:ih*%.4f:0:ih*%.4f,scale=%d:%d:force_original_aspect_ratio=increase,"
                "crop=%d:%d,setsar=1,format=rgba,scale=w='max(2\\,trunc(%d*%s/2)*2)':h='max(2\\,trunc(%d*%s/2)*2)':eval=frame,"

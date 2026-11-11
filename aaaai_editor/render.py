@@ -420,6 +420,13 @@ def _prepare(sb_path: str, proxy: bool = False) -> dict:
     from . import postfx, triggers
     triggers.expand(sb, tl)   # 关键词触发：讲到哪个词，卡片／特效就在那个时间出现
     sb["_postfx"] = postfx.items(sb)
+    if sb["_postfx"]:   # 手机框背景等配色跟着风格走
+        try:
+            _pal = postfx.palette(theme.theme(sb.get("style"), sb["_base"], sb.get("brand")))
+            for _x in sb["_postfx"]:
+                _x.setdefault("_bg", _pal["bg"])
+        except RuntimeError:
+            pass
     lk = look_of(sb)
     if lk:
         print("🎞 画面调色：%s（强度 %.0f%%%s）" % (lk["name"], lk["strength"] * 100, "，背景虚化" if lk["bokeh"] > 0 else ""))

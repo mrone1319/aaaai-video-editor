@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.15.0"
+  version: "1.16.0"
 ---
 
 # aaaai-editor 影片总监
@@ -130,6 +130,8 @@ P=$("$A" new <主题英文短名>)
     情绪词配 `icon`（camera_off／moon／bolt／megaphone…），数字用 `badge`，步骤用 `checklist`，截图用 `polaroid`／`fan`／`flip`，
     结尾 `cta`（按钮＋手形光标）停 2–3 秒；段落之间 `"transitions": [{"t": 秒, "type": "band"}]` 斜色带转场。
   - 贴纸自带音效（啵、喀、滴答），不要再另外加同一时间的 sfx；节奏快：autocut 用默认停顿门槛即可。
+- **同一支片只用一个风格**：贴纸、整屏特效、章节目录都跟着风格配色和描边阴影（sticker 风格才是粗黑描边＋硬投影）；
+  用户想要贴纸那种粗描边外观，就把整支片的风格换成 `sticker`，不要在别的风格里硬加。
 - **清单型 Reels**（「5 个工具」「N 种技巧」，细节见 docs/REELS.md）：
   - 用 **关键词触发** `"triggers"` 代替手动对时间：`{"say": "<字幕里的词>", "card": {...}, "fx": {...}, "dur": 秒, "toc": "<目录名>"}`；
     写完先跑 `"$A" triggers "$P/storyboard.json"` 看每个词对到的时间，没听到的换写法或先改字幕轨，再渲染。

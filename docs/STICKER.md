@@ -13,7 +13,15 @@
 | 色板 | 粉 `#FF4F9A`、柠檬黄 `#FEDA62`、奶油白 `#FFFCF5`、墨黑 `#0A0A0B`、海军蓝 `#1D1B49`（`brand` 可覆盖 accent／accent2／navy／paper） |
 | 字体 | 圆体（macOS「圆体-简」；本机没有就退回苹方） |
 
-贴纸本身是一种卡片：`"type": "sticker"`，用 `kind` 选种类。贴纸**在任何风格下都能用**（色板固定用上面那一套）。
+贴纸本身是一种卡片：`"type": "sticker"`，用 `kind` 选种类。贴纸**在任何风格下都能用，而且跟着风格走**：
+
+| | sticker 风格 | 其他风格（ink、cozy、mrone…） |
+|---|---|---|
+| 颜色 | 上面那一套粉／黄／奶油／海军蓝 | `pink`＝风格强调色、`yellow`＝高亮色（没有就用第二强调色或调亮的强调色）、`cream`＝卡片底色、`navy`＝风格的深色 |
+| 描边与投影 | 粗黑描边＋右下硬投影 | 风格自己的描边（多半没有）＋向下的柔和阴影，和一般卡片一样 |
+| 字体 | 圆体 | 风格的正文字体 |
+
+所以同一支片里贴纸、一般卡片、整屏特效、章节目录看起来是同一套包装。想在别的风格里也用贴纸外观，就把整支片的风格换成 `sticker`（同一支片只用一个风格）。
 
 ## 种类
 
@@ -35,7 +43,7 @@
 | `flip` | 翻面卡片：正面压扁翻过去、背面展开 | `files`（[正面, 背面]）、`flip_at`（相对秒数） |
 | `grid` | 影片网格：最多 6 格（3×2）依序弹出、同时播放，各有一条黄色进度条 | `files`（影片或图片；可写 `{"path", "start", "crop_top", "crop_bottom"}`）、`cols`、`cell`、`aspect`、`stagger` |
 | `drop` | 掉落字：英文大字一个个从上方掉下来、落地弹两下；上方小斜体、下方一行中文 | `text`、`small`、`sub`、`font`（默认 Arial Black）、`size`、`step`、`color` |
-| `comment` | 留言列：白色长条＋头像圆点，逐字打出留言（或显示「新增留言…」），打完右边的纸飞机发送键由灰变蓝、弹一下 | `text`、`placeholder`、`post`（写字就改回文字按钮，例 `"发布"`）、`post_at`、`avatar`（头像颜色） |
+| `comment` | 留言列：白色长条＋头像圆点，逐字打出留言（或显示「新增留言…」），打完右边的纸飞机发送键由灰变成强调色、弹一下 | `text`、`placeholder`、`post`（写字就改回文字按钮，例 `"发布"`）、`post_at`、`avatar`（头像颜色） |
 | `wipe` | 斜色带转场（一般不直接写，见下方 band） | `fill` |
 
 图标名：`phone_play` `camera_off` `moon` `megaphone` `bolt` `link` `cursor` `pencil` `scissors` `checkbox` `star` `heart` `sparkle` `fire`。

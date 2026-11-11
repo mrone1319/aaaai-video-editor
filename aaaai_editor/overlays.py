@@ -809,7 +809,11 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
     # 整屏特效的装饰（手机外框、时间码、分割线）与章节目录：最后画，在所有卡片之上
     from . import postfx, reels
     t_off = float(sb.get("_faces_off", 0.0))
-    extra_ass = postfx.decor_lines(sb.get("_postfx") or [], W, H, fps, t_off) + reels.lines(sb, W, H, fps, t_off)
+    try:
+        th_sb = theme.theme(sb.get("style"), sb.get("_base"), sb.get("brand"))
+    except RuntimeError:
+        th_sb = None
+    extra_ass = postfx.decor_lines(sb.get("_postfx") or [], W, H, fps, t_off, th_sb) + reels.lines(sb, W, H, fps, t_off)
     if extra_ass:
         prepared.append({"ov": {}, "t0": 0.0, "t1": 0.0, "under": False, "behind": False, "layers": [], "items": [],
                          "cutout": None, "ass": extra_ass})

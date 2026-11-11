@@ -27,6 +27,23 @@ CREAM = "#F6F0E2"
 YELLOW = "#FEDA62"
 
 
+def palette(th: Optional[dict]) -> dict:
+    """整屏特效的配色跟着风格走：背景＝强调色压到很深、外框＝卡片底（深底风格用正文浅色）、
+    时间码与进度条＝高亮色、「调色后」标签＝强调色。贴纸风格：海军蓝背景、奶油外框、黄色时间码。"""
+    from . import sticker
+    if not th or not th.get("accent"):
+        return {"bg": GREEN, "bezel": CREAM, "line": "#0A0A0B", "hl": YELLOW, "accent": YELLOW}
+    if th.get("sticker_palette"):
+        return {"bg": sticker.color("navy", th), "bezel": sticker.color("cream", th), "line": "#0A0A0B",
+                "hl": sticker.color("yellow", th), "accent": sticker.color("pink", th)}
+    p0 = sticker._plate0(th)
+    bezel = p0 if not sticker._dark(p0) else (th.get("text") or CREAM)
+    bd = th.get("border") or {}
+    return {"bg": sticker._mix(th["accent"], "#000000", 0.82), "bezel": bezel,
+            "line": bd.get("color") if float(bd.get("w", 0) or 0) > 0 else None,
+            "hl": sticker.color("yellow", th), "accent": th["accent"]}
+
+
 def items(sb: dict) -> List[dict]:
     out = []
     for x in sb.get("postfx") or []:
@@ -165,7 +182,7 @@ def graph(src: str, dst: str, fxs: List[dict], W: int, H: int, fps: float, t_off
             s0 = float(x.get("scale", 0.66))
             se = _phone_expr(d, s0)
             parts.append("[pr%s]split=2[pa%s][pb%s]" % (k, k, k))
-            parts.append("[pa%s]drawbox=x=0:y=0:w=iw:h=ih:color=%s:t=fill[pg%s]" % (k, _hex(x.get("bg") or GREEN), k))
+            parts.append("[pa%s]drawbox=x=0:y=0:w=iw:h=ih:color=%s:t=fill[pg%s]" % (k, _hex(x.get("bg") or x.get("_bg") or GREEN), k))
             parts.append("[pb%s]scale=w='trunc(%d*%s/2)*2':h='trunc(%d*%s/2)*2':eval=frame[ps%s]" % (k, W, se, H, se, k))
             parts.append("[pg%s][ps%s]overlay=x='(W-w)/2':y='(H-h)/2':eval=frame:shortest=1[po%s]" % (k, k, i))
         elif typ == "split":
@@ -224,7 +241,7 @@ def graph(src: str, dst: str, fxs: List[dict], W: int, H: int, fps: float, t_off
 
 
 # ---------------------------------------------------------------- 装饰（ASS）
-def decor_lines(fxs: List[dict], W: int, H: int, fps: float, t_off: float = 0.0) -> List[str]:
+def decor_lines(fxs: List[dict], W: int, H: int, fps: float, t_off: float = 0.0, th: Optional[dict] = None) -> List[str]:
     """手机外框＋时间码＋进度条、分割线＋把手＋前后标签：跟着同一条曲线逐帧画。"""
     from . import richtext, sticker
     out: List[str] = []
@@ -233,6 +250,8 @@ def decor_lines(fxs: List[dict], W: int, H: int, fps: float, t_off: float = 0.0)
     U = float(min(W, H))
     bw, _sd = sticker._lines(U)
     ink = "&H0B0A0A&"
+    pal = palette(th)
+    line = sticker._ac(pal["line"]) if pal["line"] else None
 
     def ev(a, b, layer, tags, body):
         out.append("Dialogue: %d,%s,%s,C,,0,0,0,,{%s}%s" % (layer, richtext._ts(max(0.0, a)), richtext._ts(max(0.0, b)),
@@ -257,14 +276,14 @@ def decor_lines(fxs: List[dict], W: int, H: int, fps: float, t_off: float = 0.0)
                         sticker.rrect(pad, pad, vw, vh, rr, ccw=True)
                     p, _w, _h, _c, _d = sticker.shape_of(cm)
                     ev(ta, tb, 40, "\\an5\\pos(%.1f,%.1f)\\bord%.1f\\3c%s\\shad0\\1c%s\\p1" % (
-                        W / 2, H / 2, bw * 0.8, ink, sticker._ac(CREAM)), p)
+                        W / 2, H / 2, bw * 0.8 if line else 0.0, line or ink, sticker._ac(pal["bezel"])), p)
                 k = (1 - s) / (1 - s0 + 1e-6)
                 if x.get("timecode", True) and k > 0.05:
                     tt = fr / fps + t_off - float(x["t"][0])
                     tc = "00:%02d:%02d:%02d" % (int(tt) // 60, int(tt) % 60, int(round((tt % 1) * fps)) % int(fps))
                     alpha = "&H%02X&" % int(255 * (1 - min(1.0, k)))
                     ev(ta, tb, 41, "\\an2\\pos(%.1f,%.1f)\\fn%s\\fs%.1f\\b1\\bord0\\shad0\\c%s\\alpha%s" % (
-                        W / 2, H / 2 - vh / 2 - pad - U * 0.025, mono, U * 0.042, sticker._ac(YELLOW), alpha), tc)
+                        W / 2, H / 2 - vh / 2 - pad - U * 0.025, mono, U * 0.042, sticker._ac(pal["hl"]), alpha), tc)
                     # 进度条：底轨＋走过的部分
                     by = H / 2 + vh / 2 + pad + U * 0.045
                     bwid = vw * 0.86
@@ -275,7 +294,7 @@ def decor_lines(fxs: List[dict], W: int, H: int, fps: float, t_off: float = 0.0)
                     if prog > 0.01:
                         pp, *_ = sticker.shape_of(sticker.rrect(0, 0, bwid * prog, U * 0.010, U * 0.005))
                         ev(ta, tb, 42, "\\an4\\pos(%.1f,%.1f)\\bord0\\shad0\\1c%s\\alpha%s\\p1" % (
-                            W / 2 - bwid / 2, by, sticker._ac(YELLOW), alpha), pp)
+                            W / 2 - bwid / 2, by, sticker._ac(pal["hl"]), alpha), pp)
         elif x["type"] == "split":
             lab = x.get("labels") or ["调色前", "调色后"]
             hw = U * 0.006
@@ -298,8 +317,8 @@ def decor_lines(fxs: List[dict], W: int, H: int, fps: float, t_off: float = 0.0)
                     tw = sticker.text_w(txt, em, fam) + em * 1.0
                     cx = px - U * 0.03 - tw / 2 if side == 0 else px + U * 0.03 + tw / 2
                     bp, *_ = sticker.shape_of(sticker.rrect(0, 0, tw, em * 1.6, em * 0.8))
-                    col = "&H000000&" if side == 0 else sticker._ac(YELLOW)
-                    tcol = "&HFFFFFF&" if side == 0 else ink
+                    col = "&H000000&" if side == 0 else sticker._ac(pal["accent"])
+                    tcol = "&HFFFFFF&" if side == 0 else sticker._ac(sticker.on(pal["accent"], th or {}))
                     ev(ta, tb, 43, "\\an5\\pos(%.1f,%.1f)\\bord0\\shad0\\1c%s\\1a&H30&\\p1" % (cx, H * 0.40, col), bp)
                     ev(ta, tb, 44, "\\an5\\pos(%.1f,%.1f)\\fn%s\\fs%.1f\\b1\\bord0\\shad0\\c%s" % (
                         cx, H * 0.40, fam, sticker.fs_tag(em, fam), tcol), richtext._esc(txt))
