@@ -376,10 +376,11 @@ def _icon_parts(name: str) -> List[Tuple[List[Cmd], str, bool]]:
         b = rotate(rrect(40, 34, 52, 32, 16) + rrect(50, 43, 32, 14, 7, ccw=True), 50, 50, -40)
         P += [(a, "pink", True), (b, "yellow", True)]
     elif name in ("cursor", "hand"):
-        P += [(rrect(38, 4, 18, 56, 9), "cream", True), (rrect(24, 40, 56, 50, 16), "cream", True),
-              (rrect(56, 34, 14, 24, 7), "cream", False), (rrect(68, 38, 14, 22, 7), "cream", False),
-              (rotate(rrect(10, 46, 26, 13, 6.5), 30, 52, 35), "cream", False),
-              (rrect(38, 4, 18, 30, 9), "cream", False)]
+        # Windows 的手形鼠标：食指朝上、三根手指握起（看得到指节）、拇指在左边；整只手一个外形（白底黑边），
+        # 里面三条指缝线。指尖在设计格 (41, 2)
+        P += [(poly(_hand_outline()), "#FFFFFF", True),
+              (stroke((48, 40), (48, 54), 1.7), "ink", False), (stroke((60, 44), (60, 56), 1.7), "ink", False),
+              (stroke((72, 50), (72, 60), 1.7), "ink", False)]
     elif name == "pencil":
         body = rotate(rrect(20, 40, 62, 20, 3), 50, 50, -40)
         tip = rotate(poly([(82, 40), (98, 50), (82, 60)]), 50, 50, -40)
@@ -411,6 +412,23 @@ def _icon_parts(name: str) -> List[Tuple[List[Cmd], str, bool]]:
     else:
         raise KeyError(name)
     return P
+
+
+def _hand_outline() -> List[Tuple[float, float]]:
+    """手形鼠标外形（顺时针）：食指 → 中指／无名指／小指指节 → 手掌右侧 → 手腕 → 拇指 → 回到食指。"""
+    def arc(cx, cy, r, a0, a1, n=8):   # 角度：0＝右、90＝下（画面坐标）
+        return [(cx + r * math.cos(math.radians(a0 + (a1 - a0) * i / n)),
+                 cy + r * math.sin(math.radians(a0 + (a1 - a0) * i / n))) for i in range(n + 1)]
+    pts = [(34, 46)]
+    pts += arc(41, 9, 7, 180, 360)            # 食指指尖
+    pts += [(48, 38)] + arc(54, 38, 6, 180, 360)   # 中指指节
+    pts += [(60, 42)] + arc(66, 42, 6, 180, 360)   # 无名指
+    pts += [(72, 48)] + arc(77, 48, 5, 180, 360)   # 小指
+    pts += [(82, 74)] + arc(70, 76, 12, 0, 70, 6)  # 手掌右下圆过去
+    pts += [(74, 98), (36, 98), (36, 92), (30, 86)]   # 手腕
+    pts += [(12, 66)] + arc(17, 61, 7, 135, 300, 6)   # 拇指指尖
+    pts += [(34, 70)]
+    return pts
 
 
 ICONS = ("phone_play", "camera_off", "moon", "megaphone", "bolt", "link", "cursor", "pencil", "scissors",
@@ -1119,14 +1137,14 @@ def _cta(ov, th, W, H, U, fam, cx, cy, layer, seed, sc) -> Group:
     tip = (w * 0.40, h * 0.20)   # 指尖落点：按钮右下角
     g.add(El("shape", tip[0], tip[1], layer=2, path="", fill="#FFFFFF", bord=0.0, shad=0.0, ghostable=False,
              windows=win, dyn=ripple))
-    # 手形光标：从右下靠过来点一下再退开（图标里指尖在设计格 (47, 4)，光标转了 -18°）
-    cs = em * 1.65
-    vx, vy = (47 - 50) * cs / 100.0, (4 - 50) * cs / 100.0
-    r_ = math.radians(-18.0)
+    # 手形光标：从右下靠过来点一下再退开（图标里指尖在设计格 (41, 2)，光标转了 -12°）
+    cs = em * 1.9
+    vx, vy = (41 - 50) * cs / 100.0, (2 - 50) * cs / 100.0
+    r_ = math.radians(-12.0)
     cx0 = tip[0] - (vx * math.cos(r_) - vy * math.sin(r_)) + cs * 0.06
     cy0 = tip[1] - (vx * math.sin(r_) + vy * math.cos(r_)) + cs * 0.08
     cur = Group(0, 0, 0, 0)
-    _icon(cur, "cursor", cs, cx0, cy0, -18.0, th, 0)
+    _icon(cur, "cursor", cs, cx0, cy0, -12.0, th, 0)
     for el in cur.els:
         base_ox, base_oy = el.ox, el.oy
 
