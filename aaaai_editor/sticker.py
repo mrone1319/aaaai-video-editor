@@ -1388,11 +1388,11 @@ def _comment_post_at(ov: dict) -> float:
 
 
 def _comment(ov, th, W, H, U, fam, cx, cy, layer, sc) -> Group:
-    """留言列：白色圆角长条，左边头像圆点，中间「新增留言…」（或逐字打出 text），右边「发布」灰→蓝。"""
+    """留言列：白色圆角长条，左边头像圆点，中间「新增留言…」（或逐字打出 text），右边纸飞机发送键灰→蓝。"""
     t0, t1 = float(ov["t"][0]), float(ov["t"][1])
     g = Group(t0, t1, cx, cy, ov.get("anim", "rise"), ov.get("out", "fade"), layer)
     em = U * 0.042 * sc
-    w, h = U * 0.86 * sc, em * 2.2
+    w, h = U * 0.80 * sc, em * 2.2
     bw, sd = _lines(U)
     path, pw, ph, _a, _b = shape_of(rrect(0, 0, w, h, h / 2.0))
     g.add(El("shape", 0, 0, layer=0, path=path, w=pw, h=ph, fill="#FFFFFF", bord=bw * 0.8, shad=sd * 0.7))
@@ -1400,13 +1400,28 @@ def _comment(ov, th, W, H, U, fam, cx, cy, layer, sc) -> Group:
     ap, *_ = shape_of(ellipse(av / 2, av / 2, av / 2, av / 2))
     g.add(El("shape", -w / 2 + h * 0.17 + av / 2, 0, layer=1, path=ap, fill=color(ov.get("avatar") or "pink", th),
              bord=bw * 0.5, shad=0.0, ghostable=False))
-    post = str(ov.get("post", "发布"))
     pa = _comment_post_at(ov)
-    pwid = text_w(post, em, fam)
-    px = w / 2 - h * 0.35 - pwid / 2
-    g.add(El("text", px, 0, layer=2, body=richtext._esc(post), em=em, fam=fam, color="#9AA0A6", until=pa))
-    g.add(El("text", px, 0, layer=3, body=richtext._esc(post), em=em, fam=fam, color="#0095F6", delay=pa,
-             anim="pop"))
+    # 发送键：纸飞机图标，打完之前灰色，打完那一刻变蓝、弹一下（写 "post": "发布" 改回文字按钮）
+    post = ov.get("post")
+    if post:
+        pwid = text_w(str(post), em, fam)
+        px = w / 2 - h * 0.35 - pwid / 2
+        g.add(El("text", px, 0, layer=2, body=richtext._esc(str(post)), em=em, fam=fam, color="#9AA0A6", until=pa))
+        g.add(El("text", px, 0, layer=3, body=richtext._esc(str(post)), em=em, fam=fam, color="#0095F6", delay=pa,
+                 anim="pop"))
+    else:
+        pwid = h * 0.50
+        px = w / 2 - h * 0.30 - pwid / 2
+        k = pwid / 100.0
+        # 纸飞机：上翼（亮）＋下翼（暗）沿折线拼起来，一眼看得出是折纸
+        wings = ((poly([(0, 44), (100, 0), (40, 62)]), "#9AA0A6", "#0095F6"),
+                 (poly([(40, 62), (100, 0), (56, 100)]), "#767C83", "#0068B8"))
+        for wi, (cm, grey, blue) in enumerate(wings):
+            pp_, ppw, pph, pcx, pcy = shape_of(cm, k)
+            ox, oy = px + (pcx - 50) * k, (pcy - 50) * k
+            for lay, col, kw in ((2, grey, {"until": pa}), (3, blue, {"delay": pa, "anim": "pop"})):
+                g.add(El("shape", ox, oy, ax=px, ay=0, layer=lay * 2 + wi, path=pp_, w=ppw, h=pph, fill=col,
+                         bord=0.0, shad=0.0, ghostable=False, **kw))
     tx0 = -w / 2 + h * 0.17 + av + em * 0.5
     txt = str(ov.get("text") or "")
     if txt:
@@ -1414,13 +1429,14 @@ def _comment(ov, th, W, H, U, fam, cx, cy, layer, sc) -> Group:
         maxw = px - pwid / 2 - em * 0.4 - tx0
         while len(txt) > 1 and text_w(txt, em, fam) > maxw:   # 太长就截掉尾巴（留言列只有一行）
             txt = txt[:-1]
-        tw = text_w(txt, em, fam)
+        tw = text_w(txt + "|", em, fam)
 
         def body(u, txt=txt, step=step):
             n_ = max(0, min(len(txt), int(math.floor((u - 0.30) / step)) + 1)) if u >= 0.30 else 0
-            caret = "|" if n_ < len(txt) and int(u * 3) % 2 == 0 else ""
-            return {"body": "{\\alpha{A}}%s{\\alpha&HFF&}%s{\\alpha{A}\\c&HA6A09A&}%s" % (
-                richtext._esc(txt[:n_]), richtext._esc(txt[n_:]), caret)}
+            # 光标紧跟在已打出的字后面（光标字符一直在、只换透明度，整行宽度不变、字不会跳）
+            on_ = n_ < len(txt) and int(u * 3) % 2 == 0
+            return {"body": "{\\alpha{A}}%s{\\c&HA6A09A&\\alpha%s}|{\\c&H0B0A0A&\\alpha&HFF&}%s" % (
+                richtext._esc(txt[:n_]), "{A}" if on_ else "&HFF&", richtext._esc(txt[n_:]))}
         g.add(El("text", tx0 + tw / 2.0, 0, layer=2, body="", em=em, fam=fam, color=INK, dyn=body,
                  points=[0.30 + step * k for k in range(len(txt) + 1)], windows=[(0.30, 0.30 + step * len(txt))]))
     else:
@@ -1460,11 +1476,11 @@ def _grid_decor(ov: dict, th: dict, W: int, H: int, fps: float, order: int) -> L
     out: List[str] = []
     for i, (x, y, cw, ch, st) in enumerate(_grid_geom(ov, W, H)):
         g = Group(t0, t1, x, y, "pop", ov.get("out", "fade"), 100 + order * 100 + i * 4)
-        pad, rr = U * 0.012, U * 0.03
+        pad, rr = U * 0.0055, U * 0.026   # 细框：只盖住影片的方角
         cm = rrect(0, 0, cw + 2 * pad, ch + 2 * pad, rr + pad) + rrect(pad, pad, cw, ch, rr, ccw=True)
         p, pw, ph, _a, _b = shape_of(cm)
-        g.add(El("shape", 0, 0, layer=0, delay=st, path=p, w=pw, h=ph, fill=color("cream", th), bord=bw * 0.8,
-                 shad=sd * 0.7, ghostable=False))
+        g.add(El("shape", 0, 0, layer=0, delay=st, path=p, w=pw, h=ph, fill=color("cream", th), bord=bw * 0.5,
+                 shad=sd * 0.6, ghostable=False))
         bwid, bh = cw * 0.84, U * 0.008
         track, *_ = shape_of(rrect(0, 0, bwid, bh, bh / 2))
         g.add(El("shape", 0, ch / 2 - U * 0.03, layer=1, delay=st + 0.25, anim="fade", path=track, fill="#FFFFFF",

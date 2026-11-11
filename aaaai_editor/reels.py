@@ -6,13 +6,13 @@ storyboard：
   "toc": {"title": "18 种特效", "items": [{"t": 3.2, "text": "掉落字"}, {"t": 6.0, "text": "巨大字幕"}],
           "footer": "收藏起来慢慢学", "side": "right", "end": 60}
   t 是成片秒数（该段开始）；关键词触发写 "toc": "名称" 会自动加进来。end 不写＝最后一项之后一直到片尾。
-  可选：panel（底色，默认深绿）、hl（亮起那一行的底色，默认米白）、scale（大小）。
+  可选：panel（底色，默认黑）、panel_alpha（不透明度，默认 0.55）、hl（亮起那一行的底色，默认米白）、scale（大小）。
 """
 from __future__ import annotations
 
 from typing import List
 
-GREEN, CREAM, MUTED = "#10261C", "#F6F2EA", "#C8C4A0"
+PANEL, CREAM, MUTED = "#000000", "#F6F2EA", "#D8D4C4"
 
 
 def lines(sb: dict, W: int, H: int, fps: float, t_off: float = 0.0) -> List[str]:
@@ -48,8 +48,10 @@ def lines(sb: dict, W: int, H: int, fps: float, t_off: float = 0.0) -> List[str]
             out.append("Dialogue: %d,%s,%s,C,,0,0,0,,{%s}%s" % (layer, richtext._ts(max(0.0, a)), richtext._ts(b), tags, body))
     a0 = starts[0]
     pp, *_ = sticker.shape_of(sticker.rrect(0, 0, pw + U * 0.03, ph, U * 0.018))
-    ev(a0, t_end, 900, "\\an7\\pos(%.1f,%.1f)\\bord0\\shad0\\1c%s\\1a&H14&\\fad(150,200)\\p1" % (
-        px, py, sticker._ac(toc.get("panel") or GREEN)), pp)
+    # 半透明黑底、边缘虚化（\\blur 羽化外框），叠在任何画面上都不抢眼
+    pa = min(1.0, max(0.0, float(toc.get("panel_alpha", 0.55))))
+    ev(a0, t_end, 900, "\\an7\\pos(%.1f,%.1f)\\bord0\\shad0\\blur%.1f\\1c%s\\1a&H%02X&\\fad(150,200)\\p1" % (
+        px, py, U * 0.014, sticker._ac(toc.get("panel") or PANEL), int(round(255 * (1 - pa)))), pp)
     if toc.get("title"):
         ev(a0, t_end, 902, "\\an7\\pos(%.1f,%.1f)\\fn%s\\fs%.1f\\b1\\bord0\\shad0\\c%s\\fad(150,200)" % (
             px + U * 0.017, py + U * 0.017, fam, sticker.fs_tag(U * 0.020, fam), sticker._ac(MUTED)),

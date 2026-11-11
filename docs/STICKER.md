@@ -35,7 +35,7 @@
 | `flip` | 翻面卡片：正面压扁翻过去、背面展开 | `files`（[正面, 背面]）、`flip_at`（相对秒数） |
 | `grid` | 影片网格：最多 6 格（3×2）依序弹出、同时播放，各有一条黄色进度条 | `files`（影片或图片；可写 `{"path", "start", "crop_top", "crop_bottom"}`）、`cols`、`cell`、`aspect`、`stagger` |
 | `drop` | 掉落字：英文大字一个个从上方掉下来、落地弹两下；上方小斜体、下方一行中文 | `text`、`small`、`sub`、`font`（默认 Arial Black）、`size`、`step`、`color` |
-| `comment` | 留言列：白色长条＋头像圆点，逐字打出留言（或显示「新增留言…」），打完「发布」由灰变蓝 | `text`、`placeholder`、`post`（按钮字）、`post_at`、`avatar`（头像颜色） |
+| `comment` | 留言列：白色长条＋头像圆点，逐字打出留言（或显示「新增留言…」），打完右边的纸飞机发送键由灰变蓝、弹一下 | `text`、`placeholder`、`post`（写字就改回文字按钮，例 `"发布"`）、`post_at`、`avatar`（头像颜色） |
 | `wipe` | 斜色带转场（一般不直接写，见下方 band） | `fill` |
 
 图标名：`phone_play` `camera_off` `moon` `megaphone` `bolt` `link` `cursor` `pencil` `scissors` `checkbox` `star` `heart` `sparkle` `fire`。
