@@ -268,7 +268,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.16.1</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.16.2</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
@@ -294,10 +294,12 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <article><h3>开头 3 秒抓住人</h3><p>把片中最有力的一句剪一份放到开头当预告。不知道选哪句，它会按数字、反差、问句打分推荐 3 句。</p></article>
     <article><h3>20 多种卡片，会避脸</h3><p>片头标题、数据跳数、清单、金句、对比、头像牌、章节……落定后轻轻呼吸、关键卡片闪一下。人坐得高时卡片自动让开眼睛。</p></article>
     <article><h3>卡片收合：秀证据整套版式</h3><p>画面收进卡片、人物头冲出框，上方放证据截图、工作流步骤、行动号召，结尾停在「留言关键词」。适合收益证明、成果展示。</p></article>
-    <article><h3>声音一次搞定</h3><p>降噪（先给你听三档）、配乐遇到人声自动压低、7 种音效（金币、啵、咻……）、成片响度锁定 −14 LUFS（各平台通用标准）。</p></article>
+    <article><h3>声音一次搞定</h3><p>降噪（先给你听三档）、配乐遇到人声自动压低、8 种音效（金币、啵、咻、咚……）、成片响度锁定 −14 LUFS（各平台通用标准）。</p></article>
     <article><h3>B-roll 三种来源</h3><p>用你自己的素材最好；也能找免费素材（Pexels），或用 AI 生成——生成前一定先报价、你同意才花钱，每个项目默认上限 $2。</p></article>
     <article><h3>图卡：卡片直接变图文</h3><p>片里排好的数据卡、清单卡、金句卡可以单独出成静态图（默认 1080×1350），配上文案就是一篇小红书／IG 图文，和视频互相导流。跟它说「出图卡」就好。</p></article>
-    <article><h3>每套风格都有自己的排版</h3><p>10 套风格各有字体性格：粗标题、大写字距的小标、等宽数字；底板有顶部高光与柔和投影，数据卡的单位小一号、还能带一条量感条。</p></article>
+    <article><h3>贴纸弹跳：街头口播的整套包装</h3><p>黑粗描边＋硬投影的彩色贴纸：台词逐字打进框里、重砸大字、斜标签、卡通图标、圆环计数、打勾清单、拍立得、掉落字、留言列、影片网格、斜色带转场。选别的风格时，贴纸自动换成那个风格的颜色与阴影。</p></article>
+    <article><h3>清单型 Reels：讲到哪就出现哪</h3><p>讲到某个词，卡片或特效就在那一刻出现，不用对时间；侧边章节目录跟着亮起「03/10」；还有缩成手机框、调色前后对比、滑下一支、底片感四种整屏特效。</p></article>
+    <article><h3>每套风格都有自己的排版</h3><p>11 套风格各有字体性格：粗标题、大写字距的小标、等宽数字；底板有顶部高光与柔和投影，数据卡的单位小一号、还能带一条量感条。</p></article>
     <article><h3>出片前自己先验收</h3><p>按卡片时间自动抽帧检查、字幕对时体检、封面 15% 安全区检查。没看过实际画面，它不会说「完成了」。</p></article>
     <article><h3>剪完接着写文案</h3><p>交给「内容生产线」：按你指定的平台（小红书、抖音、X、IG、B站…）写好文案、配图，打包成发布包，按客户记住品牌语气。发帖要你亲手按。</p></article>
     <article><h3>快，而且安全</h3><p>只解码用得到的片段，60 秒的片预览约半分钟。原始素材永远不删、不改、不移动；API 密钥存在 Mac 钥匙串，只发给官方网址。</p></article>
@@ -722,8 +724,8 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <div class="lane you"><div class="l">第一次用：先登录一次</div><ul><li>在「终端」App 装好 HeyGen 的命令行工具（按 HeyGen 官方说明）。</li><li>执行 <code>heygen auth login --oauth</code>，用你的 HeyGen 账号登录——走免费额度。</li><li>不确定就跟 Claude 说「帮我设定 HeyGen 音乐库」，它会一步一步带你做，登录那一步要你自己来。</li></ul></div>
     <div class="lane"><div class="l">之后这样说</div><ul><li>「配乐从 HeyGen 音乐库找一首轻快、不抢人声的 lo-fi」</li><li>「找三首给我试听，节奏跟 upbeat-energetic 差不多」</li><li>「用 HeyGen 找一个转场的『咻』音效」</li></ul></div>
   </div>
-  <div class="note warn"><b class="k">注意</b><span>HeyGen 音乐库的曲子依 HeyGen 的使用条款授权；要商用（广告、客户项目）前，先在 HeyGen 确认该曲的授权范围。内建的 7 首与 7 种音效是原创，可放心用在自己的成片里。</span></div>
-  <h3>7 种音效</h3>
+  <div class="note warn"><b class="k">注意</b><span>HeyGen 音乐库的曲子依 HeyGen 的使用条款授权；要商用（广告、客户项目）前，先在 HeyGen 确认该曲的授权范围。内建的 7 首与 8 种音效是原创，可放心用在自己的成片里。</span></div>
+  <h3>8 种音效</h3>
   <div class="tbl"><table>
     <thead><tr><th>名称</th><th>听起来</th><th>用在</th><th>这样说</th></tr></thead>
     <tbody id="sfxRoot"></tbody>
@@ -875,7 +877,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">社群风格</b><span><code>mrone</code> 与 <code>otg</code> 是两个频道／社群的品牌风格：你可以用，但名称、配色和品牌元素归原权利人，不要用它们做冒充该品牌、或让人误以为是官方的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.16.1 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）、<code>docs/STICKER.md</code>（贴纸）、<code>docs/REELS.md</code>（关键词触发、章节目录、整屏特效）。</span>
+    <span>aaaai-editor v1.16.2 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）、<code>docs/STICKER.md</code>（贴纸）、<code>docs/REELS.md</code>（关键词触发、章节目录、整屏特效）。</span>
     <span>相关网站：<a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a> · <a href="https://linktr.ee/mrone.eth" target="_blank" rel="noopener">MR ONE</a> · <a href="https://otg.community/" target="_blank" rel="noopener">OTG</a></span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
@@ -903,7 +905,25 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     return el("rect",{x:0,y:0,width:W,height:H,fill:"var(--paper)"}) +
       el("rect",{x:5,y:t,width:80,height:b-t,rx:6,fill:"var(--screen-2)"}) +
       person({cy:76,fill:"var(--face)"}) + el("rect",{x:5,y:b,width:80,height:H-b,fill:"var(--paper)"}) + cap(112) + (extra||""); }
+  function stk(x,y,w,h,c,r){ r = r==null ? 3 : r; return el("rect",{x:x+2,y:y+2,width:w,height:h,rx:r,fill:"#0A0A0B"}) + el("rect",{x:x,y:y,width:w,height:h,rx:r,fill:c,stroke:"#0A0A0B","stroke-width":1.4}); }
   var S = {
+    stkbox: function(){ return frame(person() + stk(14,30,62,22,"#FFFCF5") + line(20,38,24,4,"#0A0A0B") + el("rect",{x:46,y:39,width:22,height:4,rx:1,fill:"#FEDA62"}) + line(46,38,22,4,"#0A0A0B") + stk(8,24,20,8,"#FF4F9A",4) + line(11,27,13,2,"#fff") + cap(118)); },
+    stkslam: function(){ return frame(person() + stk(20,26,50,24,"#FEDA62",12) + el("text",{x:45,y:43,"font-size":13,"font-weight":900,"text-anchor":"middle",fill:"#0A0A0B"},"赶快") + stk(8,52,22,8,"#FF4F9A",4) + cap(118)); },
+    stkicon: function(){ return frame(person() + stk(10,26,18,26,"#FF4F9A",4) + el("rect",{x:13,y:30,width:12,height:16,rx:2,fill:"#FFFCF5"}) + el("circle",{cx:46,cy:36,r:11,fill:"#FEDA62",stroke:"#0A0A0B","stroke-width":1.5}) + el("path",{d:"M64 30 L74 26 L70 40 L78 40 L64 54 L68 42 L60 42 Z",fill:"#FEDA62",stroke:"#0A0A0B","stroke-width":1.3}) + cap(118)); },
+    stkbadge: function(){ return frame(person() + el("circle",{cx:46,cy:36,r:17,fill:"#FFFCF5",stroke:"#0A0A0B","stroke-width":1.6}) + el("circle",{cx:46,cy:36,r:13,fill:"none",stroke:"#FF4F9A","stroke-width":3,"stroke-dasharray":"60 100"}) + el("text",{x:46,y:40,"font-size":11,"font-weight":900,"text-anchor":"middle",fill:"#0A0A0B"},"24") + stk(18,16,18,7,"#FEDA62",3.5) + cap(118)); },
+    stkcheck: function(){ var s = person() + stk(16,22,58,36,"#FFFCF5",5); for (var i=0;i<3;i++){ s += el("rect",{x:21,y:27+i*10,width:7,height:7,rx:1.5,fill:"#fff",stroke:"#0A0A0B","stroke-width":1}) + el("path",{d:"M22.5 "+(30.5+i*10)+" L24.5 "+(32.5+i*10)+" L27.5 "+(28.5+i*10),stroke:"#FF4F9A","stroke-width":1.6,fill:"none"}) + line(32,29+i*10,30-i*5,3,"#0A0A0B"); } return frame(s + cap(118)); },
+    stkcta: function(){ return frame(person() + stk(18,34,48,14,"#FF4F9A",7) + line(26,39.5,30,3,"#fff") + el("path",{d:"M60 44 L60 56 L63 53 L65 58 L67 57 L65 52 L69 52 Z",fill:"#fff",stroke:"#0A0A0B","stroke-width":1}) + el("path",{d:"M40 52 L44 56 L48 52",stroke:"#FEDA62","stroke-width":2,fill:"none"}) + cap(118)); },
+    stkphoto: function(){ return frame(person() + el("g",{transform:"rotate(-12 30 40)"}, stk(14,22,30,38,"#FFFCF5",1) + el("rect",{x:17,y:25,width:24,height:26,fill:"var(--screen-2)"})) + el("g",{transform:"rotate(10 60 40)"}, stk(46,22,30,38,"#FFFCF5",1) + el("rect",{x:49,y:25,width:24,height:26,fill:"var(--screen-2)"}) + el("rect",{x:54,y:19,width:14,height:5,fill:"#FEDA62",opacity:.9})) + cap(118)); },
+    stkdrop: function(){ return frame(person() + el("text",{x:10,y:16,"font-size":5,"font-style":"italic",fill:"#fff"},"kinetic type") + el("text",{x:10,y:34,"font-size":17,"font-weight":900,fill:"#fff",stroke:"#0A0A0B","stroke-width":1},"WO") + el("text",{x:48,y:24,"font-size":17,"font-weight":900,fill:"#fff",stroke:"#0A0A0B","stroke-width":1},"W") + el("path",{d:"M57 8 L57 14",stroke:"#fff","stroke-width":1,"stroke-dasharray":"1.5 1.5"}) + cap(118)); },
+    stkcomment: function(){ return frame(person() + stk(8,34,74,12,"#fff",6) + el("circle",{cx:15,cy:40,r:3.5,fill:"#FF4F9A"}) + line(22,38.5,34,3,"#0A0A0B") + el("path",{d:"M68 42 L78 36 L74 46 L72 42 Z",fill:"#FF4F9A"}) + cap(118)); },
+    stkgrid: function(){ var s = person(); for (var r=0;r<2;r++) for (var c=0;c<3;c++){ s += el("rect",{x:6+c*27,y:14+r*38,width:24,height:35,rx:3,fill:"var(--screen-2)",stroke:"#FFFCF5","stroke-width":1.5}) + line(9+c*27,44+r*38,12,1.6,"#FEDA62"); } return frame(s); },
+    stkband: function(){ return frame(person() + el("path",{d:"M30 0 L90 0 L90 160 L-10 160 Z",fill:"#FEDA62",stroke:"#0A0A0B","stroke-width":1.5}) + el("path",{d:"M22 0 L30 0 L-10 160 L-18 160 Z",fill:"#FF4F9A"})); },
+    rtrig: function(){ return frame(person() + stk(20,30,50,18,"#FEDA62",9) + line(28,37.5,34,3,"#0A0A0B") + el("rect",{x:20,y:118,width:50,height:9,rx:4.5,fill:"#fff"}) + line(25,121.5,16,2,"#0A0A0B") + el("rect",{x:42,y:120.5,width:14,height:4,rx:1,fill:"var(--accent)"})); },
+    rtoc: function(){ var s = person({cx:36}) + el("rect",{x:60,y:12,width:32,height:70,rx:4,fill:"#000",opacity:.55}); for (var i=0;i<6;i++){ s += (i==2 ? el("rect",{x:62,y:23+i*9,width:28,height:7,rx:1.5,fill:"var(--accent)"}) : "") + line(66,25.5+i*9,18-i,2,i==2?"#0A0A0B":"#fff",i==2?1:.75); } return frame(s + cap()); },
+    rphone: function(){ return frame(el("rect",{x:18,y:22,width:54,height:106,rx:8,fill:"#FFFCF5"}) + el("rect",{x:21,y:25,width:48,height:100,rx:6,fill:"var(--screen-2)"}) + person({cy:62,r:10}) + el("text",{x:45,y:17,"font-size":5,"text-anchor":"middle",fill:"var(--accent)","font-family":"var(--mono)"},"00:00:01:12") + line(24,136,42,1.6,"#fff",.5) + line(24,136,20,1.6,"var(--accent)"), "#1D1B49"); },
+    rsplit: function(){ return frame(person() + el("rect",{x:0,y:0,width:45,height:160,fill:"#888",opacity:.45}) + el("rect",{x:44,y:0,width:1.5,height:160,fill:"#fff"}) + el("circle",{cx:45,cy:80,r:6,fill:"#fff",stroke:"#0A0A0B","stroke-width":1}) + pill(18,40,20,7,"#000") + pill(52,40,20,7,"var(--accent)") + cap()); },
+    rswipe: function(){ return frame(el("rect",{x:0,y:0,width:90,height:160,fill:"var(--screen-2)"}) + el("rect",{x:0,y:-60,width:90,height:110,fill:"var(--screen)"}) + person({cy:-4}) + el("path",{d:"M45 120 L45 90 M39 96 L45 90 L51 96",stroke:"#fff","stroke-width":2,fill:"none"})); },
+    rfilm: function(){ return frame(person({fill:"#C9A27A"}) + el("rect",{x:0,y:0,width:90,height:12,fill:"#000"}) + el("rect",{x:0,y:148,width:90,height:12,fill:"#000"}) + el("circle",{cx:12,cy:40,r:30,fill:"#FF9A40",opacity:.25}) + cap(), "#5A4636"); },
     hookcut: function(){ return frame(person() + cap() + pill(6,8,22,7,"var(--accent)") + line(9,10.5,16,2,"#1E1B16") ); },
     title: function(){ return frame(person() + scrimTop(66) + line(6,10,10,2,"var(--accent)") + line(6,16,14,2,"#fff",.7) + line(6,22,46,5) + line(52,22,20,5,"var(--accent)") + line(6,31,30,2.4,"#fff",.75) + cap()); },
     stat: function(){ return frame(person() + scrimTop(70) + line(6,10,10,2,"var(--accent)") + line(6,15,14,2,"#fff",.7) + el("text",{x:6,y:40,"font-size":22,"font-weight":900,fill:"var(--accent)","font-family":"var(--mono)"},"3.2万") + line(6,45,32,2.4,"#fff",.75) + cap()); },
@@ -983,6 +1003,27 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       {k:"brollblur", n:"B-roll 模糊铺底／上下黑边", c:"broll · blur／letterbox", look:"横式素材放进竖版：上下用同画面模糊铺底，或留黑边。", when:"插入横拍的素材、屏幕录制。", say:"这段横拍的用模糊铺底", note:"图片会自动缓慢推近，不会是死图。"},
       {k:"image", n:"图片／logo", c:"image", look:"放一张图或 logo；黑色 logo 可以垫白色圆底。", when:"品牌露出、合作方 logo、产品图。", say:"右上角放 assets/logo.png，垫白色圆底", note:"透明底 PNG 最好。"},
       {k:"clip", n:"透明动画片段", c:"clip", look:"叠一段带透明通道的动画（例如品牌动效）。", when:"需要复杂动效时，由动效 skill 做好再叠进来。", say:"找动效那边做一段 logo 动画，叠在开头", note:"做法见套件里的 motion-graphic-video-editor。"}
+    ]},
+    {h:"贴纸弹跳（sticker）", sub:"街头／种草快节奏口播：一句一张贴纸，放胸口、不挡脸；在别的风格里会自动换成那个风格的颜色与阴影", items:[
+      {k:"stkbox", n:"台词框", c:"sticker · box", look:"贴纸框弹出、字一个个打进去；**粉字**、==黄色底条==、[[粉色实底块]]三种强调，框角可加斜标签和图标。", when:"一般句子、要强调的说法。", say:"这句做台词框：我**不想**拍==短视频==，框角加「只需」", note:"一张 1–1.5 秒，同屏最多两三样。"},
+      {k:"stkslam", n:"重砸大字＋斜标签", c:"sticker · slam / tag", look:"大字从 1.9 倍带模糊砸下来、落地压扁回弹，旁边斜着一个小标签。", when:"最重的那一句、催促、结论。", say:"讲「赶快」时重砸大字，旁边加「最快」斜标签", note:"一支片两三次就好。"},
+      {k:"stkicon", n:"卡通贴纸图标", c:"sticker · icon", look:"14 个卡通图标（手机、禁拍相机、月亮、喇叭、闪电、链接、手形光标、铅笔、剪刀、勾选框、星、心、闪光、火）弹出，带一小簇彩纸。", when:"情绪词、物件：不想露脸、今晚、最快。", say:"讲到不想露脸时，右上角弹一个禁拍相机", note:"说图标名称或意思都行。"},
+      {k:"stkbadge", n:"圆环计数", c:"sticker · badge", look:"圆形徽章，数字一步步跳（8→22→24），圆环跟着走满，每跳一下弹一下。", when:"时间、数量一步步升高。", say:"做圆环计数 8、22、24 小时，旁边写「最快」", note:"单位小一号、强调色。"},
+      {k:"stkcheck", n:"打勾清单", c:"sticker · checklist", look:"一行行弹出，粉色勾一笔笔画上，配「啵」「喀」。", when:"步骤、条件、清单。", say:"三个步骤做打勾清单", note:"3–4 条最好看。"},
+      {k:"stkcta", n:"点击按钮", c:"sticker · cta", look:"先出空心描边再填满的按钮，Windows 手形鼠标一下下点按、涟漪，下面箭头往下跳。", when:"结尾：点链接、看置顶、领资料。", say:"结尾放「点击链接」按钮，停到片尾", note:"停 2–3 秒。"},
+      {k:"stkphoto", n:"拍立得／扇形／翻面", c:"sticker · polaroid / fan / flip", look:"拍立得（白框＋胶带，侧滑带转）；几张截图像一把牌摊开；或一张卡翻面换成另一张。", when:"截图、成果、前后对比。", say:"讲到作品时，把三张截图做成扇形卡片", note:"用你自己的图片。", need:"图片"},
+      {k:"stkdrop", n:"掉落字", c:"sticker · drop", look:"英文大字一个个从上方掉下来、落地弹两下，配「咚」；上方小斜体、下方一行中文。", when:"开场、重点英文词。", say:"开场做掉落字 WOW，下面写「全部特效」", note:"可以放到人后面（需要人像去背）。"},
+      {k:"stkcomment", n:"留言列", c:"sticker · comment", look:"留言长条逐字打出，打完纸飞机发送键变成强调色、弹一下。", when:"引导留言、模拟观众反应。", say:"结尾放留言列，打出「太实用了，收藏！」", note:"右侧有目录时放左边一点。"},
+      {k:"stkgrid", n:"影片网格", c:"sticker · grid", look:"最多 3×2 格依序弹出、同时播放，每格一条进度条。", when:"作品集、案例、一次看很多支。", say:"讲到作品时做影片网格，放这 6 支", note:"影片、图片都可以。", need:"素材"},
+      {k:"stkband", n:"斜色带转场", c:"transitions · band", look:"一大片黄色斜带横扫过画面，正中间盖住剪辑点，扫走后淡淡白闪，配「咻」。", when:"换段落。", say:"每个段落之间加斜色带转场", note:"画面本身是硬切，片长不变。"}
+    ]},
+    {h:"清单型 Reels", sub:"「5 个工具」「18 种技巧」：讲到哪个，哪个就出现", items:[
+      {k:"rtrig", n:"关键词触发", c:"triggers", look:"讲到某个词，指定的卡片或整屏特效就在那一刻出现——不用手动对时间。", when:"清单型、教学型内容，每段都有一个名称。", say:"讲到「手机框」就做缩成手机框；讲到「留言」就弹留言列", note:"字幕里的字要对；它会先列出每个词对到的时间给你看。"},
+      {k:"rtoc", n:"章节目录", c:"toc", look:"画面一侧半透明黑底、边缘虚化的目录，讲到哪段那一行亮起，右上角「03/10」。", when:"段落 4 个以上的清单片。", say:"右边加章节目录，标题「10 个技巧」", note:"有目录时卡片放左边一点。"},
+      {k:"rphone", n:"缩成手机框", c:"postfx · phone", look:"整个画面缩进手机外框，配时间码和进度条，段落结尾放大回来。", when:"讲社媒、讲 App、讲「发出去的样子」。", say:"这段缩成手机框", note:"卡片和字幕不跟着缩。"},
+      {k:"rsplit", n:"调色前后对比", c:"postfx · split", look:"分割线带把手左右滑动，左边灰平、右边调色后，配前后标签。", when:"讲调色、讲改善前后。", say:"这段做调色前后对比", note:""},
+      {k:"rswipe", n:"滑下一支", c:"postfx · swipe", look:"画面往上滑走，露出手机滑 Reels 的屏幕录像（加速播放），最后带回弹滑回来。", when:"讲短视频、转场。", say:"这段做滑下一支，用我的录屏", note:"要你提供一段手机滑 Reels 的屏幕录像。", need:"录屏"},
+      {k:"rfilm", n:"底片感", c:"postfx · film", look:"暖色、颗粒、暗角、漏光、上下黑边、轻微抖动。", when:"回忆、怀旧、电影感段落。", say:"这段加底片感", note:"一支片一两段就好。"}
     ]}
   ];
 
@@ -1021,7 +1062,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   /* ---------- 配乐与音效 ---------- */
   var BGM = [["focus-quiet","76 BPM","安静专注，几乎无鼓","干货教学、密集资讯"],["warm-story","80 BPM","温暖叙事，中等节奏","幕后故事、个人分享"],["upbeat-energetic","96 BPM","明快振奋，鼓点最密","发布公告、成果展示"],["chill-tropical","84 BPM","热带 chill，有节奏感","户外、数字游民"],["lounge-vacation","70 BPM","慵懒度假，带颤音琴","悠闲、放松"],["late-night-chill","68 BPM","深夜氛围，慢而忧郁","夜拍、沉思"],["minimal-intimate","66 BPM","极简安静，无底鼓","严肃话题、独白"]];
   document.getElementById("bgmRoot").innerHTML = BGM.map(function(b){ return "<tr><td class=\"mono\">" + b[0] + "</td><td>" + b[1] + "</td><td>" + b[2] + "</td><td>" + b[3] + "</td></tr>"; }).join("");
-  var SFX = [["coin","叮叮，金币声","金额、数字揭晓","说出金额时加金币声"],["pop","啵","卡片弹出、清单一条条出现","卡片弹出加「啵」"],["ding","叮","结论、重点、提示","说结论时叮一下"],["whoosh","咻","转场、卡片收合进场","进卡片时加咻"],["click","喀","按钮、勾选","勾选时加喀"],["tick","滴答","倒数每一秒","倒数加滴答（默认就有）"],["confetti","拉炮","庆祝、里程碑","放拉炮加拉炮声"]];
+  var SFX = [["coin","叮叮，金币声","金额、数字揭晓","说出金额时加金币声"],["pop","啵","卡片弹出、清单一条条出现","卡片弹出加「啵」"],["ding","叮","结论、重点、提示","说结论时叮一下"],["whoosh","咻","转场、卡片收合进场","进卡片时加咻"],["click","喀","按钮、勾选","勾选时加喀"],["tick","滴答","倒数每一秒","倒数加滴答（默认就有）"],["confetti","拉炮","庆祝、里程碑","放拉炮加拉炮声"],["thud","咚","掉落字落地、重物落下","掉落字配咚（默认就有）"]];
   document.getElementById("sfxRoot").innerHTML = SFX.map(function(b){ return "<tr><td class=\"mono\">" + b[0] + "</td><td>" + b[1] + "</td><td>" + b[2] + "</td><td>" + b[3] + "</td></tr>"; }).join("");
 
   /* ---------- 改片说法 ---------- */
