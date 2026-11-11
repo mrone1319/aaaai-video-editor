@@ -33,6 +33,9 @@
 | `polaroid` | 拍立得：白框＋黄胶带，从右边滑进来带转 | `file`、`aspect`、`tape`、`from`（left／right） |
 | `fan` | 扇形卡片：几张手机截图像一把牌摊开 | `files`、`card_width`、`aspect`、`spread`（度） |
 | `flip` | 翻面卡片：正面压扁翻过去、背面展开 | `files`（[正面, 背面]）、`flip_at`（相对秒数） |
+| `grid` | 影片网格：最多 6 格（3×2）依序弹出、同时播放，各有一条黄色进度条 | `files`（影片或图片；可写 `{"path", "start", "crop_top", "crop_bottom"}`）、`cols`、`cell`、`aspect`、`stagger` |
+| `drop` | 掉落字：英文大字一个个从上方掉下来、落地弹两下；上方小斜体、下方一行中文 | `text`、`small`、`sub`、`font`（默认 Arial Black）、`size`、`step`、`color` |
+| `comment` | 留言列：白色长条＋头像圆点，逐字打出留言（或显示「新增留言…」），打完「发布」由灰变蓝 | `text`、`placeholder`、`post`（按钮字）、`post_at`、`avatar`（头像颜色） |
 | `wipe` | 斜色带转场（一般不直接写，见下方 band） | `fill` |
 
 图标名：`phone_play` `camera_off` `moon` `megaphone` `bolt` `link` `cursor` `pencil` `scissors` `checkbox` `star` `heart` `sparkle` `fire`。
@@ -48,7 +51,8 @@
 | `anim` | 入场：`pop`（默认，带回弹）｜`slam`｜`ghost`（描边→填满）｜`rise`｜`drop`｜`slide`｜`fade`｜`none` |
 | `out` | 出场：`fade`（默认）｜`pop`｜`cut` |
 | `burst` | 弹出时的彩纸小爆发（box／slam／icon／badge 默认开，tag 默认关） |
-| `sfx` | 默认：弹出「啵」、打勾「喀」、计数「滴答」、点按「喀」、拍立得「咻」；写 `""` 关掉，写别的名字换音效 |
+| `sfx` | 默认：弹出「啵」、打勾「喀」、计数「滴答」、点按「喀」、拍立得「咻」、掉落字每个字「咚」、留言发布「叮」；写 `""` 关掉，写别的名字换音效 |
+| `behind_subject` | `true`＝放到人后面（掉落字、大字压在头顶上方时用；需要人像去背） |
 
 卡片里的时间（清单的 `at`、翻面的 `flip_at`）都是**相对贴纸开始**的秒数。
 
@@ -60,6 +64,8 @@
 | `==短视频==` | 黄色荧光笔底条（跟着打字一起画出来） |
 | `[[AI网红]]` | 粉色实底块、白字 |
 | `\n` | 换行（太长也会按真实字宽自动换行） |
+
+关键词触发（讲到哪个词就出现哪张贴纸）、章节目录、整屏特效（手机框、前后对比、滑下一支、底片感）见 [REELS.md](REELS.md)。
 
 ## 斜色带转场
 

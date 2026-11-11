@@ -375,14 +375,15 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
         dur = max(0.1, t1 - t0)
         if typ == "sticker":   # 贴纸：矢量部分写进富文本 ASS；图片贴纸是会转动／翻面的图层
             th = theme.theme(ov.get("style") or sb.get("style"), sb.get("_base"), sb.get("brand"))
-            rec = {"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions")), "behind": False,
+            rec = {"ov": ov, "t0": t0, "t1": t1, "under": bool(ov.get("under_captions")),
+                   "behind": bool(ov.get("behind_subject")),   # 掉落字、大字放到人后面（人像去背）
                    "layers": [], "items": [], "cutout": None, "th": th, "engine": "ass",
                    "ass": sticker.build(ov, th, W, H, fps, n_stk)}
             n_stk += 1
             if ov.get("kind") in sticker.IMAGE_KINDS:
                 for ly in sticker.image_layers(ov, th, W, H, fps, sb.get("_base", ""), work):
-                    inputs.append(["-loop", "1", "-t", "%.3f" % max(0.1, ly["t1"] - ly["t0"]), "-i",
-                                   os.path.relpath(ly["png"], work)])
+                    inputs.append(ly.get("input") or ["-loop", "1", "-t", "%.3f" % max(0.1, ly["t1"] - ly["t0"]), "-i",
+                                                     os.path.relpath(ly["png"], work)])
                     rec["layers"].append({"idx": idx, "x": ly["x"], "y": ly["y"], "t0": ly["t0"], "t1": ly["t1"],
                                           "scale": None, "di": ly["di"], "do": ly["do"],
                                           "fade": ly["di"] > 0 or ly["do"] > 0, "pre": ly["pre"]})
@@ -804,6 +805,14 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 idx += 1
             rec["items"] = L["items"]
         prepared.append(rec)
+
+    # 整屏特效的装饰（手机外框、时间码、分割线）与章节目录：最后画，在所有卡片之上
+    from . import postfx, reels
+    t_off = float(sb.get("_faces_off", 0.0))
+    extra_ass = postfx.decor_lines(sb.get("_postfx") or [], W, H, fps, t_off) + reels.lines(sb, W, H, fps, t_off)
+    if extra_ass:
+        prepared.append({"ov": {}, "t0": 0.0, "t1": 0.0, "under": False, "behind": False, "layers": [], "items": [],
+                         "cutout": None, "ass": extra_ass})
 
     # 被「穿插」的卡片窗口合并后，人物只需要重贴一次
     behind_wins = _merge([(r["t0"], r["t1"]) for r in prepared if r["behind"]])

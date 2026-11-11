@@ -360,6 +360,15 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
                 mlab = "[lkm]"
         parts.append(look.graph(lk, "[%s]" % cur, "[lk]", w, h, matte=mlab))
         cur = "lk"
+    pfx = sb.get("_postfx") or []
+    if pfx:   # 整屏特效（手机框、前后对比、滑下一支、底片感）：调色之后、卡片之前
+        from . import postfx
+        pg, px_in = postfx.graph("[%s]" % cur, "[pfx]", pfx, w, h, fps, t0, (t1 - t0) if t1 is not None else None,
+                                 sb["_base"], work, seek_base + len(cuts) + extra_inputs.count("-i"))
+        if pg:
+            parts.append(pg)
+            extra_inputs += px_in
+            cur = "pfx"
     tail, cur = assemble(cur, ("subtitles=filename=%s" % ass_name) if ass_name else None, zoom_str)
     if tail:
         parts.append(tail)
@@ -408,6 +417,9 @@ def _prepare(sb_path: str, proxy: bool = False) -> dict:
 
     from . import transitions as _tr
     sb["_transitions"] = _tr.resolve(sb, tl)   # 转场吸附到剪辑点（成片时间）
+    from . import postfx, triggers
+    triggers.expand(sb, tl)   # 关键词触发：讲到哪个词，卡片／特效就在那个时间出现
+    sb["_postfx"] = postfx.items(sb)
     lk = look_of(sb)
     if lk:
         print("🎞 画面调色：%s（强度 %.0f%%%s）" % (lk["name"], lk["strength"] * 100, "，背景虚化" if lk["bokeh"] > 0 else ""))

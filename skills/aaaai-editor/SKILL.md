@@ -2,7 +2,7 @@
 name: aaaai-editor
 description: "aaaai-editor 影片总监套件：口播／访谈／活动素材的 AI 剪辑（转录、剪停顿、中英双语字幕与关键词高亮、卡片／数据跳数／编号清单／章节断章／人物穿插／卡片接管、配乐闪避、响度 -14 LUFS、封面），并负责其他格式的派工与统一收尾——品牌动画片交给 motion-graphic-video-editor、讲解片／网站转影片／产品发布／音乐影片／幻灯片交给 HeyGen HyperFrames，做完都回到 aaaai-editor 做字幕、响度、封面与逐帧验收，最后可交给 social-content-pipeline 打包发布。唤醒词：'/aaaai-editor'、'aaaai-editor 剪片'、'用 aaaai-editor 剪'；用户丢来视频文件要求剪辑、加字幕、做成片，或要做任何短视频时也适用。"
 metadata:
-  version: "1.14.0"
+  version: "1.15.0"
 ---
 
 # aaaai-editor 影片总监
@@ -130,6 +130,11 @@ P=$("$A" new <主题英文短名>)
     情绪词配 `icon`（camera_off／moon／bolt／megaphone…），数字用 `badge`，步骤用 `checklist`，截图用 `polaroid`／`fan`／`flip`，
     结尾 `cta`（按钮＋手形光标）停 2–3 秒；段落之间 `"transitions": [{"t": 秒, "type": "band"}]` 斜色带转场。
   - 贴纸自带音效（啵、喀、滴答），不要再另外加同一时间的 sfx；节奏快：autocut 用默认停顿门槛即可。
+- **清单型 Reels**（「5 个工具」「N 种技巧」，细节见 docs/REELS.md）：
+  - 用 **关键词触发** `"triggers"` 代替手动对时间：`{"say": "<字幕里的词>", "card": {...}, "fx": {...}, "dur": 秒, "toc": "<目录名>"}`；
+    写完先跑 `"$A" triggers "$P/storyboard.json"` 看每个词对到的时间，没听到的换写法或先改字幕轨，再渲染。
+  - 段落多（≥4）就加章节目录 `"toc": {"title": "…", "footer": "…"}`（项目由 triggers 的 toc 自动填）；有目录时卡片 x 别超过 0.75。
+  - 整屏特效 `postfx`（phone／split／swipe／film）一段 2–3 秒、整片最多三四次；swipe 要用户给一段手机滑 Reels 的屏幕录像，没有就不要用。
 - 配乐：`"music": {"file": "bgm:<曲名>", "db": -18, "duck": true}`；不要字幕：`"captions": {"enabled": false}`
 - 中英双语不用改 storyboard（第 3 步填 `en`）；品牌词全局高亮：`"captions": {"highlight": ["<品牌>"]}`
 
@@ -214,7 +219,7 @@ P=$("$A" new <主题英文短名>)
   放在他指定的位置；不要放在文字穿插（`behind_subject`）的时段里。
 - 卡片默认会**轻轻上下浮动（呼吸感）**，标题、数据、金句、片尾还会有一两下**闪光**；不要就在该卡片或 storyboard 顶层写
   `"float": false`／`"sparkle": false`。
-- 全部参数：`$APP/docs/CARDS.md`、`$APP/docs/STYLE.md`、`$APP/docs/STICKER.md`（贴纸）；微调用 `"$A" expand` 看展开结果。
+- 全部参数：`$APP/docs/CARDS.md`、`$APP/docs/STYLE.md`、`$APP/docs/STICKER.md`（贴纸）、`$APP/docs/REELS.md`（关键词触发／目录／整屏特效）；微调用 `"$A" expand` 看展开结果。
 
 ### 5. 预览并看画面
 
@@ -397,5 +402,5 @@ Windows 版用 `install.ps1`（双击 `Install-Windows.cmd`）安装；命令、
 Studio 开着时也可以点首页或「⋯」里的「使用指南」（走 Studio 网址，目录跳转、深浅色、中英切换都能用）；**别把指南当本机文件塞进 Claude 的浏览器面板**——那里只显示静态快照，按钮和目录都不会动。
 用户照指南里「提示词格式范本」填来的需求，逐行照做，没写的行用开工三问补齐。
 
-`$APP/docs/安装指南-Mac.md`／`$APP/docs/安装指南-Windows.md`（安装须知、密钥、MCP；`00-快速安装.md` 是选择页）· `$APP/README.md`（命令总览）· `$APP/docs/CARDS.md` · `$APP/docs/STYLE.md` · `$APP/docs/STICKER.md` · `$APP/docs/RECIPES.md` ·
+`$APP/docs/安装指南-Mac.md`／`$APP/docs/安装指南-Windows.md`（安装须知、密钥、MCP；`00-快速安装.md` 是选择页）· `$APP/README.md`（命令总览）· `$APP/docs/CARDS.md` · `$APP/docs/STYLE.md` · `$APP/docs/STICKER.md` · `$APP/docs/REELS.md` · `$APP/docs/RECIPES.md` ·
 `$APP/docs/LONG.md` · `$APP/profiles/TEMPLATE/`（建自己的频道档案）· `$APP/LICENSE.md`

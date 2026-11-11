@@ -62,8 +62,9 @@ CARDS = {
     "cutout": ("去背人像", [("width", "宽度（0–1）", "num"), ("pos", "位置", "text")]),
     "sticker": ("贴纸", [("kind", "种类", "select", [["box", "台词框"], ["tag", "斜标签"], ["slam", "重砸大字"],
                                                     ["icon", "卡通图标"], ["badge", "圆环计数"], ["checklist", "打勾清单"],
-                                                    ["cta", "点击按钮"], ["polaroid", "拍立得"], ["fan", "扇形卡片"],
-                                                    ["flip", "翻面卡片"]]),
+                                                    ["cta", "点击按钮"], ["drop", "掉落字"], ["comment", "留言列"],
+                                                    ["polaroid", "拍立得"], ["fan", "扇形卡片"], ["flip", "翻面卡片"],
+                                                    ["grid", "影片网格"]]),
                          ("text", "文字（**粉字**　==黄底条==　[[粉色实底]]）", "textarea"),
                          ("tag", "框角斜标签", "text"),
                          ("fill", "底色", "select", [["", "默认"], ["cream", "奶油白"], ["pink", "粉"], ["yellow", "黄"],
@@ -74,6 +75,8 @@ CARDS = {
                          ("label", "徽章斜标签", "text"), ("items", "清单（一行一条）", "lines"),
                          ("file", "图片（assets/…）", "text"), ("files", "多张图片（扇形／翻面）", "lines"),
                          ("xy", "位置 [中心 x, 中心 y]（0–1）", "json"), ("rot", "倾斜（度）", "num"),
+                         ("small", "掉落字上方小斜体", "text"), ("sub", "掉落字下方中文", "text"),
+                         ("placeholder", "留言列提示字（不打字时）", "text"),
                          ("burst", "彩纸小爆发", "bool"), ("typing", "逐字打出", "bool")]),
     "blur": ("打码", [("mode", "方式", "select", [["", "模糊"], ["mosaic", "马赛克"]]), ("strength", "强度（1＝标准，越大越糊）", "num"),
                       ("box", "范围 [x, y, 宽, 高]（0–1；画面上拖框更方便）", "json")]),
@@ -120,7 +123,12 @@ NEW = [
         ("sticker:checklist", {"kind": "checklist", "items": ["第一步", "第二步", "第三步"], "xy": [0.5, 0.42]},
          "打勾清单"),
         ("sticker:cta", {"kind": "cta", "text": "点击链接", "xy": [0.5, 0.45]}, "按钮＋手形光标"),
-        ("sticker:polaroid", {"kind": "polaroid", "file": "assets/photo.png", "xy": [0.6, 0.38]}, "拍立得（换图片）")]),
+        ("sticker:polaroid", {"kind": "polaroid", "file": "assets/photo.png", "xy": [0.6, 0.38]}, "拍立得（换图片）"),
+        ("sticker:drop", {"kind": "drop", "text": "WOW", "small": "kinetic type", "sub": "掉落字", "xy": [0.5, 0.2]},
+         "掉落字（英文大字）"),
+        ("sticker:comment", {"kind": "comment", "text": "太实用了，收藏！", "xy": [0.5, 0.3]}, "留言列（打字＋发布）"),
+        ("sticker:grid", {"kind": "grid", "files": ["assets/clip1.mp4", "assets/clip2.mp4", "assets/clip3.mp4"],
+                          "xy": [0.5, 0.42]}, "影片网格（换影片）")]),
     ("互动", [("cta", {"question": "你最想学**哪一个**？", "keyword": "工具", "badge": "留言领取"}, "评论框打字"),
               ("countdown", {"from": 3}, "3、2、1")]),
 ]
@@ -140,7 +148,8 @@ NEW_RECIPES = [
 NEW_LEN = {"takeover": 6.0, "outro": 3.0, "brand_open": 2.6, "brand_close": 3.0, "chapter": 2.0, "hook": 3.0,
            "cta": 6.0, "countdown": 3.0, "stamp": 2.0, "callout": 2.0, "lower_third": 3.0,
            "sticker:box": 1.6, "sticker:slam": 1.3, "sticker:tag": 1.4, "sticker:icon": 1.4, "sticker:badge": 2.2,
-           "sticker:checklist": 2.4, "sticker:cta": 3.0, "sticker:polaroid": 2.2}
+           "sticker:checklist": 2.4, "sticker:cta": 3.0, "sticker:polaroid": 2.2, "sticker:drop": 1.8,
+           "sticker:comment": 2.2, "sticker:grid": 2.4}
 
 
 def as_dict() -> dict:

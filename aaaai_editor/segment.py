@@ -30,6 +30,8 @@ def forbidden(sb: dict) -> List[Span]:
         sp.append((float(ov["t"][0]), float(ov["t"][1])))
     for z in sb.get("zooms") or []:
         sp.append((float(z["t"][0]), float(z["t"][1])))
+    for x in sb.get("_postfx") or sb.get("postfx") or []:   # 整屏特效也不能切开
+        sp.append((float(x["t"][0]), float(x["t"][1])))
     for tr in sb.get("_transitions") or sb.get("transitions") or []:   # 转场不能被分段切成两半
         t, d = float(tr.get("t", 0)), float(tr.get("dur", 0.32))
         sp.append((t - d / 2.0 - 0.3, t + d / 2.0 + 0.3))

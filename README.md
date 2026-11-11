@@ -137,7 +137,7 @@ aaaai-editor mcp                                     # 以 MCP 服务器运行
 3. 封装：视频/音频 stream copy。
 
 卡片、推近与人像去背见 `docs/CARDS.md`，长片分段与对时体检见 `docs/LONG.md`，
-风格／图标／卡片新选项见 `docs/STYLE.md`，贴纸弹跳见 `docs/STICKER.md`，配方见 `docs/RECIPES.md`。
+风格／图标／卡片新选项见 `docs/STYLE.md`，贴纸弹跳见 `docs/STICKER.md`，关键词触发／章节目录／整屏特效见 `docs/REELS.md`，配方见 `docs/RECIPES.md`。
 
 ## 开发与测试
 

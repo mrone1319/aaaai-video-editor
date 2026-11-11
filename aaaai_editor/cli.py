@@ -496,6 +496,19 @@ def cmd_showcase(a) -> int:
     return 0
 
 
+def cmd_triggers(a) -> int:
+    """关键词触发：不渲染，只列出每个词讲到的成片时间。"""
+    from . import render, triggers
+    from .timeline import Timeline
+    sb = render.load_storyboard(a.storyboard)
+    tl = Timeline([tuple(c) for c in sb["cuts"]], sb["output"]["fps"], sb.get("speed"))
+    if not sb.get("triggers"):
+        print("storyboard 没有 triggers")
+        return 0
+    triggers.expand(sb, tl)
+    return 0
+
+
 def cmd_sfx(a) -> int:
     from . import sfx
     print(sfx.describe())
@@ -685,6 +698,9 @@ def main(argv=None) -> int:
     pv.set_defaults(fn=cmd_render, only=None, proxy=True)
     t = sub.add_parser("bgm", help="列出常备配乐")
     t.set_defaults(fn=cmd_tools, tool="bgm")
+    t = sub.add_parser("triggers", help="关键词触发：列出每个词讲到的成片时间（不渲染）")
+    t.add_argument("storyboard")
+    t.set_defaults(fn=cmd_triggers)
     t = sub.add_parser("sfx", help="列出音效（storyboard 的 sfx 或卡片上的 \"sfx\"）")
     t.set_defaults(fn=cmd_sfx)
     t = sub.add_parser("listen", help="滑动窗口听写：第几秒在讲什么（不带提示词）")

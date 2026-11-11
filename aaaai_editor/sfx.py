@@ -27,6 +27,8 @@ SOUNDS: Dict[str, Tuple[float, str, str]] = {
                "3.2*N*sin(PI*t/0.55)^2"),
     "click": (0.06, "喀：按钮、勾选",
               "0.45*N*exp(-t*140)+0.3*sin(2*PI*2400*t)*exp(-t*90)"),
+    "thud": (0.28, "咚：掉落字落地、重物落下",
+             "0.62*sin(2*PI*(120-180*t)*t)*exp(-t*16)+0.12*sin(2*PI*240*t)*exp(-t*40)"),
     "tick": (0.05, "滴答：倒数每一秒",
              "0.40*sin(2*PI*2000*t)*exp(-t*120)"),
     "confetti": (0.9, "拉炮：庆祝、达成里程碑",
@@ -62,6 +64,13 @@ def collect(sb: dict) -> List[Tuple[float, str, float]]:
         if s:
             out.append((max(0.0, float(tr.get("t", 0)) - float(tr.get("dur", 0.32)) / 2.0 - 0.05), path(s),
                         float(tr.get("sfx_db", 0.0))))
+    for x in sb.get("_postfx") or []:   # 整屏特效：进出各一声「咻」（底片感不加）
+        if x.get("type") == "film" or x.get("sfx") == "":
+            continue
+        a_, b_ = float(x["t"][0]), float(x["t"][1])
+        out.append((max(0.0, a_ - 0.03), path(x.get("sfx") or "whoosh"), -4.0))
+        if x.get("type") in ("phone", "swipe"):
+            out.append((max(0.0, b_ - 0.40), path(x.get("sfx") or "whoosh"), -6.0))
     for ov in sb.get("overlays") or []:
         if ov.get("type") == "sticker":   # 贴纸：弹出「啵」、打勾「喀」、计数「滴答」……时间相对卡片开始
             from . import sticker

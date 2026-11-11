@@ -122,6 +122,26 @@ json.dump(s, open(S + "/k/storyboard.json", "w"), ensure_ascii=False)
 PYK
 cp "$R/work/transcript.json" "$S/k/work/"
 t sticker     "$A" preview "$S/k/storyboard.json"
+# 关键词触发＋章节目录＋整屏特效＋掉落字／留言列／影片网格
+python3 - "$R" "$S" <<'PYR'
+import json, os, shutil, sys
+R, S = sys.argv[1:]
+os.makedirs(S + "/r/work", exist_ok=True); os.makedirs(S + "/r/assets", exist_ok=True)
+shutil.copy(S + "/c/assets/shot.png", S + "/r/assets/shot.png")
+s = json.load(open(R + "/storyboard.json")); s["source"] = R + "/source.mp4"; s.pop("music", None); s.pop("recipes", None)
+s["style"] = "sticker"; s["toc"] = {"title": "测试目录", "footer": "收藏"}
+s["triggers"] = [{"say": "转录", "fx": {"type": "phone"}, "dur": 1.6, "toc": "手机框"},
+                 {"say": "停顿", "card": {"type": "sticker", "kind": "drop", "text": "CUT", "sub": "掉落字"}, "dur": 1.6, "toc": "掉落字"},
+                 {"say": "字幕", "fx": {"type": "split"}, "dur": 1.6, "toc": "前后对比"},
+                 {"say": "音乐", "fx": {"type": "film"}, "dur": 1.6, "toc": "底片感"},
+                 {"say": "简单", "card": {"type": "sticker", "kind": "comment", "text": "收藏了"}, "dur": 1.6, "toc": "留言列"}]
+s["postfx"] = [{"t": [0.4, 1.8], "type": "swipe", "file": R + "/source.mp4", "start": 3}]
+s["overlays"] = [{"type": "sticker", "kind": "grid", "t": [2.0, 3.6], "files": [R + "/source.mp4", "assets/shot.png", {"path": R + "/source.mp4", "start": 5}]}]
+json.dump(s, open(S + "/r/storyboard.json", "w"), ensure_ascii=False)
+PYR
+cp "$R/work/transcript.json" "$S/r/work/"
+t triggers    "$A" triggers "$S/r/storyboard.json"
+t reels       "$A" preview "$S/r/storyboard.json"
 echo "== Studio 地基"
 t store-tests python3 "$ROOT/scripts/test_store.py"
 t patch-show  "$A" patch "$SB"

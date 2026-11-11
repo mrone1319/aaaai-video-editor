@@ -30,8 +30,9 @@ from . import env, richtext
 INK = "#0A0A0B"
 PALETTE = {"pink": "#FF4F9A", "yellow": "#FEDA62", "cream": "#FFFCF5", "navy": "#1D1B49",
            "ink": INK, "white": "#FFFFFF"}
-KINDS = ("box", "tag", "slam", "icon", "badge", "checklist", "cta", "wipe", "polaroid", "fan", "flip")
-IMAGE_KINDS = ("polaroid", "fan", "flip")
+KINDS = ("box", "tag", "slam", "icon", "badge", "checklist", "cta", "drop", "comment", "wipe",
+         "polaroid", "fan", "flip", "grid")
+IMAGE_KINDS = ("polaroid", "fan", "flip", "grid")
 FONT_FALLBACK = "PingFang SC"
 
 
@@ -383,7 +384,23 @@ def ease_io(p: float) -> float:
 
 
 ENTRY_DUR = {"pop": 0.32, "slam": 0.34, "rise": 0.34, "drop": 0.42, "slide": 0.42, "ghost": 0.46,
-             "fade": 0.18, "none": 0.0}
+             "fade": 0.18, "fall": 0.55, "none": 0.0}
+
+
+def bounce_out(p: float) -> float:
+    """落地弹两下（标准 bounce 曲线）。"""
+    p = _cl(p)
+    n, d = 7.5625, 2.75
+    if p < 1 / d:
+        return n * p * p
+    if p < 2 / d:
+        p -= 1.5 / d
+        return n * p * p + 0.75
+    if p < 2.5 / d:
+        p -= 2.25 / d
+        return n * p * p + 0.9375
+    p -= 2.625 / d
+    return n * p * p + 0.984375
 EXIT_DUR = {"fade": 0.16, "pop": 0.18, "cut": 0.0}
 
 
@@ -407,6 +424,8 @@ def entry(anim: str, u: float, W: int, H: int) -> dict:
         st.update(dy=H * 0.045 * (1 - back_out(p, 1.6)), a=_cl(u / 0.12))
     elif anim == "drop":
         st.update(dy=-H * 0.16 * (1 - back_out(p, 1.4)), rot=-10 * (1 - ease_out(p)), a=_cl(u / 0.08))
+    elif anim == "fall":   # 掉落字：从画面上方掉下来、落地弹两下
+        st.update(dy=-H * 0.22 * (1 - bounce_out(p)), a=_cl(u / 0.06))
     elif anim == "slide":
         st.update(dx=W * 0.75 * (1 - back_out(p, 1.2)), rot=14 * (1 - ease_out(p)), a=_cl(u / 0.08))
     elif anim == "ghost":   # 先出黄色空心描边，0.24 秒后一下子填满（带一点放大回弹）
@@ -570,6 +589,11 @@ def _state_tags(g: Group, el: El, anim: str, t: float, ts: float, W: int, H: int
                    float(p.get("bord", 0.0)) * sc, _ac(p["color"]), _aa(tr)))
     if p.get("bord"):
         tags.append("\\3c%s" % _ac(p.get("bc", INK)))
+    if p.get("tshad"):   # 字的硬投影（掉落字这种直接压在画面上的大字）
+        sh = float(p["tshad"]) * sc
+        tags.append("\\xshad%.2f\\yshad%.2f\\4c%s\\4a%s" % (sh, sh, _ac(INK), _aa(tr)))
+    if p.get("italic"):
+        tags.append("\\i1")
     if p.get("fsp"):
         tags.append("\\fsp%.1f" % p["fsp"])
     return "{" + "".join(tags) + "}" + p["body"].replace("{A}", _aa(tr))
@@ -739,6 +763,8 @@ def _pill(g: Group, text: str, em: float, fam: str, fill: str, th: dict, ox: flo
 def build(ov: dict, th: dict, W: int, H: int, fps: float, order: int = 0) -> List[str]:
     """一个 sticker overlay → ASS 行（图片类回传空，交给 overlays 的图层）。"""
     kind = ov.get("kind", "box")
+    if kind == "grid":   # 影片网格：画面是图层，外框与进度条是矢量
+        return _grid_decor(ov, th, W, H, fps, order)
     if kind in IMAGE_KINDS:
         return []
     t0, t1 = float(ov["t"][0]), float(ov["t"][1])
@@ -819,6 +845,10 @@ def build(ov: dict, th: dict, W: int, H: int, fps: float, order: int = 0) -> Lis
         return render(_checklist(ov, th, W, H, U, fam, cx, cy, layer, sc), fps, W, H)
     if kind == "cta":
         return render(_cta(ov, th, W, H, U, fam, cx, cy, layer, seed, sc), fps, W, H)
+    if kind == "drop":
+        return render(_drop(ov, th, W, H, U, fam, cx, cy, layer, sc), fps, W, H)
+    if kind == "comment":
+        return render(_comment(ov, th, W, H, U, fam, cx, cy, layer, sc), fps, W, H)
     raise env.ToolError("sticker 没有这种 kind：%s（可用：%s）" % (kind, "、".join(KINDS)))
 
 
@@ -1146,6 +1176,14 @@ def sfx_events(ov: dict) -> List[Tuple[float, str, float]]:
     if kind == "cta":
         out = [(0.0, "pop", -3.0)] + [(0.46 + 0.12 + float(ov.get("tap_every", 0.9)) * k, "click", -3.0)
                                       for k in range(3)]
+    if kind == "drop" and not isinstance(s, str):
+        n = len(str(ov.get("text", "")).replace(" ", ""))
+        step = float(ov.get("step", 0.08))
+        out = [(0.20 + step * i + 0.20, "thud", -3.0) for i in range(min(n, 8))]
+    if kind == "comment" and not isinstance(s, str):
+        out = [(0.0, "pop", -3.0), (_comment_post_at(ov), "ding", -4.0)]
+    if kind == "grid" and not isinstance(s, str):
+        out = [(float(ov.get("stagger", 0.12)) * i, "pop", -4.0) for i in range(min(6, len(ov.get("files") or [])))]
     return out
 
 
@@ -1208,6 +1246,8 @@ def image_layers(ov: dict, th: dict, W: int, H: int, fps: float, base: str, work
     x／y 用成片时间。旋转输出是边长＝对角线的正方形，所以位置按固定尺寸算、不用 overlay_w。"""
     import os
     kind = ov["kind"]
+    if kind == "grid":
+        return _grid_layers(ov, W, H, base)
     t0, t1 = float(ov["t"][0]), float(ov["t"][1])
     U = _u(W, H)
     sc = float(ov.get("scale", 1.0))
@@ -1295,3 +1335,183 @@ def image_layers(ov: dict, th: dict, W: int, H: int, fps: float, base: str, work
                         "do": 0.02 if not side_i else 0.16})   # 不能写 0：ffmpeg 的 fade 时长 0 会改用默认 25 帧
         return out
     raise env.ToolError("不是图片贴纸：%s" % kind)
+
+
+# ---------------------------------------------------------------- 掉落字／留言列／影片网格
+def _drop(ov, th, W, H, U, fam, cx, cy, layer, sc) -> Group:
+    """掉落字：英文大字一个个从上方掉下来、落地弹两下；上方一行小斜体先淡入，下方一行中文小字。"""
+    t0, t1 = float(ov["t"][0]), float(ov["t"][1])
+    g = Group(t0, t1, cx, cy, "fade", ov.get("out", "fade"), layer, float(ov.get("rot", 0.0)))
+    big = str(ov.get("text", "DROP"))
+    bfam = family(ov.get("font") or th.get("drop_font") or "Arial Black")
+    em = U * float(ov.get("size", 0.20)) * sc
+    maxw = W * 0.92
+    tw = text_w(big, em, bfam)
+    if tw > maxw:   # 太长就缩到放得下
+        em *= maxw / tw
+        tw = maxw
+    bw, sd = _lines(U)
+    col = color(ov.get("color") or "white", th)
+    step = float(ov.get("step", 0.08))
+    x = -tw / 2.0
+    k = 0
+    for ch in big:
+        cw = text_w(ch, em, bfam)
+        if ch != " ":
+            g.add(El("text", x + cw / 2.0, 0.0, ax=x + cw / 2.0, ay=0.0, layer=10 + k, delay=0.20 + step * k,
+                     anim="fall", body=richtext._esc(ch), em=em, fam=bfam, color=col, bord=bw * 1.2, bc=INK,
+                     tshad=sd * 1.2))
+            k += 1
+        x += cw
+    if ov.get("small"):
+        sem = em * 0.28
+        g.add(El("text", -tw / 2.0 + text_w(ov["small"], sem, "Georgia") / 2.0, -em * 0.72, layer=2, anim="fade",
+                 body=richtext._esc(str(ov["small"])), em=sem, fam=family("Georgia"), color=col, italic=True,
+                 bold=False, bord=bw * 0.6, bc=INK))
+    if ov.get("sub"):
+        sem = U * 0.042 * sc
+        g.add(El("text", 0.0, em * 0.70, layer=3, delay=0.20 + step * k, anim="rise",
+                 body=richtext._esc(str(ov["sub"])), em=sem, fam=fam, color=col, bord=bw * 0.7, bc=INK))
+    return g
+
+
+def _comment_post_at(ov: dict) -> float:
+    """「发布」变蓝的时刻（相对卡片开始）：打字打完那一刻；没有打字就在 0.6 秒。"""
+    if ov.get("post_at") is not None:
+        return float(ov["post_at"])
+    txt = str(ov.get("text") or "")
+    if not txt:
+        return 0.6
+    t0, t1 = float(ov["t"][0]), float(ov["t"][1])
+    step = float(ov.get("type_speed") or min(0.08, 0.55 * (t1 - t0) / max(1, len(txt))))
+    return 0.30 + step * len(txt) + 0.10
+
+
+def _comment(ov, th, W, H, U, fam, cx, cy, layer, sc) -> Group:
+    """留言列：白色圆角长条，左边头像圆点，中间「新增留言…」（或逐字打出 text），右边「发布」灰→蓝。"""
+    t0, t1 = float(ov["t"][0]), float(ov["t"][1])
+    g = Group(t0, t1, cx, cy, ov.get("anim", "rise"), ov.get("out", "fade"), layer)
+    em = U * 0.042 * sc
+    w, h = U * 0.86 * sc, em * 2.2
+    bw, sd = _lines(U)
+    path, pw, ph, _a, _b = shape_of(rrect(0, 0, w, h, h / 2.0))
+    g.add(El("shape", 0, 0, layer=0, path=path, w=pw, h=ph, fill="#FFFFFF", bord=bw * 0.8, shad=sd * 0.7))
+    av = h * 0.66
+    ap, *_ = shape_of(ellipse(av / 2, av / 2, av / 2, av / 2))
+    g.add(El("shape", -w / 2 + h * 0.17 + av / 2, 0, layer=1, path=ap, fill=color(ov.get("avatar") or "pink", th),
+             bord=bw * 0.5, shad=0.0, ghostable=False))
+    post = str(ov.get("post", "发布"))
+    pa = _comment_post_at(ov)
+    pwid = text_w(post, em, fam)
+    px = w / 2 - h * 0.35 - pwid / 2
+    g.add(El("text", px, 0, layer=2, body=richtext._esc(post), em=em, fam=fam, color="#9AA0A6", until=pa))
+    g.add(El("text", px, 0, layer=3, body=richtext._esc(post), em=em, fam=fam, color="#0095F6", delay=pa,
+             anim="pop"))
+    tx0 = -w / 2 + h * 0.17 + av + em * 0.5
+    txt = str(ov.get("text") or "")
+    if txt:
+        step = float(ov.get("type_speed") or min(0.08, 0.55 * (t1 - t0) / max(1, len(txt))))
+        maxw = px - pwid / 2 - em * 0.4 - tx0
+        while len(txt) > 1 and text_w(txt, em, fam) > maxw:   # 太长就截掉尾巴（留言列只有一行）
+            txt = txt[:-1]
+        tw = text_w(txt, em, fam)
+
+        def body(u, txt=txt, step=step):
+            n_ = max(0, min(len(txt), int(math.floor((u - 0.30) / step)) + 1)) if u >= 0.30 else 0
+            caret = "|" if n_ < len(txt) and int(u * 3) % 2 == 0 else ""
+            return {"body": "{\\alpha{A}}%s{\\alpha&HFF&}%s{\\alpha{A}\\c&HA6A09A&}%s" % (
+                richtext._esc(txt[:n_]), richtext._esc(txt[n_:]), caret)}
+        g.add(El("text", tx0 + tw / 2.0, 0, layer=2, body="", em=em, fam=fam, color=INK, dyn=body,
+                 points=[0.30 + step * k for k in range(len(txt) + 1)], windows=[(0.30, 0.30 + step * len(txt))]))
+    else:
+        ph_txt = str(ov.get("placeholder", "新增留言…"))
+        tw = text_w(ph_txt, em, fam)
+        g.add(El("text", tx0 + tw / 2.0, 0, layer=2, body=richtext._esc(ph_txt), em=em, fam=fam, color="#9AA0A6"))
+    return g
+
+
+def _grid_geom(ov: dict, W: int, H: int) -> List[Tuple[float, float, int, int, float]]:
+    """影片网格每格的 (中心 x, 中心 y, 宽, 高, 出现时间)。"""
+    U = _u(W, H)
+    sc = float(ov.get("scale", 1.0))
+    n = min(6, len(ov.get("files") or []))
+    cols = int(ov.get("cols", 3 if n > 4 or n == 3 else (2 if n > 1 else 1)))
+    rows = int(math.ceil(n / float(cols)))
+    gap = U * 0.025 * sc
+    cw = int(U * float(ov.get("cell", 0.28 if cols >= 3 else 0.40)) * sc) & ~1
+    ch = int(cw * float(ov.get("aspect", 16 / 9.0))) & ~1
+    cx, cy = _base(ov, W, H, 0.5, 0.52)
+    stag = float(ov.get("stagger", 0.12))
+    out = []
+    for i in range(n):
+        r, c = divmod(i, cols)
+        in_row = min(cols, n - r * cols)
+        x = cx + (c - (in_row - 1) / 2.0) * (cw + gap)
+        y = cy + (r - (rows - 1) / 2.0) * (ch + gap)
+        out.append((x, y, cw, ch, stag * i))
+    return out
+
+
+def _grid_decor(ov: dict, th: dict, W: int, H: int, fps: float, order: int) -> List[str]:
+    """每格一圈米白框（盖住影片的方角）＋底下一条跟着播放前进的黄色进度条。"""
+    t0, t1 = float(ov["t"][0]), float(ov["t"][1])
+    U = _u(W, H)
+    bw, sd = _lines(U)
+    out: List[str] = []
+    for i, (x, y, cw, ch, st) in enumerate(_grid_geom(ov, W, H)):
+        g = Group(t0, t1, x, y, "pop", ov.get("out", "fade"), 100 + order * 100 + i * 4)
+        pad, rr = U * 0.012, U * 0.03
+        cm = rrect(0, 0, cw + 2 * pad, ch + 2 * pad, rr + pad) + rrect(pad, pad, cw, ch, rr, ccw=True)
+        p, pw, ph, _a, _b = shape_of(cm)
+        g.add(El("shape", 0, 0, layer=0, delay=st, path=p, w=pw, h=ph, fill=color("cream", th), bord=bw * 0.8,
+                 shad=sd * 0.7, ghostable=False))
+        bwid, bh = cw * 0.84, U * 0.008
+        track, *_ = shape_of(rrect(0, 0, bwid, bh, bh / 2))
+        g.add(El("shape", 0, ch / 2 - U * 0.03, layer=1, delay=st + 0.25, anim="fade", path=track, fill="#FFFFFF",
+                 fa=0.55, bord=0.0, shad=0.0, ghostable=False))
+        dur = max(0.3, t1 - t0 - st - 0.25)
+
+        def prog(u, st=st, dur=dur, bwid=bwid, bh=bh, ch=ch):
+            q = (u - st - 0.25) / dur
+            if q <= 0.01:
+                return None
+            ww = bwid * min(1.0, q)
+            pp, *_ = shape_of(rrect(0, 0, ww, bh, bh / 2))
+            return {"path": pp, "ox": -bwid / 2 + ww / 2, "oy": ch / 2 - U * 0.03}
+        g.add(El("shape", 0, ch / 2 - U * 0.03, layer=2, delay=st + 0.25, anim="none", path="",
+                 fill=color("yellow", th), bord=0.0, shad=0.0, ghostable=False, dyn=prog,
+                 windows=[(st + 0.25, t1 - t0)]))
+        out += render(g, fps, W, H)
+    return out
+
+
+VIDEO_EXT = (".mp4", ".mov", ".m4v", ".webm", ".mkv")
+
+
+def _grid_layers(ov: dict, W: int, H: int, base: str) -> List[dict]:
+    """影片网格的画面：每格一路输入（影片从 start 起播；图片也行），按格子大小裁满，带一点放大弹出。"""
+    import os
+    t0, t1 = float(ov["t"][0]), float(ov["t"][1])
+    out = []
+    files = ov.get("files") or []
+    for (x, y, cw, ch, st), f in zip(_grid_geom(ov, W, H), files):
+        spec = f if isinstance(f, dict) else {"path": f}
+        fp = os.path.normpath(os.path.join(base, spec["path"]))
+        if not os.path.isfile(fp):
+            raise env.ToolError("影片网格找不到：%s" % fp)
+        a = t0 + st
+        d = max(0.1, t1 - a)
+        if os.path.splitext(fp)[1].lower() in VIDEO_EXT:
+            inp = ["-stream_loop", "-1", "-ss", "%.3f" % float(spec.get("start", 0.0)), "-t", "%.3f" % d, "-i", fp]
+        else:
+            inp = ["-loop", "1", "-t", "%.3f" % d, "-i", fp]
+        ct, cb = float(spec.get("crop_top", 0.0)), float(spec.get("crop_bottom", 0.0))
+        pw_, ph_ = int(cw * 1.14) & ~1, int(ch * 1.14) & ~1
+        s = "(0.30+0.70*%s)" % _bo_expr(_clip_p("t", 0.0, 0.32), 2.6)
+        pre = ("setpts=PTS-STARTPTS,crop=iw:ih*%.4f:0:ih*%.4f,scale=%d:%d:force_original_aspect_ratio=increase,"
+               "crop=%d:%d,setsar=1,format=rgba,scale=w='max(2\\,trunc(%d*%s/2)*2)':h='max(2\\,trunc(%d*%s/2)*2)':eval=frame,"
+               "pad=w=%d:h=%d:x='(ow-iw)/2':y='(oh-ih)/2':color=black@0:eval=frame"
+               % (max(0.05, 1 - ct - cb), ct, cw, ch, cw, ch, cw, s, ch, s, pw_, ph_))
+        out.append({"input": inp, "t0": a, "t1": t1, "pre": pre, "x": "%d" % int(x - pw_ / 2),
+                    "y": "%d" % int(y - ph_ / 2), "di": 0.06, "do": 0.16})
+    return out
