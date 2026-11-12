@@ -1,9 +1,9 @@
 # aaaai-editor 影片总监套件
 
-**© 2026 MR ONE（@mrone.ai）** · 免费提供给被授权人 · macOS · Windows · 见 `LICENSE.md`
+**© 2026 MR ONE（@mrone.ai）** · 当前版本 **v1.16.2** · 免费提供给被授权人 · macOS · Windows · 见 `LICENSE.md`
 
 在 Claude Code（或 ChatGPT Codex）里说一句「/aaaai-editor」、丢一段视频，就能完成：转录 → 剪掉停顿 → 中英双语字幕与关键词高亮 →
-按内容加卡片（数据跳数、编号清单、章节断章、人物穿插、卡片接管）与 B-roll（自备、Pexels 免费素材、低价 AI 生成，先报价再执行）→ 配乐闪避 → 响度锁定 -14 LUFS → 封面 →
+按内容加卡片（数据跳数、编号清单、章节断章、人物穿插、卡片接管、贴纸弹跳）、清单型 Reels 工具（讲到关键词就出卡片、章节目录、缩成手机框、调色前后对比、滑下一支、底片感）与 B-roll（自备、Pexels 免费素材、低价 AI 生成，先报价再执行）→ 配乐闪避与 8 种原创音效 → 响度锁定 -14 LUFS → 封面 →
 逐帧验收 → 交给发布流水线。口播以外的格式（品牌动画、讲解片、网站转影片、产品发布、音乐影片、幻灯片）
 由它派给对的工具，做完再回来统一收尾。
 
@@ -36,7 +36,7 @@
 ## 第一次用
 
 > 📘 **新手先看《使用指南》**：`docs/使用指南.html`（双击用浏览器打开；也有 `docs/使用指南.pdf`；英文版 `docs/User-Guide.html`／`.pdf`，左边目录可切换中文／English；Studio 首页与「⋯」里也有「使用指南」按钮）——
-> 手把手第一次剪片、提示词格式范本、29 种小组件图鉴、风格、配乐与音效、改片说法、发布前验收。
+> 手把手第一次剪片、提示词格式范本、47 种小组件图鉴（含贴纸弹跳 11 项、清单型 Reels 6 项）、风格、配乐与音效、改片说法、发布前验收。
 
 - 在 Claude Code 里说「/aaaai-editor」，或直接丢一段视频说「帮我剪」；在 Codex 里说「用 aaaai-editor 剪 <文件>」。
   它会先问你：风格、配乐、字幕；如果素材是横拍的，还会问要不要裁成竖版。
@@ -80,7 +80,8 @@ aaaai-editor proof storyboard.json [--final]         # 按卡片时间自动抽�
 aaaai-editor align storyboard.json                   # 字幕逐句贴到真实人声
 aaaai-editor preview storyboard.json --subs          # 只烧字幕的一分钟预览（可加 --from/--to）
 aaaai-editor bgm                                     # 常备配乐（7 首原创，music.file 写 bgm:<曲名>）
-aaaai-editor sfx                                     # 音效清单（金币、啵、叮、咻…，卡片上写 "sfx"）
+aaaai-editor sfx                                     # 音效清单（8 种：金币、啵、叮、咻、喀、咚…，卡片上写 "sfx"）
+aaaai-editor triggers storyboard.json                # 关键词触发：列出每个词讲到的成片时间（不渲染，先查对不对）
 aaaai-editor music-ab storyboard.json --at 10        # 三种配乐音量的 A/B 样片
 aaaai-editor denoise-ab storyboard.json --at 10      # 降噪 A/B（默认已开标准档；"denoise": "strong"／false）
 aaaai-editor tidy storyboard.json [--apply all|1,3]  # 找口头禅（嗯／呃）与讲到一半重讲；确认后才删
@@ -125,7 +126,8 @@ aaaai-editor mcp                                     # 以 MCP 服务器运行
 }
 ```
 
-路径相对 storyboard 所在目录。字幕样式：`clean` / `punch` / `box`。
+路径相对 storyboard 所在目录。字幕样式：`clean` / `punch` / `box` / `sticker`（打字框）；选了风格（`style`）会自动配好对应的字幕样式。
+清单型 Reels 另有顶层的 `triggers`（关键词触发）、`toc`（章节目录）、`postfx`（整屏特效），写法见 `docs/REELS.md`。
 
 ## 流程
 
