@@ -142,6 +142,26 @@ PYR
 cp "$R/work/transcript.json" "$S/r/work/"
 t triggers    "$A" triggers "$S/r/storyboard.json"
 t reels       "$A" preview "$S/r/storyboard.json"
+# 招牌动态图卡（私信对话、漏斗图）在 ink 风格＋关键词色块字幕；另一支单字大字幕
+python3 - "$R" "$S" <<'PYM'
+import json, os, sys
+R, S = sys.argv[1:]
+for name, cap in (("m", {"hl_style": "box", "highlight": ["字幕"]}), ("w", {"mode": "word", "highlight": ["字幕"]})):
+    os.makedirs(S + "/" + name + "/work", exist_ok=True)
+    s = json.load(open(R + "/storyboard.json")); s["source"] = R + "/source.mp4"; s.pop("music", None); s.pop("recipes", None)
+    s["style"] = "ink"; s["captions"] = cap
+    s["overlays"] = [] if name == "w" else [
+        {"type": "sticker", "kind": "chat", "t": [0.3, 6.0], "title": "粉丝", "seen": "已读",
+         "messages": [{"from": "them", "text": "要**多久**？"}, {"from": "me", "text": "==五分钟=="},
+                      {"from": "them", "text": "怎么做到的？"}, {"from": "me", "text": "留言我发你"}]},
+        {"type": "sticker", "kind": "funnel", "t": [6.4, 9.4], "title": "漏斗",
+         "items": [{"label": "曝光", "value": "10 万"}, {"label": "私信", "value": "600", "rate": "0.6%"},
+                   {"label": "成交", "value": "45", "rate": "7.5%"}]}]
+    json.dump(s, open(S + "/" + name + "/storyboard.json", "w"), ensure_ascii=False)
+PYM
+cp "$R/work/transcript.json" "$S/m/work/"; cp "$R/work/transcript.json" "$S/w/work/"
+t mgcards     "$A" preview "$S/m/storyboard.json"
+t word-caps   "$A" preview "$S/w/storyboard.json"
 echo "== Studio 地基"
 t store-tests python3 "$ROOT/scripts/test_store.py"
 t patch-show  "$A" patch "$SB"

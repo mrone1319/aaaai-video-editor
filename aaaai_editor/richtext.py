@@ -227,8 +227,9 @@ def dialogues(it: dict, th: dict, runs: Optional[List[Tuple[str, bool]]] = None,
         # 遮罩上的字：纯黑细描边（实一点，才和浅遮罩分层、不会糊在一起）＋向下的黑色柔影
         base += ["\\bord%.1f" % max(1.4, em * 0.030), "\\3c&H000000&", "\\3a&H33&",
                  "\\shad%.1f" % max(2.5, em * 0.070), "\\4c&H000000&", "\\4a&H26&"]
-    elif it.get("stroke"):
-        base += ["\\bord%.1f" % max(2.0, em * 0.055), "\\3c&H000000&", "\\3a&H4C&", "\\shad0"]
+    elif it.get("stroke"):   # 无底板直接压在画面上的字：实一点的黑描边＋向下的柔影，亮画面上也看得清
+        base += ["\\bord%.1f" % max(2.4, em * 0.062), "\\3c&H000000&", "\\3a&H1A&",
+                 "\\shad%.1f" % max(2.5, em * 0.060), "\\4c&H000000&", "\\4a&H40&"]
     else:
         base += ["\\bord0", "\\shad0"]
     if runs and any(h for _, h in runs):

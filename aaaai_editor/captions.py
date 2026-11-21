@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 from . import env
 from .timeline import Timeline
@@ -279,7 +279,8 @@ def _asscol(hexc: str) -> str:
     return "&H%s%s%s&" % (h[4:6], h[2:4], h[0:2])
 
 
-def _line(t: str, extra: Optional[dict], st: dict, h: int, words: Sequence[str], w: int = 0) -> str:
+def _line(t: str, extra: Optional[dict], st: dict, h: int, words: Sequence[str], w: int = 0,
+          box: bool = False, font: str = "") -> str:
     extra = extra or {}
     lift = ("{\\an2\\pos(%d,%d)}" % (w // 2, int(h * 0.55))) if (extra.get("lift") and w) else ""
     hl = list(extra.get("hl") or []) + list(words or [])
@@ -290,12 +291,19 @@ def _line(t: str, extra: Optional[dict], st: dict, h: int, words: Sequence[str],
     esc = lambda x: x.replace("{", "｛").replace("}", "｝").replace("\n", "\\N")
     col = _asscol(st.get("hl") or DEF_HL)
     out, i = "", 0
+    gaps, sp = (_box_gaps(plain, m), _box_sp(st, h, font)) if box else (set(), 0)
     while i < len(plain):
         j = i
         while j < len(plain) and m[j] == m[i]:
             j += 1
         seg = esc(plain[i:j])
-        out += ("{\\c%s}%s{\\c}" % (col, seg)) if m[i] else seg
+        if (j - 1) in gaps and sp:   # 色块模式：关键词前后各留一点字距，色块才不会压到旁边的字
+            seg = esc(plain[i:j - 1]) + "{\\fsp%d}%s{\\fsp0}" % (sp, esc(plain[j - 1]))
+        if m[i] and box:   # 色块模式：字放在色块上（色块另一行画在下面），不要描边与投影
+            out += "{\\c%s\\bord0\\shad0}%s{\\c\\bord%d\\shad%d}" % (
+                _asscol(_on(st.get("hl") or DEF_HL)), seg, max(1, int(round(h * st["outline_w"]))), st["shadow"])
+        else:
+            out += ("{\\c%s}%s{\\c}" % (col, seg)) if m[i] else seg
         i = j
     if extra.get("en"):
         en_size = int(round(h * st["size"] * st.get("en_ratio", DEF_EN_RATIO)))
@@ -308,6 +316,308 @@ def _line(t: str, extra: Optional[dict], st: dict, h: int, words: Sequence[str],
     return out_prefix + out
 
 
+def _on(hexc: str) -> str:
+    h_ = hexc.lstrip("#")
+    r, g, b = (int(h_[i:i + 2], 16) for i in (0, 2, 4))
+    return "#FFFFFF" if 0.299 * r + 0.587 * g + 0.114 * b < 150 else "#111114"
+
+
+def _en_size(extra: dict, st: dict, h: int, w: int) -> int:
+    en = str(extra.get("en") or "")
+    en_size = int(round(h * st["size"] * st.get("en_ratio", DEF_EN_RATIO)))
+    usable = (w or h * 9 / 16.0) * (1 - 2 * SIDE)
+    est = len(en.replace("**", "")) * 0.56 * en_size
+    if usable and est > usable:
+        en_size = max(int(h * st["size"] * 0.42), int(en_size * usable / est))
+    return en_size
+
+
+def _metrics(font: str, bold: bool = True) -> Tuple[float, float, Callable[[str, float], float]]:
+    """(win 行高倍率, 上沿倍率, 量字宽函数(字串, em))：\\fs N 的字 em ＝ N / win。"""
+    from . import richtext, sticker
+    fam = sticker.family(font)
+    win, asc = 1.2, 0.95
+    try:
+        path, idx = sticker._face(fam, bold)
+        win, asc, _cap = richtext.metrics_file(path, idx)
+    except Exception:
+        pass
+    return win, asc, (lambda s_, em: sticker.text_w(s_, em, fam, bold))
+
+
+def _box_gaps(plain: str, m: List[bool]) -> set:
+    """要加字距的字：关键词前面那个字、关键词最后一个字（后面还有字时）。"""
+    return {j for j in range(len(plain) - 1) if m[j] != m[j + 1]}
+
+
+def _box_sp(st: dict, h: int, font: str) -> int:
+    win, _asc, _tw = _metrics(font or "PingFang SC", bool(st.get("bold", 1)))
+    return max(2, int(round(int(round(h * st["size"])) / win * 0.22)))
+
+
+def hl_boxes(e, st: dict, w: int, h: int, words: Sequence[str], mv, font: str, anim: str) -> List[str]:
+    """关键词色块：在字幕那一行的关键词后面画一块圆角色块（强调色），字改成色块上的对比色。
+    只处理单行中文句（字幕本来就是一句一行）；量字宽用字体档的真实步进。"""
+    extra = (e[3] if len(e) > 3 else None) or {}
+    hl = list(extra.get("hl") or []) + list(words or [])
+    plain, m = _mask(e[2], hl)
+    if not any(m) or "\n" in plain:
+        return []
+    from . import sticker
+    size = int(round(h * st["size"]))
+    win, asc, tw = _metrics(font, bool(st.get("bold", 1)))
+    gaps, sp = _box_gaps(plain, m), _box_sp(st, h, font)
+
+    def xw(k: int) -> float:   # 前 k 个字的宽（含加的字距）
+        return tw(plain[:k], em) + sp * sum(1 for g_ in gaps if g_ < k)
+    em = size / win
+    if extra.get("lift") and w:
+        y_bot = h * 0.55
+    else:
+        y_bot = h - (mv if mv else h * st["margin_v"])
+    if extra.get("en"):   # 双语：中文行在英文行上面，英文行高约等于它的字号
+        y_bot -= _en_size(extra, st, h, w) * 1.0
+    base = y_bot - (win - asc) * em          # 中文行的基线
+    total = xw(len(plain))
+    x0 = w / 2.0 - total / 2.0
+    col = _asscol(st.get("hl") or DEF_HL)
+    out = []
+    fad = "\\fad(90,70)" if anim != "none" else ""
+    i = 0
+    while i < len(plain):
+        if not m[i]:
+            i += 1
+            continue
+        j = i
+        while j < len(plain) and m[j]:
+            j += 1
+        xs = x0 + xw(i)
+        ww = xw(j) - xw(i) - (sp if (j - 1) in gaps else 0)
+        padx, top, bot = sp * 0.75, base - em * 0.95, base + em * 0.20
+        path, pw, ph, _cx, _cy = sticker.shape_of(sticker.rrect(0, 0, ww + 2 * padx, bot - top, em * 0.20))
+        out.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,{\\an7\\pos(%.1f,%.1f)\\bord0\\shad0\\1c%s\\1a&H00&%s\\p1}%s"
+                   % (_ts(e[0]), _ts(e[1]), xs - padx, top, col, fad, path))
+        i = j
+    return out
+
+
+# ---------------------------------------------------------------- 单字大字幕
+AFTER = "的了吗呢吧啊呀嘛着过"        # 词尾虚词：跟着前面
+BEFORE = "和与跟就都也还在是把被给让很更最再又才"   # 开头的虚词／副词：从这里断开
+PUNCT = "，。！？、；：,.!?;:…—「」“”\"'（）()《》【】 "
+
+
+_CF = None
+
+
+def _cf_words(text: str) -> Optional[List[str]]:
+    """macOS 自带的中文分词（CoreFoundation 的 CFStringTokenizer，不用装任何东西）；别的系统回传 None。"""
+    global _CF
+    if env.WIN:
+        return None
+    try:
+        import ctypes
+        import ctypes.util
+        if _CF is None:
+            lib = ctypes.util.find_library("CoreFoundation")
+            if not lib:
+                _CF = False
+                return None
+            cf = ctypes.cdll.LoadLibrary(lib)
+
+            class R(ctypes.Structure):
+                _fields_ = [("location", ctypes.c_long), ("length", ctypes.c_long)]
+            vp = ctypes.c_void_p
+            cf.CFStringCreateWithCharacters.restype = vp
+            cf.CFStringCreateWithCharacters.argtypes = [vp, vp, ctypes.c_long]
+            cf.CFLocaleCreate.restype = vp
+            cf.CFLocaleCreate.argtypes = [vp, vp]
+            cf.CFStringTokenizerCreate.restype = vp
+            cf.CFStringTokenizerCreate.argtypes = [vp, vp, R, ctypes.c_ulong, vp]
+            cf.CFStringTokenizerAdvanceToNextToken.restype = ctypes.c_ulong
+            cf.CFStringTokenizerAdvanceToNextToken.argtypes = [vp]
+            cf.CFStringTokenizerGetCurrentTokenRange.restype = R
+            cf.CFStringTokenizerGetCurrentTokenRange.argtypes = [vp]
+            cf.CFRelease.argtypes = [vp]
+            _CF = (cf, R)
+        if not _CF:
+            return None
+        cf, R = _CF
+
+        def mk(x):
+            b = x.encode("utf-16-le")
+            return cf.CFStringCreateWithCharacters(None, ctypes.create_string_buffer(b, len(b)), len(b) // 2)
+        u = text.encode("utf-16-le")
+        st, ls = mk(text), mk("zh_CN")
+        loc = cf.CFLocaleCreate(None, ls)
+        tk = cf.CFStringTokenizerCreate(None, st, R(0, len(u) // 2), 0, loc)
+        out = []
+        while cf.CFStringTokenizerAdvanceToNextToken(tk):
+            r = cf.CFStringTokenizerGetCurrentTokenRange(tk)
+            out.append(u[r.location * 2:(r.location + r.length) * 2].decode("utf-16-le"))
+        for x in (tk, st, loc, ls):
+            cf.CFRelease(x)
+        return out if "".join(out) == text else None
+    except Exception:
+        _CF = False
+        return None
+
+
+def _group_words(ws: List[str]) -> List[str]:
+    """分好的词 → 2–4 字一组：词尾虚词（的、了…）黏前面；介词副词（在、把、被、就…）黏后面；
+    其他单字（天、做…）黏前面那组。"""
+    out: List[str] = []
+    pre = ""
+    for w_ in ws:
+        if len(w_) == 1 and ord(w_) > 0x2E80:
+            if w_ in AFTER and (pre or out):
+                if pre:
+                    out.append(pre + w_)
+                    pre = ""
+                else:
+                    out[-1] += w_
+            elif w_ in BEFORE or pre or not out or len(out[-1]) >= 4:
+                pre += w_
+                if len(pre) >= 3:
+                    out.append(pre)
+                    pre = ""
+            else:
+                out[-1] += w_
+            continue
+        out.append(pre + w_)
+        pre = ""
+    if pre:   # 句尾剩下的单字：宁可前一组多一个字（最多 5 字），也不要单独闪一下
+        if out and len(out[-1]) + len(pre) <= 5:
+            out[-1] += pre
+        else:
+            out.append(pre)
+    return out
+
+
+def _split_run(run: str) -> List[str]:
+    ws = _cf_words(run)
+    if ws:
+        return _group_words(ws)
+    return _split_run_rules(run)
+
+
+def _split_run_rules(run: str) -> List[str]:
+    """一段连续中文 → 2–4 字的组：先在虚词处断开，太长的再平均切成 2–3 字。"""
+    segs, cur = [], ""
+    for k, c in enumerate(run):
+        if c in BEFORE and cur and k + 1 < len(run):
+            segs.append(cur)
+            cur = ""
+        cur += c
+        if c in AFTER:
+            segs.append(cur)
+            cur = ""
+    if cur:
+        segs.append(cur)
+    out: List[str] = []
+    for sg in segs:
+        n = len(sg)
+        if n <= 4:
+            out.append(sg)
+            continue
+        parts = -(-n // 3)
+        sizes = [n // parts + (1 if i < n % parts else 0) for i in range(parts)]
+        i = 0
+        for z in sizes:
+            out.append(sg[i:i + z])
+            i += z
+    merged: List[str] = []   # 单独一个字：词尾虚词并到前面，其他并到较短的一边（并完不超过 4 字）
+    for k, c in enumerate(out):
+        if len(c) == 1 and merged and (c in AFTER or len(merged[-1]) <= 2) and len(merged[-1]) < 4:
+            merged[-1] += c
+        else:
+            merged.append(c)
+    final: List[str] = []
+    for k, c in enumerate(merged):
+        if final and len(final[-1]) == 1 and final[-1] not in AFTER and len(c) <= 3:
+            final[-1] += c
+        else:
+            final.append(c)
+    return final
+
+
+def word_chunks(text: str, hl: Sequence[str]) -> List[Tuple[str, bool, float]]:
+    """一句 → [(词, 是否关键词, 时长权重)]。中文 2–4 字一组（虚词处断开），英文一个词一组；
+    **关键词**／高亮词整个当一组；句里写空格可以自己指定断点。"""
+    plain, m = _mask(text, hl)
+    out: List[Tuple[str, bool, float]] = []
+    run = ""
+
+    def flush():
+        nonlocal run
+        for c_ in _split_run(run) if run else []:
+            out.append((c_, False, float(len(c_))))
+        run = ""
+    i = 0
+    while i < len(plain):
+        c = plain[i]
+        if m[i]:
+            flush()
+            j = i
+            while j < len(plain) and m[j]:
+                j += 1
+            out.append((plain[i:j], True, float(max(2, len(plain[i:j])))))
+            i = j
+        elif c in PUNCT or c == "\n":
+            flush()
+            i += 1
+        elif ord(c) > 0x2E80:
+            run += c
+            i += 1
+        else:
+            flush()
+            j = i
+            while j < len(plain) and not m[j] and ord(plain[j]) <= 0x2E80 and plain[j] not in PUNCT and plain[j] != "\n":
+                j += 1
+            out.append((plain[i:j], False, max(1.0, (j - i) * 0.45)))
+            i = j
+    flush()
+    return out
+
+
+def word_lines(events, st: dict, w: int, h: int, words: Sequence[str], mvs: Sequence, font: str,
+               cap: dict) -> List[str]:
+    """单字大字幕：每句拆成词，按字数分配时间，一个词一行 Dialogue（放大弹入）；关键词用强调色、再大一点。
+    双语句的英文整句小字放在下面。"""
+    size = h * 0.068 * float(cap.get("word_scale", 1.0))
+    if w > h:
+        size = h * 0.085 * float(cap.get("word_scale", 1.0))
+    hl_col = _asscol(st.get("hl") or DEF_HL)
+    bw = max(2, int(round(size * 0.075)))
+    out = []
+    for e, mv in zip(events, mvs):
+        a, b = float(e[0]), float(e[1])
+        extra = (e[3] if len(e) > 3 else None) or {}
+        hl = list(extra.get("hl") or []) + list(words or [])
+        chunks = word_chunks(e[2], hl)
+        if not chunks:
+            continue
+        y = (h * 0.55) if extra.get("lift") else h - (mv if mv else h * st["margin_v"]) - size * 0.5
+        tot = sum(c[2] for c in chunks)
+        t = a
+        for k, (txt, kw, wgt) in enumerate(chunks):
+            d = (b - a) * wgt / tot
+            t_end = b if k == len(chunks) - 1 else t + d
+            fs = size * (1.15 if kw else 1.0)
+            c = ("\\c%s" % hl_col) if kw else ""
+            pop = "\\fscx118\\fscy118\\t(0,90,\\fscx100\\fscy100)"
+            out.append("Dialogue: 1,%s,%s,Cap,,0,0,0,,{\\an5\\pos(%d,%d)\\fs%d\\bord%d\\shad%d%s%s}%s"
+                       % (_ts(t), _ts(t_end), w // 2, int(y), int(fs), bw, 2, c, pop,
+                          txt.replace("{", "｛").replace("}", "｝")))
+            t = t_end
+        if extra.get("en"):
+            en = str(extra["en"]).replace("**", "")
+            out.append("Dialogue: 0,%s,%s,Cap,,0,0,0,,{\\an8\\pos(%d,%d)\\fn%s\\fs%d\\b0\\fad(80,60)}%s"
+                       % (_ts(a), _ts(b), w // 2, int(y + size * 0.72), env.font_family(st.get("en_font", DEF_EN_FONT)),
+                          int(h * st["size"] * 0.62), en.replace("{", "｛").replace("}", "｝")))
+    return out
+
+
 ONLIGHT_TEXT, ONLIGHT_EDGE = "&H161B1E&", "&HE7EFF4&"   # 纸面上的字幕：深字（#1E1B16）、浅色描边
 
 
@@ -315,9 +625,11 @@ def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean"
               highlight: Sequence[str] = (), margin_v: Optional[float] = None,
               size_scale: Optional[float] = None, hl_color: Optional[str] = None,
               faces: Optional[list] = None, t_off: float = 0.0, onlight: Optional[list] = None,
-              anim: str = "soft", fps: float = 30.0) -> None:
+              anim: str = "soft", fps: float = 30.0, cap: Optional[dict] = None) -> None:
     """margin_v：字幕底边离画面底部的比例（storyboard 的 captions.margin_v 可覆盖；0.30≈画面 70% 处）；
-    size_scale：字号倍率（captions.size_scale）。"""
+    size_scale：字号倍率（captions.size_scale）。
+    cap：storyboard 的 captions（读 hl_style：box＝关键词垫色块；mode：word＝单字大字幕）。"""
+    cap = cap or {}
     st = dict(STYLES[style])
     if margin_v is not None:
         st["margin_v"] = float(margin_v)
@@ -346,9 +658,15 @@ def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean"
         from . import sticker
         lines = sticker.caption_lines(events, st, w, h, highlight, mvs, fps)
         events = []
+    elif cap.get("mode") == "word":   # 单字大字幕：一次一个词、大字、快节奏
+        lines = word_lines(events, st, w, h, highlight, mvs, font, cap)
+        events = []
+    hl_box = cap.get("hl_style") == "box" and not st.get("sticker")
     cap_h = h * st["size"] * 1.35
     for e, mv in zip(events, mvs):
-        txt = _line(e[2], e[3] if len(e) > 3 else None, st, h, highlight, w)
+        txt = _line(e[2], e[3] if len(e) > 3 else None, st, h, highlight, w, box=hl_box, font=font)
+        boxes = hl_boxes(e, st, w, h, highlight, mv, font, anim) if hl_box else []
+        lines += boxes
         if onlight:   # 卡片接管（纸面底）期间，字幕落在浅色纸面上：改深字浅边
             mid = (e[0] + e[1]) / 2.0
             bot = h - (mv if mv else h * st["margin_v"])
@@ -359,6 +677,6 @@ def write_ass(events, path: str, w: int, h: int, font: str, style: str = "clean"
         if anim != "none":   # 出字微动效：轻轻淡入＋极小的放大（围绕底边中心，位置不会挪）
             ms = min(130, max(60, int(round((e[1] - e[0]) * 1000))))
             txt = "{\\fad(90,70)\\fscx96\\fscy96\\t(0,%d,\\fscx100\\fscy100)}" % ms + txt
-        lines.append("Dialogue: 0,%s,%s,Cap,,0,0,%d,,%s" % (_ts(e[0]), _ts(e[1]), mv or 0, txt))
+        lines.append("Dialogue: %d,%s,%s,Cap,,0,0,%d,,%s" % (1 if boxes else 0, _ts(e[0]), _ts(e[1]), mv or 0, txt))
     with open(path, "w", encoding="utf-8") as f:
         f.write(head + "\n".join(lines) + "\n")

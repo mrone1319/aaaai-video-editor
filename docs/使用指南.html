@@ -268,7 +268,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
 <main>
 <!-- 00 -->
 <section id="start" class="hero">
-  <div class="tag"><span class="chip">v1.16.2</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
+  <div class="tag"><span class="chip">v1.17.0</span><span class="chip">macOS · Windows</span><span class="chip">在 Claude Code 里使用</span></div>
   <h1>你负责说话和拍板，<br><em>剪辑交给 aaaai-editor</em>。</h1>
   <p class="lede">它是一整套口播剪辑流程：剪停顿、上字幕、排卡片、配乐与音效、响度、封面、逐帧验收。你不用学剪辑软件，也不用记指令——在 Claude Code 里输入 <code>/aaaai-editor</code>，用平常说话的方式告诉它你要什么。</p>
   <div class="prompt-box" aria-label="示例：只要一句话">
@@ -299,6 +299,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     <article><h3>图卡：卡片直接变图文</h3><p>片里排好的数据卡、清单卡、金句卡可以单独出成静态图（默认 1080×1350），配上文案就是一篇小红书／IG 图文，和视频互相导流。跟它说「出图卡」就好。</p></article>
     <article><h3>贴纸弹跳：街头口播的整套包装</h3><p>黑粗描边＋硬投影的彩色贴纸：台词逐字打进框里、重砸大字、斜标签、卡通图标、圆环计数、打勾清单、拍立得、掉落字、留言列、影片网格、斜色带转场。选别的风格时，贴纸自动换成那个风格的颜色与阴影。</p></article>
     <article><h3>清单型 Reels：讲到哪就出现哪</h3><p>讲到某个词，卡片或特效就在那一刻出现，不用对时间；侧边章节目录跟着亮起「03/10」；还有缩成手机框、调色前后对比、滑下一支、底片感四种整屏特效。</p></article>
+    <article><h3>私信对话、漏斗图、字幕加强</h3><p>私信对话一句句重演（先出「…正在输入」、太长会往上滚）、倒三角漏斗图一层层弹出；字幕可以把关键词垫上色块，或改成一次一个词的单字大字幕。都跟着风格的颜色走。</p></article>
     <article><h3>每套风格都有自己的排版</h3><p>11 套风格各有字体性格：粗标题、大写字距的小标、等宽数字；底板有顶部高光与柔和投影，数据卡的单位小一号、还能带一条量感条。</p></article>
     <article><h3>出片前自己先验收</h3><p>按卡片时间自动抽帧检查、字幕对时体检、封面 15% 安全区检查。没看过实际画面，它不会说「完成了」。</p></article>
     <article><h3>剪完接着写文案</h3><p>交给「内容生产线」：按你指定的平台（小红书、抖音、X、IG、B站…）写好文案、配图，打包成发布包，按客户记住品牌语气。发帖要你亲手按。</p></article>
@@ -877,7 +878,7 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
   </table></div>
   <div class="note warn"><b class="k">社群风格</b><span><code>mrone</code> 与 <code>otg</code> 是两个频道／社群的品牌风格：你可以用，但名称、配色和品牌元素归原权利人，不要用它们做冒充该品牌、或让人误以为是官方的内容。完整条款见套件里的 <code>LICENSE.md</code>。</span></div>
   <footer>
-    <span>aaaai-editor v1.16.2 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）、<code>docs/STICKER.md</code>（贴纸）、<code>docs/REELS.md</code>（关键词触发、章节目录、整屏特效）。</span>
+    <span>aaaai-editor v1.17.0 · © <a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a>。详细参数给进阶用户：<code>docs/CARDS.md</code>（卡片）、<code>docs/RECIPES.md</code>（配方）、<code>docs/STYLE.md</code>（风格）、<code>docs/STICKER.md</code>（贴纸）、<code>docs/REELS.md</code>（关键词触发、章节目录、整屏特效）。</span>
     <span>相关网站：<a href="https://aaaai.ai/" target="_blank" rel="noopener">aaaai.ai</a> · <a href="https://linktr.ee/mrone.eth" target="_blank" rel="noopener">MR ONE</a> · <a href="https://otg.community/" target="_blank" rel="noopener">OTG</a></span>
     <span>这份指南会随版本更新；有看不懂的地方，直接问 Claude「这个功能怎么用」。</span>
   </footer>
@@ -923,6 +924,10 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
     rphone: function(){ return frame(el("rect",{x:18,y:22,width:54,height:106,rx:8,fill:"#FFFCF5"}) + el("rect",{x:21,y:25,width:48,height:100,rx:6,fill:"var(--screen-2)"}) + person({cy:62,r:10}) + el("text",{x:45,y:17,"font-size":5,"text-anchor":"middle",fill:"var(--accent)","font-family":"var(--mono)"},"00:00:01:12") + line(24,136,42,1.6,"#fff",.5) + line(24,136,20,1.6,"var(--accent)"), "#1D1B49"); },
     rsplit: function(){ return frame(person() + el("rect",{x:0,y:0,width:45,height:160,fill:"#888",opacity:.45}) + el("rect",{x:44,y:0,width:1.5,height:160,fill:"#fff"}) + el("circle",{cx:45,cy:80,r:6,fill:"#fff",stroke:"#0A0A0B","stroke-width":1}) + pill(18,40,20,7,"#000") + pill(52,40,20,7,"var(--accent)") + cap()); },
     rswipe: function(){ return frame(el("rect",{x:0,y:0,width:90,height:160,fill:"var(--screen-2)"}) + el("rect",{x:0,y:-60,width:90,height:110,fill:"var(--screen)"}) + person({cy:-4}) + el("path",{d:"M45 120 L45 90 M39 96 L45 90 L51 96",stroke:"#fff","stroke-width":2,fill:"none"})); },
+    mgchat: function(){ return frame(person() + el("rect",{x:8,y:14,width:30,height:9,rx:4.5,fill:"#1D1B49"}) + el("circle",{cx:13,cy:18.5,r:2.6,fill:"#FEDA62"}) + line(18,17.5,16,2,"#fff") + el("circle",{cx:10,cy:33,r:3,fill:"#FEDA62"}) + el("rect",{x:15,y:27,width:40,height:10,rx:5,fill:"#fff"}) + line(19,30.5,30,3,"#0A0A0B") + el("rect",{x:38,y:41,width:44,height:10,rx:5,fill:"#FF4F9A"}) + el("rect",{x:56,y:45,width:18,height:4,rx:1,fill:"#FEDA62"}) + line(42,44.5,34,3,"#fff") + el("rect",{x:15,y:55,width:16,height:8,rx:4,fill:"#fff"}) + el("circle",{cx:19.5,cy:59,r:1.2,fill:"#999"}) + el("circle",{cx:23,cy:59,r:1.2,fill:"#999"}) + el("circle",{cx:26.5,cy:59,r:1.2,fill:"#999"}) + cap(118)); },
+    mgfunnel: function(){ var s = person({cy:118,r:11}) + el("rect",{x:30,y:10,width:30,height:8,rx:4,fill:"#1D1B49"}) + line(36,13,18,2,"#fff"); var cs = ["#FF4F9A","#FEDA62","#FFFCF5","#1D1B49"]; for (var i=0;i<4;i++){ var y = 22+i*14, a = 38-i*7, b = 38-(i+1)*7; s += el("path",{d:"M"+(45-a)+" "+y+" L"+(45+a)+" "+y+" L"+(45+b)+" "+(y+12)+" L"+(45-b)+" "+(y+12)+" Z",fill:cs[i],stroke:"#0A0A0B","stroke-width":1}) + line(39,y+5,12,2.5,i==3?"#fff":"#0A0A0B"); if (i>0) s += el("rect",{x:45+a+2,y:y-4,width:12,height:6,rx:3,fill:"#FEDA62"}); } return frame(s); },
+    capbox: function(){ return frame(person() + line(18,112,20,4,"#fff") + el("rect",{x:40,y:110,width:18,height:8,rx:2,fill:"#F0B23C"}) + line(42,112,14,4,"#1E1B16") + line(60,112,12,4,"#fff") + el("rect",{x:28,y:121,width:34,height:2,rx:1,fill:"#fff",opacity:.6})); },
+    capword: function(){ return frame(person() + el("text",{x:45,y:118,"font-size":15,"font-weight":900,"text-anchor":"middle",fill:"#fff",stroke:"#000","stroke-width":.8},"机器人") + el("rect",{x:28,y:124,width:34,height:2,rx:1,fill:"#fff",opacity:.6})); },
     rfilm: function(){ return frame(person({fill:"#C9A27A"}) + el("rect",{x:0,y:0,width:90,height:12,fill:"#000"}) + el("rect",{x:0,y:148,width:90,height:12,fill:"#000"}) + el("circle",{cx:12,cy:40,r:30,fill:"#FF9A40",opacity:.25}) + cap(), "#5A4636"); },
     hookcut: function(){ return frame(person() + cap() + pill(6,8,22,7,"var(--accent)") + line(9,10.5,16,2,"#1E1B16") ); },
     title: function(){ return frame(person() + scrimTop(66) + line(6,10,10,2,"var(--accent)") + line(6,16,14,2,"#fff",.7) + line(6,22,46,5) + line(52,22,20,5,"var(--accent)") + line(6,31,30,2.4,"#fff",.75) + cap()); },
@@ -1024,6 +1029,12 @@ footer{color:var(--ink-3);font-size:13.5px;border-top:1px solid var(--line);padd
       {k:"rsplit", n:"调色前后对比", c:"postfx · split", look:"分割线带把手左右滑动，左边灰平、右边调色后，配前后标签。", when:"讲调色、讲改善前后。", say:"这段做调色前后对比", note:""},
       {k:"rswipe", n:"滑下一支", c:"postfx · swipe", look:"画面往上滑走，露出手机滑 Reels 的屏幕录像（加速播放），最后带回弹滑回来。", when:"讲短视频、转场。", say:"这段做滑下一支，用我的录屏", note:"要你提供一段手机滑 Reels 的屏幕录像。", need:"录屏"},
       {k:"rfilm", n:"底片感", c:"postfx · film", look:"暖色、颗粒、暗角、漏光、上下黑边、轻微抖动。", when:"回忆、怀旧、电影感段落。", say:"这段加底片感", note:"一支片一两段就好。"}
+    ]},
+    {h:"招牌图卡与字幕加强", sub:"讲故事、讲数据、要节奏感时用；任何风格都能用，颜色跟着风格走", items:[
+      {k:"mgchat", n:"私信对话重演", c:"sticker · chat", look:"对方先出「…正在输入」，泡泡一句句弹出：对方在左、你在右（强调色），太长会像手机一样往上滚；可加联系人名牌和「已读」。", when:"「有粉丝私信问我…」「客户这样回我…」这类对话情节。", say:"这段做私信对话：粉丝问「剪一条片要多久？」，我回「现在用 AI 五分钟」，「五分钟」加黄底", note:"一张 4–7 秒、3–5 句最好读；关键回答说「加黄底」标出来。"},
+      {k:"mgfunnel", n:"漏斗图", c:"sticker · funnel", look:"倒三角一层层弹出，每层大数字＋说明，右边挂转化率小标签。", when:"讲流量、转化、名单一层层变少。", say:"做转化漏斗：曝光 10 万 → 点进主页 8,000（8%）→ 私信 600 → 成交 45", note:"3–5 层就好；转化率写在 rate。"},
+      {k:"capbox", n:"关键词色块字幕", c:"captions · hl_style box", look:"字幕里的关键词后面垫一块强调色圆角色块，字换成深色或白色，比只换颜色更醒目。", when:"想让重点词一眼跳出来。", say:"字幕关键词改成色块", note:"整支片的字幕一起换；贴纸打字框字幕有自己的黄底条。"},
+      {k:"capword", n:"单字大字幕", c:"captions · mode word", look:"一次只出一个词（中文 2–4 字一组），大字、放大弹入、快节奏；关键词用强调色、再大一号。", when:"节奏快的短片、黑红编辑风。", say:"字幕改成单字大字幕", note:"断得不顺的地方，在字幕轨那句里加空格指定断点。"}
     ]}
   ];
 

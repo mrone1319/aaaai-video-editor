@@ -256,11 +256,14 @@ def ring_src(S: int, fps: float, color: str) -> str:
     """倒数圆环（lavfi 来源）：淡色底圈＋强调色弧，每秒从满圈顺时针缩到空。"""
     r, g, b = draw.hex_rgb(color)
     c = S / 2.0
-    ro, ri = c * 0.96, c * 0.80
+    ro, ri = c * 0.96, c * 0.78
     rad = "hypot(X-%.1f,Y-%.1f)" % (c, c)
     ang = "mod(atan2(X-%.1f,%.1f-Y)+2*PI,2*PI)/(2*PI)" % (c, c)
-    a = "255*between(%s,%.1f,%.1f)*if(lte(%s,1-mod(T,1)),1,0.22)" % (rad, ri, ro, ang)
-    return "color=c=black@0:s=%dx%d:r=%s,format=rgba,geq=r=%d:g=%d:b=%d:a='%s'" % (S, S, fps, r, g, b, a)
+    band = "between(%s,%.1f,%.1f)" % (rad, ri, ro)
+    # 圈里垫一片半透明深色圆底：亮画面上数字和圆环才站得住
+    a = "if(%s,255*if(lte(%s,1-mod(T,1)),1,0.30),if(lt(%s,%.1f),105,0))" % (band, ang, rad, ri - 1.0)
+    return ("color=c=black@0:s=%dx%d:r=%s,format=rgba,geq=r='%d*%s':g='%d*%s':b='%d*%s':a='%s'"
+            % (S, S, fps, r, band, g, band, b, band, a))
 
 
 def gauge_src(S: int, fps: float, color: str, track: str, ring_w: float, ratio: float,
@@ -299,6 +302,19 @@ def _merge(rs: List[Tuple[float, float]]) -> List[Tuple[float, float]]:
 
 TOP_MIN = 0.05   # 避脸往上挪，最多挪到离顶 5%（再上去会被平台的状态栏／标题挡住）
 CAP_TOP = 0.62   # 卡片改放下巴下面时，字不能低于这里（字幕约在 64%～70%）
+
+
+def caption_band(sb: dict, H: int) -> Optional[Tuple[float, float]]:
+    """字幕大约占的高度范围（像素，上缘, 下缘）：人名条／头像牌压到时要让开。"""
+    cap = sb.get("captions") or {}
+    if not cap.get("enabled", True):
+        return None
+    from . import captions as cap_mod
+    st = cap_mod.STYLES.get(cap.get("style") or "clean") or cap_mod.STYLES["clean"]
+    mv = float(cap["margin_v"]) if cap.get("margin_v") is not None else float(st["margin_v"])
+    size = H * float(st["size"]) * float(cap.get("size_scale") or 1.0)
+    bottom = H * (1.0 - mv)
+    return bottom - size * 2.1, bottom + size * 0.15   # 按双语两行算（多留一点）
 
 
 def face_lift(ov: dict, th: dict, W: int, H: int, fps: float, faces) -> dict:
@@ -584,12 +600,12 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
             else:                    # 关注框：强调色发光外框，一呼一吸
                 bx, by, bw, bh = [float(v) for v in ov.get("box", [0.1, 0.55, 0.8, 0.11])]
                 col = ov.get("color") or th["accent"]
-                png, m = glow_png(int(W * bw), int(H * bh), max(4, int(W * 0.007)), col, int(W * 0.024), work)
+                png, m = glow_png(int(W * bw), int(H * bh), max(6, int(W * 0.011)), col, int(W * 0.030), work)
                 inputs.append(["-loop", "1", "-t", "%.3f" % dur, "-i", os.path.relpath(png, work)])
                 rec["layers"].append({"idx": idx, "x": "%d" % (int(W * bx) - m), "y": "%d" % (int(H * by) - m),
                                       "t0": t0, "t1": t1, "scale": None, "di": 0.25, "do": 0.25, "fade": True,
                                       "pre": "geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':"
-                                             "a='alpha(X,Y)*(0.62+0.38*sin(2*PI*T/%.2f))'" % float(ov.get("pulse", 1.1))})
+                                             "a='alpha(X,Y)*(0.80+0.20*sin(2*PI*T/%.2f))'" % float(ov.get("pulse", 1.1))})
             idx += 1
             prepared.append(rec)
             continue
@@ -638,6 +654,10 @@ def build(sb: dict, work: str, W: int, H: int, fps: float, base_idx: int = 1,
                 off = float(sb.get("_faces_off", 0.0))
                 fc = [(t - off, f) for t, f in sb.get("_faces") or []]
                 ov = face_lift(ov, th, W, H, fps, fc)
+            if typ in cards.LOWER_TYPES and not ov.get("xy") and not ov.get("pos"):
+                band = caption_band(sb, H)
+                if band:
+                    ov = dict(ov, _cap_band=band)
             L = cards.layout(ov, th, W, H, fps)
             fl = L.get("float") if sb.get("float", True) else None
             fe = float_expr(fl)

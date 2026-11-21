@@ -321,7 +321,7 @@ def _render_pass(sb: dict, cuts, cap_events, t0: float, w: int, h: int, fps, wor
                              h * (float(o.get("top", 0.34)) + float(o.get("height", 0.50))))
                             for o in sb.get("overlays") or []
                             if o.get("type") == "frame" and (o.get("bg") == "paper" or str(o.get("bg", "")).startswith("#"))],
-                           sb["captions"].get("anim", "soft"), fps)
+                           sb["captions"].get("anim", "soft"), fps, cap=sb["captions"])
     zooms = sb.get("zooms") or []
     zoom_str = overlays.zoom_filter(zooms, w, h, fps) if zooms else None
     # 人像遮罩按「不带 format 的剪辑图」生成，成片改画质不会让遮罩缓存失效
@@ -661,7 +661,7 @@ def preview_subs(sb_path: str, t_from: Optional[float] = None, t_to: Optional[fl
         captions.write_ass(captions.to_events(pcs, tl), os.path.join(work, ass), w, h,
                            cap.get("font") or env.find_font(), cap["style"], cap.get("highlight") or (),
                            cap.get("margin_v"), cap.get("size_scale"), _hl_color(sb),
-                           anim=cap.get("anim", "soft"))
+                           anim=cap.get("anim", "soft"), cap=cap)
     info = env.probe(sb["source"])
     g = _video_base(cuts, w, h, fps, False, None, sb.get("framing"), bool(info.get("hdr")))
     lk = look_of(sb)

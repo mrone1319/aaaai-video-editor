@@ -30,7 +30,7 @@ from . import env, richtext
 INK = "#0A0A0B"
 PALETTE = {"pink": "#FF4F9A", "yellow": "#FEDA62", "cream": "#FFFCF5", "navy": "#1D1B49",
            "ink": INK, "white": "#FFFFFF"}
-KINDS = ("box", "tag", "slam", "icon", "badge", "checklist", "cta", "drop", "comment", "wipe",
+KINDS = ("box", "tag", "slam", "icon", "badge", "checklist", "cta", "drop", "comment", "chat", "funnel", "wipe",
          "polaroid", "fan", "flip", "grid")
 IMAGE_KINDS = ("polaroid", "fan", "flip", "grid")
 FONT_FALLBACK = "PingFang SC"
@@ -207,6 +207,9 @@ def parse(text: str) -> List[Tuple[str, str]]:
     return out
 
 
+NO_START = "，。！？、；：,.!?;:）)」』】》…"
+
+
 def wrap(chars: List[Tuple[str, str]], em: float, fam: str, maxw: float) -> List[List[Tuple[str, str]]]:
     """按真实字宽换行；英文词不拆开。"""
     lines: List[List[Tuple[str, str]]] = [[]]
@@ -219,7 +222,7 @@ def wrap(chars: List[Tuple[str, str]], em: float, fam: str, maxw: float) -> List
         nonlocal word
         if not word:
             return
-        if lines[-1] and lw(lines[-1] + word) > maxw:
+        if lines[-1] and lw(lines[-1] + word) > maxw and word[0][0] not in NO_START:   # 句末标点不放行首
             while lines[-1] and lines[-1][-1][0] == " ":
                 lines[-1].pop()
             lines.append([])
@@ -757,14 +760,15 @@ def burst(g: Group, w: float, h: float, U: float, th: dict, seed: int, delay: fl
 # ---------------------------------------------------------------- 富文字块（台词框的内容）
 def text_block(g: Group, chars: List[Tuple[str, str]], em: float, fam: str, maxw: float, cx: float, cy: float,
                th: dict, txt_col: str, layer: int, type_from: Optional[float], step: float,
-               align: str = "center", delay: float = 0.0, anim: Optional[str] = None) -> Tuple[float, float]:
+               align: str = "center", delay: float = 0.0, anim: Optional[str] = None,
+               marker: Optional[str] = None, accent: Optional[str] = None) -> Tuple[float, float]:
     """排好一段带标记的字（可逐字打出）。回传 (宽, 高)。cx/cy 是这块字的中心（相对组中心）。"""
     lines = wrap(chars, em, fam, maxw)
     lh = em * 1.32
     widths = [text_w("".join(c for c, _ in ln), em, fam) for ln in lines]
     bw_ = max(widths) if widths else 0.0
     bh_ = lh * len(lines) - (lh - em) * 0.6
-    pink, yellow = color("pink", th), color("yellow", th)
+    pink, yellow = accent or color("pink", th), marker or color("yellow", th)
     # 每个字的全局序号（打字用）
     idx = 0
     order: List[List[int]] = []
@@ -955,6 +959,10 @@ def _build(ov: dict, th: dict, W: int, H: int, fps: float, order: int = 0) -> Li
         return render(_drop(ov, th, W, H, U, fam, cx, cy, layer, sc), fps, W, H)
     if kind == "comment":
         return render(_comment(ov, th, W, H, U, fam, cx, cy, layer, sc), fps, W, H)
+    if kind in ("chat", "funnel"):   # 招牌动态图卡：私信对话重演、漏斗图（mgcards.py）
+        from . import mgcards
+        fn = mgcards._chat if kind == "chat" else mgcards._funnel
+        return render(fn(ov, th, W, H, U, fam, cx, cy, layer, sc), fps, W, H)
     raise env.ToolError("sticker 没有这种 kind：%s（可用：%s）" % (kind, "、".join(KINDS)))
 
 
@@ -1288,6 +1296,9 @@ def sfx_events(ov: dict) -> List[Tuple[float, str, float]]:
         out = [(0.20 + step * i + 0.20, "thud", -3.0) for i in range(min(n, 8))]
     if kind == "comment" and not isinstance(s, str):
         out = [(0.0, "pop", -3.0), (_comment_post_at(ov), "ding", -4.0)]
+    if kind in ("chat", "funnel") and not isinstance(s, str):
+        from . import mgcards
+        out = mgcards.sfx(ov) or out
     if kind == "grid" and not isinstance(s, str):
         out = [(float(ov.get("stagger", 0.12)) * i, "pop", -4.0) for i in range(min(6, len(ov.get("files") or [])))]
     return out

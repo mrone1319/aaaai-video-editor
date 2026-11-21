@@ -71,7 +71,7 @@ def _proof(ov: dict, sb: dict, W: int, H: int, win: Optional[dict]) -> List[dict
     bottom = H * top + h + 2 * border
     if ov.get("kicker"):
         out.append({"_aux": True, "type": "text", "t": [t0, t1], "text": ov["kicker"], "_xy": [cx, top - 0.028], "scale": 0.8,
-                    "color": "@muted" if not win or win.get("bg") != "paper" else ON_PAPER["muted"], "anim": "fade"})
+                    "color": _kicker_col(win), "anim": "fade"})
     if ov.get("pill"):
         out.append({"type": "stamp", "t": [t0 + 0.15, t1], "text": ov["pill"], "_xy": [cx, (bottom - H * 0.018) / H],
                     "colors": dict(PILL), "anim": "pop", "_raw": True})
@@ -82,6 +82,13 @@ def _proof(ov: dict, sb: dict, W: int, H: int, win: Optional[dict]) -> List[dict
                     "anim": "pop", "scale": float(ov.get("stamp_scale", 1.5)), "_raw": True,
                     "sfx": ov.get("stamp_sfx"), "sfx_at": at})
     return out
+
+
+def _kicker_col(win: Optional[dict]) -> str:
+    """小标的颜色：卡片接管的纸面上用纸面的灰字；直接压在画面上用近白字（配描边投影，任何画面都看得清）。"""
+    if win and win.get("bg") == "paper":
+        return ON_PAPER["muted"]
+    return "@muted" if win else "#F4F4F5"
 
 
 def _flow(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
@@ -98,7 +105,7 @@ def _flow(ov: dict, W: int, H: int, win: Optional[dict]) -> List[dict]:
     out = []
     if ov.get("kicker"):
         out.append({"_aux": True, "type": "text", "t": [t0, t1], "text": ov["kicker"], "_xy": [0.5, top - 0.035], "scale": 0.9,
-                    "color": "@muted" if not win or win.get("bg") != "paper" else ON_PAPER["muted"], "anim": "fade"})
+                    "color": _kicker_col(win), "anim": "fade"})
     for i, s in enumerate(steps):
         at = float(s.get("at", t0 + 0.25 * i))
         last = i == n - 1 and ov.get("result", True)
@@ -188,7 +195,8 @@ def _countdown(ov: dict, W: int, H: int) -> List[dict]:
     out = [{"type": "ring", "t": [t0, t0 + n], "cx": cx, "cy": cy, "size": size, "from": n}]
     for k in range(n):
         o = {"type": "text", "t": [t0 + k, t0 + k + 0.98], "text": str(n - k), "_xy": [cx, cy - size * W / H * 0.23],
-             "scale": float(ov.get("scale", 3.2)), "anim": "pop", "color": ov.get("color", "#FFFFFF"), "_raw": True}
+             "scale": float(ov.get("scale", 3.2)), "anim": "pop", "color": ov.get("color", "#FFFFFF"), "_raw": True,
+             "role": "number"}   # 粗体数字（以前用正文字重，亮画面上显得细）
         if ov.get("sfx", "tick"):
             o.update(sfx=ov.get("sfx", "tick"), sfx_at=t0 + k)
         out.append(o)

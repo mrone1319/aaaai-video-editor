@@ -44,6 +44,8 @@
 | `grid` | 影片网格：最多 6 格（3×2）依序弹出、同时播放，各有一条黄色进度条 | `files`（影片或图片；可写 `{"path", "start", "crop_top", "crop_bottom"}`）、`cols`、`cell`、`aspect`、`stagger` |
 | `drop` | 掉落字：英文大字一个个从上方掉下来、落地弹两下；上方小斜体、下方一行中文 | `text`、`small`、`sub`、`font`（默认 Arial Black）、`size`、`step`、`color` |
 | `comment` | 留言列：白色长条＋头像圆点，逐字打出留言（或显示「新增留言…」），打完右边的纸飞机发送键由灰变成强调色、弹一下 | `text`、`placeholder`、`post`（写字就改回文字按钮，例 `"发布"`）、`post_at`、`avatar`（头像颜色） |
+| `chat` | 私信对话重演：对方先出「…」正在输入、泡泡一句句弹出（对方在左、卡片底色；我在右、强调色），太长会像手机一样往上滚 | `messages`（每句 `from`：`them`／`me`、`text`、可写 `at`）、`title`（联系人名牌）、`seen`（例「已读」）、`height`、`them_fill`／`me_fill`、`typing` |
+| `funnel` | 漏斗图：倒三角一层层弹出，每层大数字＋说明，右边可挂转化率小标签 | `items`（每层 `label`、`value`、`rate`）、`title`、`step`（每层间隔，默认 0.32 秒）、`fills`、`width`、`narrow` |
 | `wipe` | 斜色带转场（一般不直接写，见下方 band） | `fill` |
 
 图标名：`phone_play` `camera_off` `moon` `megaphone` `bolt` `link` `cursor` `pencil` `scissors` `checkbox` `star` `heart` `sparkle` `fire`。
@@ -72,6 +74,22 @@
 | `==短视频==` | 黄色荧光笔底条（跟着打字一起画出来） |
 | `[[AI网红]]` | 粉色实底块、白字 |
 | `\n` | 换行（太长也会按真实字宽自动换行） |
+
+### 私信对话、漏斗图
+
+```jsonc
+{"type": "sticker", "kind": "chat", "t": [3.0, 9.0], "title": "粉丝 Amy", "seen": "已读",
+ "messages": [{"from": "them", "text": "请问剪一条片要**多久**？"},
+              {"from": "me", "text": "现在用 AI ==五分钟=="}]}
+{"type": "sticker", "kind": "funnel", "t": [3.0, 7.0], "title": "转化漏斗",
+ "items": [{"label": "曝光", "value": "10 万"}, {"label": "点进主页", "value": "8,000", "rate": "8%"},
+           {"label": "成交", "value": "45", "rate": "0.6%"}]}
+```
+
+- 对话：不写 `at` 就自动排（前一句出现后按字数留阅读时间）；放不进卡片时长会整体压缩。
+  对方的句子出现「啵」，我的句子「喀」。泡泡里一样能写 `**强调**`、`==底条==`，颜色和泡泡撞色时会自动换成看得清的颜色。
+- 漏斗：不写 `fills` 时，贴纸风格粉／黄／奶油／海军蓝轮流，其他风格是强调色往深色渐变。每层出现「啵」。
+- 两种都跟着风格走（描边、阴影、字体、颜色），和其他贴纸一样。
 
 关键词触发（讲到哪个词就出现哪张贴纸）、章节目录、整屏特效（手机框、前后对比、滑下一支、底片感）见 [REELS.md](REELS.md)。
 

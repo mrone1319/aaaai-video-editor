@@ -204,8 +204,12 @@ def blocks_title(ov, th, W) -> Tuple[List[dict], str]:
         return b, "fit"
     if is_lite(ov, th):
         b = []
+        ib = _icon_blk(dict(ov, align="left"), th, W, 0.080)   # 口播版也要显示图标（以前写了 icon 会被吃掉）
+        if ib:
+            b.append(ib)
         if ov.get("kicker"):
-            b.append(_blk(ov["kicker"], round(W * 0.033), th["accent"], mono=True, align="left", role="kicker"))
+            b.append(_blk(ov["kicker"], round(W * 0.033), th["accent"], mono=True, align="left", role="kicker",
+                          gap=round(W * 0.022) if b else 0))
         b.append(_blk(ov.get("text", ""), round(W * float(ov.get("scale", 1.0)) * 0.092), th["text"], align="left",
                       gap=round(W * 0.018) if b else 0, role="title"))
         if ov.get("sub"):
@@ -441,7 +445,7 @@ def blocks_lower_third(ov, th, W) -> Tuple[List[dict], str]:
 
 
 def blocks_stamp(ov, th, W) -> Tuple[List[dict], str]:
-    blk = _blk(ov.get("text", ""), round(W * 0.029 * float(ov.get("scale", 1.0))), th["on_accent"], mono=True,
+    blk = _blk(ov.get("text", ""), round(W * 0.035 * float(ov.get("scale", 1.0))), th["on_accent"], mono=True,
                role="stamp")
     if ov.get("icon"):  # 图标在字前：改左对齐，底板宽按「图标＋字」算
         blk.update(lead_icon=ov["icon"], lead_color=th["on_accent"], align="left")
@@ -485,8 +489,8 @@ def blocks_step(ov, th, W) -> Tuple[List[dict], str]:
     if ib:
         b.append(ib)
     if ov.get("top"):
-        b.append(_blk(ov["top"], round(W * 0.026), th["muted"], gap=round(W * 0.012) if b else 0, role="label"))
-    b.append(_blk(ov.get("big", ""), round(W * float(ov.get("scale", 1.0)) * 0.040), th["text"],
+        b.append(_blk(ov["top"], round(W * 0.032), th["muted"], gap=round(W * 0.012) if b else 0, role="label"))
+    b.append(_blk(ov.get("big", ""), round(W * float(ov.get("scale", 1.0)) * 0.042), th["text"],
                   gap=round(W * 0.008) if b else 0, role="heading"))
     return b, "fit"
 
@@ -754,6 +758,10 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             if not ov.get("_xy"):   # 用户拖的：不出画面、左右留安全边
                 px = min(max(float(mx), px), max(float(mx), W - mx - plate_w))
                 py = min(max(0.0, py), H - plate_h)
+        band = ov.get("_cap_band")
+        if band and not xy and py < band[1] and py + plate_h > band[0]:   # 人名条压到字幕：挪到字幕上面（放不下就放下面）
+            gap_ = U * 0.020
+            py = band[0] - gap_ - plate_h if band[0] - gap_ - plate_h >= top_m else band[1] + gap_
         cbox_x = px + pad
         cur = py + pad
 
@@ -831,7 +839,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
         shapes.append({"x": px, "y": py + pad, "w": bw, "h": body_h, "r": bw / 2.0, "fill": th["accent"]})
     elif lite:
         bw = max(round(U * 0.10), 40)
-        shapes.append({"x": cbox_x, "y": py, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
+        # 第一块是置中的（进度圈的小标）：短线也置中，不然线靠左、字居中，看起来没对齐
+        bx_ = cbox_x + cbox_w / 2.0 - bw / 2.0 if blocks and blocks[0].get("align") == "center" else cbox_x
+        shapes.append({"x": bx_, "y": py, "w": bw, "h": bar_h, "r": bar_h / 2.0, "fill": th["accent"]})
     ccx = cbox_x + cbox_w / 2.0
     common = {"t1": t1, "di": di, "do": do_, "dx": dx0, "dy": dy0, "curve": cv}
 
@@ -937,9 +947,9 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
             line = th.get("line") or (th.get("border") or {}).get("color") or row_fill
             for i, (parts, rh) in enumerate(b["_rowsm"]):
                 d = b["delays"][i]
-                if lite:   # 遮罩上只留一层很淡的白色行底，分出每一条
+                if lite:   # 遮罩上每一条垫一层半透明深底（以前是 9% 白，亮画面上小字会糊掉）
                     shapes.append({"x": cbox_x, "y": ry, "w": cbox_w, "h": rh, "r": 16.0,
-                                   "fill": "#FFFFFF", "alpha": 0.09})
+                                   "fill": "#000000", "alpha": 0.34})
                 else:
                     shapes.append({"x": cbox_x, "y": ry, "w": cbox_w, "h": rh,
                                    "r": min(float(th["radius"]) * 0.6, 18.0), "fill": row_fill, "line": line})
@@ -956,7 +966,7 @@ def layout(ov: dict, th: dict, W: int, H: int, fps: float) -> dict:
                     ty += gap
                     for li, ln in enumerate(ls):
                         items.append(dict(common, size=sz, color=col[key], mono=False, t0=t0 + d,
-                                          y=int(round(ty)), x=tx, text=ln, stroke=False,
+                                          y=int(round(ty)), x=tx, text=ln, stroke=False, soft=bool(lite),
                                           role="row_" + key, runs=runs[li]))
                         ty += sz * lh_for(sz, U)
                 ry += rh + b["_rgap"]
